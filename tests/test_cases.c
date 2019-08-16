@@ -8,8 +8,8 @@
 
 #include "test_cases.h"
 #include <stdio.h>
-#include "../ruyi_list.h"
-#include "../ruyi_vector.h"
+#include "../src/ruyi_list.h"
+#include "../src/ruyi_vector.h"
 
 
 BOOL print_callback(ruyi_value v) {

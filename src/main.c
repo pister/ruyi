@@ -9,7 +9,7 @@
 #include <stdio.h>
 
 // test cases
-#include "tests/test_cases.h"
+#include "../tests/test_cases.h"
 
 int main(int argc, const char * argv[]) {
     run_test_cases();
