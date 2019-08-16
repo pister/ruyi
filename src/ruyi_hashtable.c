@@ -61,6 +61,7 @@ void ruyi_hashtable_destory(ruyi_hashtable *hashtable) {
                 ruyi_mem_free(current_entry);
             }
         }
+        ruyi_mem_free(hashtable->table);
     }
     ruyi_mem_free(hashtable);
 }
