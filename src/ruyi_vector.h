@@ -106,5 +106,12 @@ INT32 ruyi_vector_find_last(ruyi_vector* vector, ruyi_value value);
  */
 BOOL ruyi_vector_remove_last(ruyi_vector* vector, ruyi_value* ret_last_value);
 
+/**
+ * Sort the vector
+ * params:
+ * vector - the target vector
+ * comparator - how to compare each items
+ */
+void ruyi_vector_sort(ruyi_vector* vector, ruyi_value_comparator comparator);
 
 #endif /* ruyi_vector_h */

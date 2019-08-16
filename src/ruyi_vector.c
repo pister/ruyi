@@ -9,6 +9,7 @@
 #include "ruyi_vector.h"
 #include "ruyi_mem.h"
 #include <string.h> // for memcpy
+#include <stdlib.h> // for qsort
 
 #define VECTOR_DEFAULT_INIT_CAP 10
 #define VECTOR_GROUP_RATE 1.5
@@ -115,4 +116,9 @@ BOOL ruyi_vector_remove_last(ruyi_vector* vector, ruyi_value* ret_last_value) {
     }
     vector->len--;
     return TRUE;
+}
+
+void ruyi_vector_sort(ruyi_vector* vector, ruyi_value_comparator comparator) {
+    assert(vector);
+    qsort(vector->value_data, vector->len, sizeof(ruyi_value), (int (*)(const void *, const void *))comparator);
 }

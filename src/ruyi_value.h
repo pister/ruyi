@@ -51,5 +51,6 @@ ruyi_value ruyi_value_ptr(void* ptr);
 BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2);
 UINT32 ruyi_value_hashcode(ruyi_value value);
 
+typedef int (*ruyi_value_comparator)(ruyi_value *v1, ruyi_value *v2);
 
 #endif /* ruyi_value_h */

@@ -100,6 +100,10 @@ static void assert_vector_values(ruyi_vector* vector, const INT64 *values, UINT3
     assert(i == value_length);
 }
 
+int int64_comp(ruyi_value *v1, ruyi_value *v2) {
+    return (int)(v1->data.int64_value - v2->data.int64_value);
+}
+
 static void test_vectors(void) {
     INT64 values[16];
     INT32 pos;
@@ -125,6 +129,19 @@ static void test_vectors(void) {
     
     ruyi_vector_remove_last(vector, &value);
     assert_vector_values(vector, values, 3);
+    
+    ruyi_vector_add(vector, ruyi_value_int64(10));
+    ruyi_vector_add(vector, ruyi_value_int64(150));
+
+    ruyi_vector_sort(vector, int64_comp);
+    
+    printf("=>>>>>>>>>>>>>>>>>>\n");
+    for (pos = 0; pos < ruyi_vector_length(vector); pos++) {
+        ruyi_vector_get(vector, pos, &value);
+        printf("%lld\n", value.data.int64_value);
+    }
+    printf("=>>>>>>>>>>>>>>>>>>\n");
+
     ruyi_vector_destroy(vector);
 }
 

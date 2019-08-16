@@ -12,6 +12,8 @@
 #include "ruyi_basics.h"
 #include "ruyi_value.h"
 
+struct ruyi_hash_entry;
+
 typedef struct {
     struct ruyi_hash_entry **table;
     UINT32 capacity;

@@ -80,35 +80,6 @@ ruyi_value ruyi_value_ptr(void* ptr) {
     return v;
 }
 
-BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2) {
-    if (v1.type != v2.type) {
-        return FALSE;
-    }
-    switch (v1.type) {
-        case Ruyi_value_type_uint64:
-            return v1.data.uint64_value == v2.data.uint64_value;
-        case Ruyi_value_type_int64:
-            return v1.data.int64_value == v2.data.int64_value;
-        case Ruyi_value_type_uint32:
-            return v1.data.uint32_value == v2.data.uint32_value;
-        case Ruyi_value_type_int32:
-            return v1.data.int32_value == v2.data.int32_value;
-        case Ruyi_value_type_uint16:
-            return v1.data.uint16_value == v2.data.uint16_value;
-        case Ruyi_value_type_int16:
-            return v1.data.int16_value == v2.data.int16_value;
-        case Ruyi_value_type_uint8:
-            return v1.data.uint8_value == v2.data.uint8_value;
-        case Ruyi_value_type_int8:
-            return v1.data.int8_value == v2.data.int8_value;
-        case Ruyi_value_type_ptr:
-            return v1.data.ptr == v2.data.ptr;
-        default:
-            break;
-    }
-    return FALSE;
-}
-
 static UINT32 hash_for_bytes(BYTE* byte_ptr) {
     UINT32 i;
     UINT32 hash = 0;
@@ -147,5 +118,33 @@ UINT32 ruyi_value_hashcode(ruyi_value value) {
         default:
             break;
     }
-    return 0;
+}
+
+BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2) {
+    if (v1.type != v2.type) {
+        return FALSE;
+    }
+    switch (v1.type) {
+        case Ruyi_value_type_uint64:
+            return v1.data.uint64_value == v2.data.uint64_value;
+        case Ruyi_value_type_int64:
+            return v1.data.int64_value == v2.data.int64_value;
+        case Ruyi_value_type_uint32:
+            return v1.data.uint32_value == v2.data.uint32_value;
+        case Ruyi_value_type_int32:
+            return v1.data.int32_value == v2.data.int32_value;
+        case Ruyi_value_type_uint16:
+            return v1.data.uint16_value == v2.data.uint16_value;
+        case Ruyi_value_type_int16:
+            return v1.data.int16_value == v2.data.int16_value;
+        case Ruyi_value_type_uint8:
+            return v1.data.uint8_value == v2.data.uint8_value;
+        case Ruyi_value_type_int8:
+            return v1.data.int8_value == v2.data.int8_value;
+        case Ruyi_value_type_ptr:
+            return v1.data.ptr == v2.data.ptr;
+        default:
+            break;
+    }
+    return FALSE;
 }
