@@ -52,7 +52,6 @@ void ruyi_hashtable_destory(ruyi_hashtable *hashtable) {
     UINT32 i;
     struct ruyi_hash_entry *next_entry;
     struct ruyi_hash_entry *current_entry;
-
     if (hashtable->table) {
         for (i = 0; i < hashtable->capacity; i++) {
             next_entry = hashtable->table[i];
