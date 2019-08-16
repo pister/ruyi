@@ -10,7 +10,8 @@
 #include <stdio.h>
 #include "../src/ruyi_list.h"
 #include "../src/ruyi_vector.h"
-
+#include "../src/ruyi_value.h"
+#include "../src/ruyi_hashtable.h"
 
 BOOL print_callback(ruyi_value v) {
     printf("value: %lld\n", v.data.int64_value);
@@ -101,6 +102,8 @@ static void assert_vector_values(ruyi_vector* vector, const INT64 *values, UINT3
 
 static void test_vectors(void) {
     INT64 values[16];
+    INT32 pos;
+    ruyi_value value;
     ruyi_vector* vector = ruyi_vector_create_with_cap(2);
     ruyi_vector_add(vector, ruyi_value_int64(111));
     ruyi_vector_add(vector, ruyi_value_int64(222));
@@ -113,11 +116,89 @@ static void test_vectors(void) {
     values[1] = 2200;
     assert_vector_values(vector, values, 4);
 
+    pos = ruyi_vector_find_first(vector, ruyi_value_int64(2200));
+    assert(1 == pos);
+    pos = ruyi_vector_find_last(vector, ruyi_value_int64(333));
+    assert(2 == pos);
+    pos = ruyi_vector_find_last(vector, ruyi_value_int64(8822));
+    assert(pos < 0);
     
+    ruyi_vector_remove_last(vector, &value);
+    assert_vector_values(vector, values, 3);
     ruyi_vector_destroy(vector);
+}
+
+static void test_hashtable(void) {
+    ruyi_hashtable * hashtable = ruyi_hashtable_create();
+    ruyi_value key;
+    ruyi_value value;
+    BOOL success;
+    ruyi_hashtable_iterator it;
+    
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name1"), ruyi_value_int64(111));
+    assert(1 == ruyi_hashtable_length(hashtable));
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name2"), ruyi_value_int64(222));
+    assert(2 == ruyi_hashtable_length(hashtable));
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("age"), ruyi_value_int64(12));
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("tall"), ruyi_value_int64(178));
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("weight"), ruyi_value_int64(160));
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("number"), ruyi_value_int64(1234));
+    assert(6 == ruyi_hashtable_length(hashtable));
+    
+    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("name1"), &value);
+    assert(success);
+    assert(111 == value.data.int64_value);
+    
+    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("tall"), &value);
+    assert(success);
+    assert(178 == value.data.int64_value);
+    
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("tall"), ruyi_value_int64(888));
+    assert(6 == ruyi_hashtable_length(hashtable));
+
+    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("tall"), &value);
+    assert(success);
+    assert(888 == value.data.int64_value);
+
+    success = ruyi_hashtable_delete(hashtable, ruyi_value_ptr("name1"));
+    assert(success);
+    assert(5 == ruyi_hashtable_length(hashtable));
+    
+    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("name1"), &value);
+    assert(success == FALSE);
+    
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name1"), ruyi_value_int64(999));
+    assert(6 == ruyi_hashtable_length(hashtable));
+    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("name1"), &value);
+    assert(success);
+    assert(999 == value.data.int64_value);
+    
+    ruyi_hashtable_iterator_get(hashtable, &it);
+    while (ruyi_hashtable_iterator_next(&it, &key, &value)) {
+        printf("%s ==> %lld\n", (char*)key.data.ptr, value.data.int64_value);
+    }
+    
+    ruyi_hashtable_clear(hashtable);
+    assert(0 == ruyi_hashtable_length(hashtable));
+    
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name1"), ruyi_value_int64(112));
+    assert(1 == ruyi_hashtable_length(hashtable));
+    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("name1"), &value);
+    assert(success);
+    assert(112 == value.data.int64_value);
+    
+    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name6"), ruyi_value_int64(666));
+
+    printf("==========--------->>>>>>>>>>>>>>\n");
+    ruyi_hashtable_iterator_get(hashtable, &it);
+    while (ruyi_hashtable_iterator_next(&it, &key, &value)) {
+        printf("%s ==> %lld\n", (char*)key.data.ptr, value.data.int64_value);
+    }
+    ruyi_hashtable_destory(hashtable);
 }
 
 void run_test_cases(void) {
     test_lists();
     test_vectors();
+    test_hashtable();
 }

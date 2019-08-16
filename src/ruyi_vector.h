@@ -76,5 +76,35 @@ BOOL ruyi_vector_set(ruyi_vector* vector, UINT32 index, ruyi_value value);
  */
 UINT32 ruyi_vector_length(ruyi_vector* vector);
 
+/**
+ * Get the first value index
+ * params:
+ * vector - the target vector
+ * value - the value to be find
+ * return:
+ * 0 - base index will be return, -1 indicate not found
+ */
+INT32 ruyi_vector_find_first(ruyi_vector* vector, ruyi_value value);
+
+/**
+ * Get the last value index
+ * params:
+ * vector - the target vector
+ * value - the value to be find
+ * return:
+ * 0 - base index will be return, -1 indicate not found
+ */
+INT32 ruyi_vector_find_last(ruyi_vector* vector, ruyi_value value);
+
+/**
+ * Remove the value at the last of vector
+ * params:
+ * vector - the target vector
+ * ret_last_value - the value has remove, it can be NULL.
+ * return:
+ * TRUE indicates remove success, or FALSE indicates remove fail (for exmaple: vector is empty.)
+ */
+BOOL ruyi_vector_remove_last(ruyi_vector* vector, ruyi_value* ret_last_value);
+
 
 #endif /* ruyi_vector_h */

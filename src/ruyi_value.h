@@ -49,6 +49,7 @@ ruyi_value ruyi_value_int8(INT8 value);
 ruyi_value ruyi_value_ptr(void* ptr);
 
 BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2);
+UINT32 ruyi_value_hashcode(ruyi_value value);
 
 
 #endif /* ruyi_value_h */

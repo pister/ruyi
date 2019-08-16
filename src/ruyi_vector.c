@@ -82,4 +82,37 @@ UINT32 ruyi_vector_length(ruyi_vector* vector) {
     return vector->len;
 }
 
+INT32 ruyi_vector_find_first(ruyi_vector* vector, ruyi_value value) {
+    assert(vector);
+    INT32 i;
+    INT32 len = vector->len;
+    for (i = 0; i < len; i++) {
+        if (ruyi_value_equals(vector->value_data[i], value)) {
+            return i;
+        }
+    }
+    return -1;
+}
 
+INT32 ruyi_vector_find_last(ruyi_vector* vector, ruyi_value value) {
+    assert(vector);
+    INT32 i;
+    for (i = (INT32)(vector->len) - 1; i >= 0; i--) {
+        if (ruyi_value_equals(vector->value_data[i], value)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+BOOL ruyi_vector_remove_last(ruyi_vector* vector, ruyi_value* ret_last_value) {
+    assert(vector);
+    if (vector->len == 0) {
+        return FALSE;
+    }
+    if (ret_last_value) {
+        *ret_last_value = vector->value_data[vector->len-1];
+    }
+    vector->len--;
+    return TRUE;
+}
