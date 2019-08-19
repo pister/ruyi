@@ -10,9 +10,8 @@
 #include <stdio.h>
 #include "ruyi_mem.h"
 
-#define UNICODE_FILE_BUFF_SIZE 1024
 
-static UINT32 ruyi_unicode_decode_single_utf8(const BYTE* src, UINT32 src_pos, UINT32 src_len, UINT32 *out_utf8_char) {
+static INT32 ruyi_unicode_decode_single_utf8(const BYTE* src, UINT32 src_pos, UINT32 src_len, UINT32 *out_utf8_char) {
     UINT32 b0, b1, b2, b3, b4, b5;
     b0 = src[src_pos];
     // first byte
@@ -160,17 +159,20 @@ static UINT32 ruyi_unicode_decode_single_utf8(const BYTE* src, UINT32 src_pos, U
     return 0;
 }
 
-UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *out_utf8_buf, UINT32 buf_length) {
+UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_used_count, UINT32 *out_utf8_buf, UINT32 buf_length) {
     UINT32 src_pos = 0;
     UINT32 dest_pos = 0;
     UINT32 use_bytes_count = 0;
     while (src_pos < src_len && dest_pos < buf_length) {
         use_bytes_count = ruyi_unicode_decode_single_utf8(src, src_pos, src_len, out_utf8_buf+dest_pos);
         if (use_bytes_count == 0) {
-            return 0;
+            break;
         }
         src_pos += use_bytes_count;
         dest_pos++;
+    }
+    if (src_used_count) {
+        *src_used_count = src_pos;
     }
     return dest_pos;
 }
@@ -206,7 +208,7 @@ static UINT32 ruyi_unicode_encode_single_utf8(UINT32 c, BYTE *out_buf, UINT32 bu
     // 0x0000F000 = 0b0000 0000 0000 0000 1111 0000 0000 0000
     // 0x00000FC0 = 0b0000 0000 0000 0000 0000 1111 1100 0000
     // 0x0000003F = 0b0000 0000 0000 0000 0000 0000 0011 1111
-    if (c <= 0x00FFFF) { // 3 bytes
+    if (c <= 0x0000FFFF) { // 3 bytes
         if (buf_length < 3) {
             return 0;
         }
@@ -234,17 +236,20 @@ static UINT32 ruyi_unicode_encode_single_utf8(UINT32 c, BYTE *out_buf, UINT32 bu
     return 0;
 }
 
-UINT32 ruyi_unicode_encode_utf8(const UINT32* src_utf8, UINT32 src_len, BYTE *out_buf, UINT32 buf_length) {
+UINT32 ruyi_unicode_encode_utf8(const UINT32* src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length) {
     UINT32 src_pos = 0;
     UINT32 out_pos = 0;
     UINT32 bytes_count = 0;
     while (src_pos < src_len && out_pos < buf_length ) {
         bytes_count = ruyi_unicode_encode_single_utf8(src_utf8[src_pos], out_buf + out_pos, buf_length-out_pos);
         if (bytes_count == 0) {
-            return 0;
+            break;
         }
         src_pos++;
         out_pos += bytes_count;
+    }
+    if (src_used_count) {
+        *src_used_count = src_pos;
     }
     return out_pos;
 }

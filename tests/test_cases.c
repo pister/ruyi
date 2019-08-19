@@ -14,6 +14,8 @@
 #include "../src/ruyi_value.h"
 #include "../src/ruyi_hashtable.h"
 #include "../src/ruyi_unicode.h"
+#include "../src/ruyi_io.h"
+
 
 
 BOOL print_callback(ruyi_value v) {
@@ -222,14 +224,14 @@ void test_unicode() {
     UINT32 ch[128];
     UINT32 result_length;
     BYTE bytes_buf[128];
-    result_length = ruyi_unicode_decode_utf8(str, sizeof(str)/sizeof(*str), ch, sizeof(ch)/sizeof(*ch));
+    result_length = ruyi_unicode_decode_utf8(str, sizeof(str)/sizeof(*str), NULL, ch, sizeof(ch)/sizeof(*ch));
     assert(result_length == 4);
     assert(ch[0] == 0x6C49);
     assert(ch[1] == 0x5B57);
     assert(ch[2] == 'a');
     assert(ch[3] == 'b');
     
-    result_length = ruyi_unicode_encode_utf8(ch, 4, bytes_buf, sizeof(bytes_buf)/sizeof(*bytes_buf));
+    result_length = ruyi_unicode_encode_utf8(ch, 4, NULL, bytes_buf, sizeof(bytes_buf)/sizeof(*bytes_buf));
     assert(result_length == 3 * 2 + 2);
     assert(bytes_buf[0] == (UINT32)0xE6);
     assert(bytes_buf[1] == (UINT32)0xB1);
@@ -241,9 +243,40 @@ void test_unicode() {
     assert(bytes_buf[7] == 'b');
 }
 
+void test_unicode_file() {
+    const char* file_name = "the test input utf-8 file";
+    const char* out_file = "the test output utf-8 file";
+    FILE* fp = fopen(file_name, "rb");
+    FILE* fout = fopen(out_file, "w+");
+    assert(fp);
+    ruyi_unicode_file *file = ruyi_io_unicode_file_open(fp);
+    UINT32 buf[16];
+    BYTE temp[512];
+    UINT32 readCount = 0;
+    UINT32 writeCount = 0;
+   // UINT32 i = 0;
+    while (TRUE) {
+        readCount = ruyi_io_unicode_file_read_utf8(file, buf, sizeof(buf)/sizeof(*buf));
+        if (readCount == 0) {
+            break;
+        }
+        
+        writeCount = ruyi_io_write_utf8(fout, buf, readCount);
+        printf("writeCount: %d\n", writeCount);
+        
+        readCount = ruyi_unicode_encode_utf8(buf, readCount, NULL, temp, sizeof(temp)/sizeof(*temp));
+        temp[readCount] = '\0';
+        
+       // printf("%s", temp);
+    }
+    ruyi_io_unicode_file_close(file);
+    fclose(fout);
+}
+
 void run_test_cases(void) {
     test_lists();
     test_vectors();
     test_hashtable();
     test_unicode();
+    test_unicode_file();
 }

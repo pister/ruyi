@@ -22,24 +22,26 @@
  * params:
  * src - the input src
  * src_len - input src lenght
+ * src_used_count - to recieve how how many bytes has been decoded, can be NULL
  * out_utf8_buf - the output ucs data
  * buf_length - max output length
  * return:
  * the char count of out_utf8_buf recieved, if occur error, 0 will be return.
  */
-UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *out_utf8_buf, UINT32 buf_length);
+UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_used_count, UINT32 *out_utf8_buf, UINT32 buf_length);
 
 /**
  * Encode Unicode by utf-8
  * params:
  * src_utf8 - the input utf-8 src ucs
  * src_len - input src lenght
+ * src_used_count - to recieve how how many ucs has been encoded, can be NULL
  * out_buf - the output bytes buffer
  * buf_length - max output length
  * return:
  * the char count of out_utf8_buf recieved, if occur error, 0 will be return.
  */
-UINT32 ruyi_unicode_encode_utf8(const UINT32* src_utf8, UINT32 src_len, BYTE *out_buf, UINT32 buf_length);
+UINT32 ruyi_unicode_encode_utf8(const UINT32* src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length);
 
 #endif /* ruyi_unicode_h */
 
