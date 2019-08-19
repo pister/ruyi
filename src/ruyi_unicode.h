@@ -6,8 +6,8 @@
 //  Copyright © 2019 Songli Huang. All rights reserved.
 //
 
-#ifndef unicode_h
-#define unicode_h
+#ifndef ruyi_unicode_h
+#define ruyi_unicode_h
 
 #include "ruyi_basics.h"
 
@@ -16,7 +16,6 @@
  * see: https://tools.ietf.org/rfc/rfc3629.txt
  */
 
-struct FILE;
 
 /**
  * Decode bytes to Unicode by utf-8
@@ -42,5 +41,5 @@ UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *out_utf
  */
 UINT32 ruyi_unicode_encode_utf8(const UINT32* src_utf8, UINT32 src_len, BYTE *out_buf, UINT32 buf_length);
 
-#endif /* unicode_h */
+#endif /* ruyi_unicode_h */
 

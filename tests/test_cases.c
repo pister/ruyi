@@ -13,7 +13,7 @@
 #include "../src/ruyi_vector.h"
 #include "../src/ruyi_value.h"
 #include "../src/ruyi_hashtable.h"
-#include "../src/ruyi_value.h"
+#include "../src/ruyi_unicode.h"
 
 
 BOOL print_callback(ruyi_value v) {
@@ -218,11 +218,11 @@ static void test_hashtable(void) {
 }
 
 void test_unicode() {
-    const char str[] = {0xE6,0xB1,0x89,0xE5,0xAD,0x97, 'a', 'b'};
+    const BYTE str[] = {0xE6,0xB1,0x89,0xE5,0xAD,0x97, 'a', 'b'};
     UINT32 ch[128];
     UINT32 result_length;
     BYTE bytes_buf[128];
-    result_length = ruyi_unicode_decode_utf8(str, sizeof(str)/sizeof(*str), &ch, sizeof(ch)/sizeof(*ch));
+    result_length = ruyi_unicode_decode_utf8(str, sizeof(str)/sizeof(*str), ch, sizeof(ch)/sizeof(*ch));
     assert(result_length == 4);
     assert(ch[0] == 0x6C49);
     assert(ch[1] == 0x5B57);

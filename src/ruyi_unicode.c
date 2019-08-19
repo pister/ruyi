@@ -1,13 +1,16 @@
 //
-//  unicode.c
+//  ruyi_unicode.c
 //  ruyi
 //
 //  Created by Songli Huang on 2019/8/18.
 //  Copyright © 2019 Songli Huang. All rights reserved.
 //
 
-#include "unicode.h"
+#include "ruyi_unicode.h"
+#include <stdio.h>
+#include "ruyi_mem.h"
 
+#define UNICODE_FILE_BUFF_SIZE 1024
 
 static UINT32 ruyi_unicode_decode_single_utf8(const BYTE* src, UINT32 src_pos, UINT32 src_len, UINT32 *out_utf8_char) {
     UINT32 b0, b1, b2, b3, b4, b5;
