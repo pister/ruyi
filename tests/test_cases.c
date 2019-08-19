@@ -8,10 +8,13 @@
 
 #include "test_cases.h"
 #include <stdio.h>
+#include <string.h>
 #include "../src/ruyi_list.h"
 #include "../src/ruyi_vector.h"
 #include "../src/ruyi_value.h"
 #include "../src/ruyi_hashtable.h"
+#include "../src/ruyi_value.h"
+
 
 BOOL print_callback(ruyi_value v) {
     printf("value: %lld\n", v.data.int64_value);
@@ -214,8 +217,33 @@ static void test_hashtable(void) {
     ruyi_hashtable_destory(hashtable);
 }
 
+void test_unicode() {
+    const char str[] = {0xE6,0xB1,0x89,0xE5,0xAD,0x97, 'a', 'b'};
+    UINT32 ch[128];
+    UINT32 result_length;
+    BYTE bytes_buf[128];
+    result_length = ruyi_unicode_decode_utf8(str, sizeof(str)/sizeof(*str), &ch, sizeof(ch)/sizeof(*ch));
+    assert(result_length == 4);
+    assert(ch[0] == 0x6C49);
+    assert(ch[1] == 0x5B57);
+    assert(ch[2] == 'a');
+    assert(ch[3] == 'b');
+    
+    result_length = ruyi_unicode_encode_utf8(ch, 4, bytes_buf, sizeof(bytes_buf)/sizeof(*bytes_buf));
+    assert(result_length == 3 * 2 + 2);
+    assert(bytes_buf[0] == (UINT32)0xE6);
+    assert(bytes_buf[1] == (UINT32)0xB1);
+    assert(bytes_buf[2] == (UINT32)0x89);
+    assert(bytes_buf[3] == (UINT32)0xE5);
+    assert(bytes_buf[4] == (UINT32)0xAD);
+    assert(bytes_buf[5] == (UINT32)0x97);
+    assert(bytes_buf[6] == 'a');
+    assert(bytes_buf[7] == 'b');
+}
+
 void run_test_cases(void) {
     test_lists();
     test_vectors();
     test_hashtable();
+    test_unicode();
 }
