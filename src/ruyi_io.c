@@ -12,11 +12,9 @@
 #include "ruyi_unicode.h"
 #include <string.h> // for memcpy
 
-#define UNICODE_FILE_READ_BUF_SIZE 32
-#define UNICODE_FILE_WRITE_BUF_SIZE 32
+#define UNICODE_FILE_READ_BUF_SIZE 1024
+#define UNICODE_FILE_WRITE_BUF_SIZE 1024
 #define UNICODE_FILE_BUFF_SIZE UNICODE_FILE_READ_BUF_SIZE+6
-
-
 
 ruyi_unicode_file* ruyi_io_unicode_file_open(FILE *fp) {
     assert(fp);
