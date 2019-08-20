@@ -97,3 +97,103 @@ UINT32 ruyi_io_write_utf8(FILE* file, const UINT32* src_buf, UINT32 src_length) 
     }
     return src_pos;
 }
+
+static void ruyi_file_growup(ruyi_file* file) {
+    BYTE *old_buffer, *new_buffer;
+    UINT32 new_capacity;
+    if (ruyi_tf_DATA != file->type) {
+        return;
+    }
+    new_capacity = (UINT32)(file->capacity * 1.5 + 64);
+    old_buffer = file->dist.buffer;
+    new_buffer = ruyi_mem_alloc(new_capacity);
+    memcpy(new_buffer, old_buffer, file->write_pos);
+    file->dist.buffer = new_buffer;
+    file->capacity = new_capacity;
+    ruyi_mem_free(old_buffer);
+}
+
+UINT32 ruyi_file_write(ruyi_file* file, const void* buf, UINT32 buf_length) {
+    assert(file);
+    if (ruyi_tf_FILE == file->type) {
+        return (UINT32)fwrite(buf, 1, buf_length, file->dist.file);
+    } else if (ruyi_tf_DATA == file->type) {
+        while (file->write_pos + buf_length > file->capacity) {
+            ruyi_file_growup(file);
+        }
+        memcpy(file->dist.buffer + file->write_pos, buf, buf_length);
+        file->write_pos += buf_length;
+    }
+    return buf_length;
+}
+
+UINT32 ruyi_file_read(ruyi_file* file, void* buf, UINT32 buf_length) {
+    assert(file);
+    UINT32 read_length = 0;
+    if (ruyi_tf_FILE == file->type) {
+        return (UINT32)fread(buf, 1, buf_length, file->dist.file);
+    } else if (ruyi_tf_DATA == file->type) {
+        read_length = file->write_pos - file->read_pos;
+        if (read_length == 0) {
+            return 0;
+        }
+        if (read_length > buf_length) {
+            read_length = buf_length;
+        }
+        memcpy(buf, file->dist.buffer + file->read_pos, read_length);
+        file->read_pos += read_length;
+    }
+    return read_length;
+}
+
+ruyi_file* ruyi_file_open_by_file(FILE* file) {
+    assert(file);
+    ruyi_file* f = (ruyi_file*)ruyi_mem_alloc(sizeof(ruyi_file));
+    f->capacity = 0;
+    f->read_pos = 0;
+    f->write_pos = 0;
+    f->type = ruyi_tf_FILE;
+    f->dist.file = file;
+    return f;
+}
+
+ruyi_file* ruyi_file_init_by_data(const void *data, UINT32 data_length) {
+    BYTE *buffer = ruyi_mem_alloc(data_length);
+    ruyi_file* f = (ruyi_file*)ruyi_mem_alloc(sizeof(ruyi_file));
+    f->capacity = data_length;
+    f->read_pos = 0;
+    f->write_pos = data_length;
+    f->type = ruyi_tf_DATA;
+    memcpy(buffer, data, data_length);
+    f->dist.buffer = buffer;
+    return f;
+}
+
+ruyi_file* ruyi_file_init_by_capacity(UINT32 init_size) {
+    BYTE *buffer = ruyi_mem_alloc(init_size);
+    ruyi_file* f = (ruyi_file*)ruyi_mem_alloc(sizeof(ruyi_file));
+    f->capacity = init_size;
+    f->read_pos = 0;
+    f->write_pos = 0;
+    f->type = ruyi_tf_DATA;
+    f->dist.buffer = buffer;
+    return f;
+}
+
+void ruyi_file_close(ruyi_file* file) {
+    assert(file);
+    switch (file->type) {
+        case ruyi_tf_FILE:
+            fclose(file->dist.file);
+            file->dist.file = NULL;
+            break;
+        case ruyi_tf_DATA:
+            ruyi_mem_free(file->dist.buffer);
+            file->dist.buffer = NULL;
+            break;
+        default:
+            break;
+    }
+    ruyi_mem_free(file);
+}
+

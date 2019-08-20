@@ -157,41 +157,41 @@ static void test_hashtable(void) {
     BOOL success;
     ruyi_hashtable_iterator it;
     
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name1"), ruyi_value_int64(111));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("name1"), ruyi_value_int64(111));
     assert(1 == ruyi_hashtable_length(hashtable));
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name2"), ruyi_value_int64(222));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("name2"), ruyi_value_int64(222));
     assert(2 == ruyi_hashtable_length(hashtable));
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("age"), ruyi_value_int64(12));
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("tall"), ruyi_value_int64(178));
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("weight"), ruyi_value_int64(160));
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("number"), ruyi_value_int64(1234));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("age"), ruyi_value_int64(12));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("tall"), ruyi_value_int64(178));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("weight"), ruyi_value_int64(160));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("number"), ruyi_value_int64(1234));
     assert(6 == ruyi_hashtable_length(hashtable));
     
-    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("name1"), &value);
+    success = ruyi_hashtable_get(hashtable, ruyi_value_str("name1"), &value);
     assert(success);
     assert(111 == value.data.int64_value);
     
-    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("tall"), &value);
+    success = ruyi_hashtable_get(hashtable, ruyi_value_str("tall"), &value);
     assert(success);
     assert(178 == value.data.int64_value);
     
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("tall"), ruyi_value_int64(888));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("tall"), ruyi_value_int64(888));
     assert(6 == ruyi_hashtable_length(hashtable));
 
-    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("tall"), &value);
+    success = ruyi_hashtable_get(hashtable, ruyi_value_str("tall"), &value);
     assert(success);
     assert(888 == value.data.int64_value);
 
-    success = ruyi_hashtable_delete(hashtable, ruyi_value_ptr("name1"));
+    success = ruyi_hashtable_delete(hashtable, ruyi_value_str("name1"));
     assert(success);
     assert(5 == ruyi_hashtable_length(hashtable));
     
-    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("name1"), &value);
+    success = ruyi_hashtable_get(hashtable, ruyi_value_str("name1"), &value);
     assert(success == FALSE);
     
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name1"), ruyi_value_int64(999));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("name1"), ruyi_value_int64(999));
     assert(6 == ruyi_hashtable_length(hashtable));
-    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("name1"), &value);
+    success = ruyi_hashtable_get(hashtable, ruyi_value_str("name1"), &value);
     assert(success);
     assert(999 == value.data.int64_value);
     
@@ -203,13 +203,13 @@ static void test_hashtable(void) {
     ruyi_hashtable_clear(hashtable);
     assert(0 == ruyi_hashtable_length(hashtable));
     
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name1"), ruyi_value_int64(112));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("name1"), ruyi_value_int64(112));
     assert(1 == ruyi_hashtable_length(hashtable));
-    success = ruyi_hashtable_get(hashtable, ruyi_value_ptr("name1"), &value);
+    success = ruyi_hashtable_get(hashtable, ruyi_value_str("name1"), &value);
     assert(success);
     assert(112 == value.data.int64_value);
     
-    ruyi_hashtable_put(hashtable, ruyi_value_ptr("name6"), ruyi_value_int64(666));
+    ruyi_hashtable_put(hashtable, ruyi_value_str("name6"), ruyi_value_int64(666));
 
     printf("==========--------->>>>>>>>>>>>>>\n");
     ruyi_hashtable_iterator_get(hashtable, &it);
@@ -221,7 +221,7 @@ static void test_hashtable(void) {
 
 void test_unicode() {
     const BYTE str[] = {0xE6,0xB1,0x89,0xE5,0xAD,0x97, 'a', 'b'};
-    UINT32 ch[128];
+    WIDE_CHAR ch[128];
     UINT32 result_length;
     BYTE bytes_buf[128];
     result_length = ruyi_unicode_decode_utf8(str, sizeof(str)/sizeof(*str), NULL, ch, sizeof(ch)/sizeof(*ch));
@@ -233,12 +233,12 @@ void test_unicode() {
     
     result_length = ruyi_unicode_encode_utf8(ch, 4, NULL, bytes_buf, sizeof(bytes_buf)/sizeof(*bytes_buf));
     assert(result_length == 3 * 2 + 2);
-    assert(bytes_buf[0] == (UINT32)0xE6);
-    assert(bytes_buf[1] == (UINT32)0xB1);
-    assert(bytes_buf[2] == (UINT32)0x89);
-    assert(bytes_buf[3] == (UINT32)0xE5);
-    assert(bytes_buf[4] == (UINT32)0xAD);
-    assert(bytes_buf[5] == (UINT32)0x97);
+    assert(bytes_buf[0] == (WIDE_CHAR)0xE6);
+    assert(bytes_buf[1] == (WIDE_CHAR)0xB1);
+    assert(bytes_buf[2] == (WIDE_CHAR)0x89);
+    assert(bytes_buf[3] == (WIDE_CHAR)0xE5);
+    assert(bytes_buf[4] == (WIDE_CHAR)0xAD);
+    assert(bytes_buf[5] == (WIDE_CHAR)0x97);
     assert(bytes_buf[6] == 'a');
     assert(bytes_buf[7] == 'b');
 }
@@ -273,10 +273,59 @@ void test_unicode_file() {
     fclose(fout);
 }
 
+void test_file() {
+    const char * data1 = "abcd5";
+    char buf[16];
+    UINT32 read_count;
+    ruyi_file* file = ruyi_file_init_by_data(data1, (UINT32)strlen(data1));
+    ruyi_file* file2 = ruyi_file_init_by_capacity(8);
+    read_count = ruyi_file_read(file, buf, 2);
+    assert(read_count == 2);
+    assert(buf[0] == 'a');
+    assert(buf[1] == 'b');
+    read_count = ruyi_file_read(file, buf, 2);
+    assert(read_count == 2);
+    assert(buf[0] == 'c');
+    assert(buf[1] == 'd');
+    read_count = ruyi_file_read(file, buf, 2);
+    assert(read_count == 1);
+    assert(buf[0] == '5');
+    
+    data1 ="abcdef12345";
+    ruyi_file_write(file2, data1, (UINT32)strlen(data1));
+    data1 ="8899";
+    ruyi_file_write(file2, data1, (UINT32)strlen(data1));
+    read_count = ruyi_file_read(file2, buf, 6);
+    assert(read_count == 6);
+    assert(buf[0] == 'a');
+    assert(buf[1] == 'b');
+    assert(buf[2] == 'c');
+    assert(buf[3] == 'd');
+    assert(buf[4] == 'e');
+    assert(buf[5] == 'f');
+    read_count = ruyi_file_read(file2, buf, 6);
+    assert(read_count == 6);
+    assert(buf[0] == '1');
+    assert(buf[1] == '2');
+    assert(buf[2] == '3');
+    assert(buf[3] == '4');
+    assert(buf[4] == '5');
+    assert(buf[5] == '8');
+    read_count = ruyi_file_read(file2, buf, 6);
+    assert(read_count == 3);
+    assert(buf[0] == '8');
+    assert(buf[1] == '9');
+    assert(buf[2] == '9');
+    
+    ruyi_file_close(file);
+    ruyi_file_close(file2);
+}
+
 void run_test_cases(void) {
     test_lists();
     test_vectors();
     test_hashtable();
     test_unicode();
-    test_unicode_file();
+    test_file();
+   // test_unicode_file();
 }

@@ -11,8 +11,8 @@
 #include "ruyi_mem.h"
 
 
-static INT32 ruyi_unicode_decode_single_utf8(const BYTE* src, UINT32 src_pos, UINT32 src_len, UINT32 *out_utf8_char) {
-    UINT32 b0, b1, b2, b3, b4, b5;
+static INT32 ruyi_unicode_decode_single_utf8(const BYTE* src, UINT32 src_pos, UINT32 src_len, WIDE_CHAR *out_utf8_char) {
+    WIDE_CHAR b0, b1, b2, b3, b4, b5;
     b0 = src[src_pos];
     // first byte
     // UTF-8:   [0xxx xxxx]
@@ -159,7 +159,7 @@ static INT32 ruyi_unicode_decode_single_utf8(const BYTE* src, UINT32 src_pos, UI
     return 0;
 }
 
-UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_used_count, UINT32 *out_utf8_buf, UINT32 buf_length) {
+UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_used_count, WIDE_CHAR *out_utf8_buf, UINT32 buf_length) {
     UINT32 src_pos = 0;
     UINT32 dest_pos = 0;
     UINT32 use_bytes_count = 0;
@@ -177,7 +177,7 @@ UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_use
     return dest_pos;
 }
 
-static UINT32 ruyi_unicode_encode_single_utf8(UINT32 c, BYTE *out_buf, UINT32 buf_length) {
+static UINT32 ruyi_unicode_encode_single_utf8(WIDE_CHAR c, BYTE *out_buf, UINT32 buf_length) {
     // 000000-00007F
     // 0x0000007F == 0b0000 0000 0000 0000 0000 0000 0111 1111
     if (c <= 0x0000007F) {
@@ -236,7 +236,7 @@ static UINT32 ruyi_unicode_encode_single_utf8(UINT32 c, BYTE *out_buf, UINT32 bu
     return 0;
 }
 
-UINT32 ruyi_unicode_encode_utf8(const UINT32* src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length) {
+UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR* src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length) {
     UINT32 src_pos = 0;
     UINT32 out_pos = 0;
     UINT32 bytes_count = 0;

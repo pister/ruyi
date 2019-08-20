@@ -35,7 +35,7 @@ ruyi_unicode_file* ruyi_io_unicode_file_open(FILE *fp);
 void ruyi_io_unicode_file_close(ruyi_unicode_file *file);
 
 /**
- * Read some unicode data from the file
+ * Read some unicode data from the file with utf-8 encode
  * params:
  * file - target object
  * dist_buf - the receive data buffer
@@ -46,7 +46,7 @@ void ruyi_io_unicode_file_close(ruyi_unicode_file *file);
 UINT32 ruyi_io_unicode_file_read_utf8(ruyi_unicode_file* file, UINT32* dist_buf, UINT32 buf_length);
 
 /**
- * Write some unicode data to the file
+ * Write some unicode data to the file with utf-8 encode
  * params:
  * file - target object
  * src_buf - the data buffer need to write
@@ -55,5 +55,33 @@ UINT32 ruyi_io_unicode_file_read_utf8(ruyi_unicode_file* file, UINT32* dist_buf,
  * the count has written, 0 indicates some error ocurrs
  */
 UINT32 ruyi_io_write_utf8(FILE* file, const UINT32* src_buf, UINT32 buf_length);
+
+typedef enum {
+    ruyi_tf_FILE,
+    ruyi_tf_DATA
+} ruyi_file_type;
+
+typedef struct {
+    union {
+        FILE *file;
+        BYTE *buffer;
+    } dist;
+    ruyi_file_type type;
+    UINT32 capacity;
+    UINT32 write_pos;
+    UINT32 read_pos;
+} ruyi_file;
+
+ruyi_file* ruyi_file_open_by_file(FILE* file);
+ruyi_file* ruyi_file_init_by_data(const void *data, UINT32 data_length);
+ruyi_file* ruyi_file_init_by_capacity(UINT32 init_size);
+
+
+void ruyi_file_close(ruyi_file* file);
+
+UINT32 ruyi_file_write(ruyi_file* file, const void* buf, UINT32 buf_length);
+
+UINT32 ruyi_file_read(ruyi_file* file, void* buf, UINT32 buf_length);
+
 
 #endif /* ruyi_io_h */

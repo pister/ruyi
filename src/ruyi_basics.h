@@ -77,12 +77,17 @@ typedef UINT8 BYTE;
 typedef int BOOL;
 #endif
 
+
 #ifndef TRUE
 #define TRUE 1
 #endif
 
 #ifndef FALSE
 #define FALSE 0
+#endif
+
+#ifndef WIDE_CHAR
+typedef UINT32 WIDE_CHAR;
 #endif
 
 #endif /* ruyi_types_h */

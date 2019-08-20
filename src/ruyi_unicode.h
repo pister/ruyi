@@ -28,7 +28,7 @@
  * return:
  * the char count of out_utf8_buf recieved, if occur error, 0 will be return.
  */
-UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_used_count, UINT32 *out_utf8_buf, UINT32 buf_length);
+UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_used_count, WIDE_CHAR *out_utf8_buf, UINT32 buf_length);
 
 /**
  * Encode Unicode by utf-8
@@ -41,7 +41,7 @@ UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_use
  * return:
  * the char count of out_utf8_buf recieved, if occur error, 0 will be return.
  */
-UINT32 ruyi_unicode_encode_utf8(const UINT32* src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length);
+UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR* src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length);
 
 #endif /* ruyi_unicode_h */
 

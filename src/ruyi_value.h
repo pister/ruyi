@@ -21,6 +21,8 @@ typedef enum {
     Ruyi_value_type_uint8,
     Ruyi_value_type_int8,
     Ruyi_value_type_ptr,
+    Ruyi_value_type_str,
+    Ruyi_value_type_unicode_str,
 } ruyi_value_type;
 
 typedef struct {
@@ -29,6 +31,8 @@ typedef struct {
         UINT64 uint64_value;
         INT64 int64_value;
         void * ptr;
+        const char * str;
+        const WIDE_CHAR * unicode_str;
         UINT32 uint32_value;
         INT32 int32_value;
         UINT16 uint16_value;
@@ -46,7 +50,10 @@ ruyi_value ruyi_value_uint16(UINT16 value);
 ruyi_value ruyi_value_int16(INT16 value);
 ruyi_value ruyi_value_uint8(UINT8 value);
 ruyi_value ruyi_value_int8(INT8 value);
-ruyi_value ruyi_value_ptr(void* ptr);
+ruyi_value ruyi_value_ptr(void *ptr);
+ruyi_value ruyi_value_str(const char *str);
+ruyi_value ruyi_value_unicode_str(const WIDE_CHAR *unicode_str);
+
 
 BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2);
 UINT32 ruyi_value_hashcode(ruyi_value value);

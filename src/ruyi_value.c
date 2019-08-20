@@ -8,6 +8,8 @@
 
 #include "ruyi_value.h"
 
+#include <string.h> // for strcmp
+
 #define MAX_HASH_LENGTH_FOR_PTR 128
 
 ruyi_value ruyi_value_uint64(UINT64 value) {
@@ -80,7 +82,25 @@ ruyi_value ruyi_value_ptr(void* ptr) {
     return v;
 }
 
-static UINT32 hash_for_bytes(BYTE* byte_ptr) {
+ruyi_value ruyi_value_str(const char *str) {
+    ruyi_value v;
+    v.type = Ruyi_value_type_str;
+    // fill 0 for the other bits on 32-bit env
+    v.data.uint64_value = 0;
+    v.data.str = str;
+    return v;
+}
+
+ruyi_value ruyi_value_unicode_str(const WIDE_CHAR *unicode_str) {
+    ruyi_value v;
+    v.type = Ruyi_value_type_unicode_str;
+    // fill 0 for the other bits on 32-bit env
+    v.data.uint64_value = 0;
+    v.data.unicode_str = unicode_str;
+    return v;
+}
+
+static UINT32 hash_for_bytes(const BYTE* byte_ptr) {
     UINT32 i;
     UINT32 hash = 0;
     for (i = 0; i < MAX_HASH_LENGTH_FOR_PTR; i++) {
@@ -90,6 +110,34 @@ static UINT32 hash_for_bytes(BYTE* byte_ptr) {
         hash = 31 * hash + byte_ptr[i];
     }
     return hash;
+}
+
+
+static UINT32 hash_for_unicode(const WIDE_CHAR* wchar_ptr) {
+    UINT32 i;
+    UINT32 hash = 0;
+    for (i = 0; i < MAX_HASH_LENGTH_FOR_PTR; i++) {
+        if (wchar_ptr[i] == '\0') {
+            break;
+        }
+        hash = 31 * hash + wchar_ptr[i];
+    }
+    return hash;
+}
+
+static int unicode_cmp(const WIDE_CHAR* w1, const WIDE_CHAR* w2) {
+    int v1, v2;
+    while (TRUE) {
+        v1 = (int)*w1;
+        v2 = (int)*w2;
+        if (v1 == '\0' && v2 == '\0') {
+            return 0;
+        }
+        if (v1 == v2) {
+            continue;
+        }
+        return v1 > v2 ? 1 : -1;
+    }
 }
 
 UINT32 ruyi_value_hashcode(ruyi_value value) {
@@ -110,14 +158,25 @@ UINT32 ruyi_value_hashcode(ruyi_value value) {
             return (UINT32)value.data.uint8_value;
         case Ruyi_value_type_int8:
             return (UINT32)value.data.int8_value;
+        case Ruyi_value_type_str:
+            if (!value.data.str) {
+                return 0;
+            }
+            return hash_for_bytes((const BYTE*)value.data.str);
         case Ruyi_value_type_ptr:
             if (!value.data.ptr) {
                 return 0;
             }
-            return hash_for_bytes((BYTE*)value.data.ptr);
+            return hash_for_bytes((const BYTE*)value.data.ptr);
+        case Ruyi_value_type_unicode_str:
+            if (!value.data.unicode_str) {
+                return 0;
+            }
+            return hash_for_unicode(value.data.unicode_str);
         default:
             break;
     }
+    return 0;
 }
 
 BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2) {
@@ -141,6 +200,16 @@ BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2) {
             return v1.data.uint8_value == v2.data.uint8_value;
         case Ruyi_value_type_int8:
             return v1.data.int8_value == v2.data.int8_value;
+        case Ruyi_value_type_str:
+            if (strcmp(v1.data.str, v2.data.str) == 0) {
+                return TRUE;
+            }
+            return FALSE;
+        case Ruyi_value_type_unicode_str:
+            if (unicode_cmp(v1.data.unicode_str, v2.data.unicode_str) == 0) {
+                return TRUE;
+            }
+            return FALSE;
         case Ruyi_value_type_ptr:
             return v1.data.ptr == v2.data.ptr;
         default:
