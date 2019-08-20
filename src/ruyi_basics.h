@@ -87,7 +87,7 @@ typedef int BOOL;
 #endif
 
 #ifndef WIDE_CHAR
-typedef UINT32 WIDE_CHAR;
+typedef INT32 WIDE_CHAR;
 #endif
 
 #endif /* ruyi_types_h */

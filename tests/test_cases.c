@@ -250,7 +250,7 @@ void test_unicode_file() {
     FILE* fout = fopen(out_file, "w+");
     assert(fp);
     ruyi_unicode_file *file = ruyi_io_unicode_file_open(fp);
-    UINT32 buf[16];
+    WIDE_CHAR buf[16];
     BYTE temp[512];
     UINT32 readCount = 0;
     UINT32 writeCount = 0;

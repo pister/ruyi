@@ -140,6 +140,23 @@ static int unicode_cmp(const WIDE_CHAR* w1, const WIDE_CHAR* w2) {
     }
 }
 
+UINT32 ruyi_value_get_unicode_str(ruyi_value value, WIDE_CHAR* out_buf, UINT32 buf_length) {
+    UINT32 pos = 0;
+    WIDE_CHAR c;
+    if (value.type != Ruyi_value_type_unicode_str) {
+        return 0;
+    }
+    while (pos < buf_length) {
+        c = value.data.unicode_str[pos];
+        out_buf[pos] = c;
+        if (c == '\0') {
+            break;
+        }
+        pos++;
+    }
+    return pos;
+}
+
 UINT32 ruyi_value_hashcode(ruyi_value value) {
     switch (value.type) {
         case Ruyi_value_type_uint64:

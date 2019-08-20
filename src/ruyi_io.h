@@ -43,7 +43,7 @@ void ruyi_io_unicode_file_close(ruyi_unicode_file *file);
  * return:
  * the count has been read, 0 indicates end of file or some error ocurrs
  */
-UINT32 ruyi_io_unicode_file_read_utf8(ruyi_unicode_file* file, UINT32* dist_buf, UINT32 buf_length);
+UINT32 ruyi_io_unicode_file_read_utf8(ruyi_unicode_file* file, WIDE_CHAR* dist_buf, UINT32 buf_length);
 
 /**
  * Write some unicode data to the file with utf-8 encode
@@ -54,11 +54,11 @@ UINT32 ruyi_io_unicode_file_read_utf8(ruyi_unicode_file* file, UINT32* dist_buf,
  * return:
  * the count has written, 0 indicates some error ocurrs
  */
-UINT32 ruyi_io_write_utf8(FILE* file, const UINT32* src_buf, UINT32 buf_length);
+UINT32 ruyi_io_write_utf8(FILE* file, const WIDE_CHAR* src_buf, UINT32 buf_length);
 
 typedef enum {
-    ruyi_tf_FILE,
-    ruyi_tf_DATA
+    Ruyi_tf_FILE,
+    Ruyi_tf_DATA
 } ruyi_file_type;
 
 typedef struct {

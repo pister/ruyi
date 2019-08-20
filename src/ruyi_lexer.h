@@ -12,14 +12,15 @@
 #include "ruyi_basics.h"
 #include "ruyi_list.h"
 #include "ruyi_io.h"
+#include "ruyi_hashtable.h"
 #include <stdio.h>
 
 typedef enum {
-    ruyi_tt_IDENTITY,
-    ruyi_tt_INTEGER,
-    ruyi_tt_STRING,
-    ruyi_tt_EOL,
-    ruyi_tt_END,
+    Ruyi_tt_IDENTITY,
+    Ruyi_tt_INTEGER,
+    Ruyi_tt_STRING,
+    Ruyi_tt_EOL,
+    Ruyi_tt_END,
 } ruyi_token_type;
 
 typedef struct {
@@ -31,20 +32,27 @@ typedef struct {
     union {
         INT64 int_value;
         double float_value;
-        WIDE_CHAR *unicode;
-        BYTE *bytes;
     } value;
 } ruyi_token;
 
 typedef struct {
-    ruyi_list *buffer_queue;
+    ruyi_list *token_buffer_queue;
     ruyi_file *file;
+    ruyi_list *chars_buffer_queue;
+    ruyi_hashtable *unicode_pool;
 } ruyi_lexer_reader;
 
 ruyi_lexer_reader* ruyi_lexer_reader_open(ruyi_file *file);
+
 void ruyi_lexer_reader_close(ruyi_lexer_reader *reader);
 
 BOOL ruyi_lexer_next_token(ruyi_lexer_reader *reader, ruyi_token *token);
+
+void ruyi_lexer_push_back(ruyi_lexer_reader *reader, const ruyi_token *token);
+
+void ruyi_lexer_peek(ruyi_lexer_reader *reader, ruyi_token *token);
+
+UINT32 ruyi_lexer_get_token_text(const ruyi_lexer_reader *reader, const ruyi_token *token, WIDE_CHAR* out_buf, UINT32 buf_length);
 
 
 #endif /* ruyi_lexer_h */
