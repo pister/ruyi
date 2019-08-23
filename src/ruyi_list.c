@@ -49,7 +49,7 @@ void ruyi_list_add_first(ruyi_list* list, ruyi_value value) {
     ruyi_list_item *old_first = list->first;
     ruyi_list_item *new_first = ruyi_mem_alloc(sizeof(ruyi_list_item));
     new_first->value = value;
-    old_first->prev = NULL;
+   // old_first->prev = NULL;
     new_first->next = old_first;
     list->first = new_first;
     if (old_first) {

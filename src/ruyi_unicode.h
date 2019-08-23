@@ -41,7 +41,45 @@ UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_use
  * return:
  * the char count of out_utf8_buf recieved, if occur error, 0 will be return.
  */
-UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR* src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length);
+UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR *src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length);
+
+WIDE_CHAR ruyi_unicode_wide_char(const BYTE *str);
+
+UINT32 ruyi_unicode_bytes(WIDE_CHAR c, BYTE *buf, UINT32 buf_length);
+
+typedef struct {
+    WIDE_CHAR *data;
+    UINT32 length;
+    UINT32 capacity;
+} ruyi_unicode_string;
+
+typedef struct {
+    char *str;
+    UINT32 length;
+    UINT32 capacity;
+} ruyi_bytes_string;
+
+ruyi_unicode_string * ruyi_unicode_string_init_with_capacity(UINT32 capacity);
+
+ruyi_unicode_string * ruyi_unicode_string_init_from_utf8(const char* src, UINT32 len);
+
+void ruyi_unicode_string_append(ruyi_unicode_string *unicode_str, WIDE_CHAR *data, UINT32 len);
+
+void ruyi_unicode_string_append_wide_char(ruyi_unicode_string *unicode_str, WIDE_CHAR c);
+
+void ruyi_unicode_string_append_utf8(ruyi_unicode_string *unicode_str, const char* src, UINT32 len);
+
+UINT32 ruyi_unicode_string_length(const ruyi_unicode_string *unicode_str);
+
+WIDE_CHAR ruyi_unicode_string_at(const ruyi_unicode_string *unicode_str, UINT32 index);
+
+void ruyi_unicode_string_set(ruyi_unicode_string *unicode_str, UINT32 index, WIDE_CHAR c);
+
+void ruyi_unicode_string_destroy(ruyi_unicode_string* s);
+
+ruyi_bytes_string* ruyi_unicode_string_decode_utf8(const ruyi_unicode_string *unicode_str);
+
+void ruyi_unicode_bytes_string_destroy(ruyi_bytes_string* s);
 
 #endif /* ruyi_unicode_h */
 

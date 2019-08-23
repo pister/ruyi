@@ -16,7 +16,7 @@
 #define UNICODE_FILE_WRITE_BUF_SIZE 1024
 #define UNICODE_FILE_BUFF_SIZE UNICODE_FILE_READ_BUF_SIZE+6
 
-ruyi_unicode_file* ruyi_io_unicode_file_open(FILE *fp) {
+ruyi_unicode_file* ruyi_io_unicode_file_open(ruyi_file *fp) {
     assert(fp);
     ruyi_unicode_file* file = (ruyi_unicode_file*)ruyi_mem_alloc(sizeof(ruyi_unicode_file));
     file->fp = fp;
@@ -35,7 +35,7 @@ void ruyi_io_unicode_file_close(ruyi_unicode_file *file) {
         ruyi_mem_free(file->buffer);
     }
     if (file->fp) {
-        fclose(file->fp);
+        ruyi_file_close(file->fp);
     }
     ruyi_mem_free(file);
 }
@@ -56,7 +56,7 @@ UINT32 ruyi_io_unicode_file_read_utf8(ruyi_unicode_file* file, WIDE_CHAR* dist_b
         file->buffer_pos = 0;
         file->buffer_limit = remain;
         
-        read_count = (UINT32)fread(file->buffer + remain, 1, UNICODE_FILE_READ_BUF_SIZE, file->fp);
+        read_count = ruyi_file_read(file->fp, file->buffer + remain, UNICODE_FILE_READ_BUF_SIZE);        
         if (read_count == 0) {
             break;
         }

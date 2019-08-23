@@ -12,8 +12,26 @@
 #include <stdio.h>
 #include "ruyi_basics.h"
 
+typedef enum {
+    Ruyi_tf_FILE,
+    Ruyi_tf_DATA
+} ruyi_file_type;
+
 typedef struct {
-    FILE* fp;
+    union {
+        FILE *file;
+        BYTE *buffer;
+    } dist;
+    ruyi_file_type type;
+    UINT32 capacity;
+    UINT32 write_pos;
+    UINT32 read_pos;
+} ruyi_file;
+
+
+typedef struct {
+  //  FILE* fp;
+    ruyi_file* fp;
     BYTE* buffer;
     UINT32 buffer_pos;
     UINT32 buffer_limit;
@@ -23,9 +41,9 @@ typedef struct {
 /**
  * Open an unicode file
  * params:
- * fp - a file pointer, it will be closed when call ruyi_io_unicode_file_close
+ * fp - a ruyi_file pointer, it will be closed when call ruyi_io_unicode_file_close
  */
-ruyi_unicode_file* ruyi_io_unicode_file_open(FILE *fp);
+ruyi_unicode_file* ruyi_io_unicode_file_open(ruyi_file *fp);
 
 /**
  * Close an unicode file
@@ -56,21 +74,6 @@ UINT32 ruyi_io_unicode_file_read_utf8(ruyi_unicode_file* file, WIDE_CHAR* dist_b
  */
 UINT32 ruyi_io_write_utf8(FILE* file, const WIDE_CHAR* src_buf, UINT32 buf_length);
 
-typedef enum {
-    Ruyi_tf_FILE,
-    Ruyi_tf_DATA
-} ruyi_file_type;
-
-typedef struct {
-    union {
-        FILE *file;
-        BYTE *buffer;
-    } dist;
-    ruyi_file_type type;
-    UINT32 capacity;
-    UINT32 write_pos;
-    UINT32 read_pos;
-} ruyi_file;
 
 ruyi_file* ruyi_file_open_by_file(FILE* file);
 ruyi_file* ruyi_file_init_by_data(const void *data, UINT32 data_length);

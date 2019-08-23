@@ -13,46 +13,57 @@
 #include "ruyi_list.h"
 #include "ruyi_io.h"
 #include "ruyi_hashtable.h"
+#include "ruyi_unicode.h"
 #include <stdio.h>
 
 typedef enum {
-    Ruyi_tt_IDENTITY,
-    Ruyi_tt_INTEGER,
-    Ruyi_tt_STRING,
-    Ruyi_tt_EOL,
-    Ruyi_tt_END,
+    Ruyi_tt_IDENTITY,       // exmpale: name1
+    Ruyi_tt_INTEGER,        // exmpale: 1234
+    Ruyi_tt_FLOAT,          // exmpale: 1234.5678
+    Ruyi_tt_STRING,         // exmpale: "hello"
+    Ruyi_tt_EOL,            // \n
+    Ruyi_tt_END,            // EOF
+    Ruyi_tt_SYMBOL_SUB,     // -
+    Ruyi_tt_SYMBOL_DOT,     // .
 } ruyi_token_type;
 
 typedef struct {
     ruyi_token_type type;
     UINT32 line;
-    UINT32 column_pos;
-    UINT32 token_width;
-    UINT32 pointer_length;
+    UINT32 column;
+    UINT32 size;
     union {
         INT64 int_value;
         double float_value;
+        ruyi_unicode_string* str_value;
     } value;
 } ruyi_token;
 
 typedef struct {
     ruyi_list *token_buffer_queue;
-    ruyi_file *file;
+    ruyi_unicode_file *file;
+    /*
+     2-items as a wide_char:
+     first: char value as type WIDE_CHAR
+     second: char pos as type UINT64(line,column)
+     */
     ruyi_list *chars_buffer_queue;
-    ruyi_hashtable *unicode_pool;
+    UINT32 line;
+    UINT32 column;
 } ruyi_lexer_reader;
 
 ruyi_lexer_reader* ruyi_lexer_reader_open(ruyi_file *file);
 
 void ruyi_lexer_reader_close(ruyi_lexer_reader *reader);
 
-BOOL ruyi_lexer_next_token(ruyi_lexer_reader *reader, ruyi_token *token);
+ruyi_token * ruyi_lexer_reader_next_token(ruyi_lexer_reader *reader);
 
-void ruyi_lexer_push_back(ruyi_lexer_reader *reader, const ruyi_token *token);
+void ruyi_lexer_reader_consume_token(ruyi_lexer_reader *reader);
 
-void ruyi_lexer_peek(ruyi_lexer_reader *reader, ruyi_token *token);
+void ruyi_lexer_reader_push_back(ruyi_lexer_reader *reader, ruyi_token *token);
 
-UINT32 ruyi_lexer_get_token_text(const ruyi_lexer_reader *reader, const ruyi_token *token, WIDE_CHAR* out_buf, UINT32 buf_length);
+ruyi_token_type ruyi_lexer_reader_peek_token_type(ruyi_lexer_reader *reader);
 
+void ruyi_lexer_token_destroy(ruyi_token * token);
 
 #endif /* ruyi_lexer_h */

@@ -15,6 +15,7 @@
 #include "../src/ruyi_hashtable.h"
 #include "../src/ruyi_unicode.h"
 #include "../src/ruyi_io.h"
+#include "../src/ruyi_lexer.h"
 
 
 
@@ -244,12 +245,12 @@ void test_unicode() {
 }
 
 void test_unicode_file() {
-    const char* file_name = "the test input utf-8 file";
-    const char* out_file = "the test output utf-8 file";
+    const char* file_name = "your path";
+    const char* out_file = "your path";
     FILE* fp = fopen(file_name, "rb");
     FILE* fout = fopen(out_file, "w+");
     assert(fp);
-    ruyi_unicode_file *file = ruyi_io_unicode_file_open(fp);
+    ruyi_unicode_file *file = ruyi_io_unicode_file_open(ruyi_file_open_by_file(fp));
     WIDE_CHAR buf[16];
     BYTE temp[512];
     UINT32 readCount = 0;
@@ -261,13 +262,13 @@ void test_unicode_file() {
             break;
         }
         
-        writeCount = ruyi_io_write_utf8(fout, buf, readCount);
-        printf("writeCount: %d\n", writeCount);
+      //  writeCount = ruyi_io_write_utf8(fout, buf, readCount);
+       // printf("writeCount: %d\n", writeCount);
         
         readCount = ruyi_unicode_encode_utf8(buf, readCount, NULL, temp, sizeof(temp)/sizeof(*temp));
         temp[readCount] = '\0';
         
-       // printf("%s", temp);
+        printf("%s", temp);
     }
     ruyi_io_unicode_file_close(file);
     fclose(fout);
@@ -321,11 +322,55 @@ void test_file() {
     ruyi_file_close(file2);
 }
 
+void test_lexer_1(void) {
+    FILE *fp = fopen("/Users/songlihuang/work/ketui/ktopenapi/ktopenapi-web/src/main/java/com/ketuitech/ktopenapi/biz/ao/impl/ApiAOImpl.java", "rb");
+    ruyi_file *file = ruyi_file_open_by_file(fp);
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_token *token;
+    ruyi_bytes_string* cstr;
+    printf("----------------------test_lexer_1>>>>>>>>>>>>>>>\n");
+    for (;;) {
+        token = ruyi_lexer_reader_next_token(reader);
+        if (!token) {
+            printf("read next token error\n");
+            break;
+        }
+        if (token->type == Ruyi_tt_END) {
+            printf("<END>");
+            break;
+        }
+        if (token->type == Ruyi_tt_IDENTITY) {
+            cstr = ruyi_unicode_string_decode_utf8(token->value.str_value);
+            printf("<id>: %s (%d, %d)\n", cstr->str, token->line, token->column);
+            ruyi_unicode_bytes_string_destroy(cstr);
+        }
+        ruyi_lexer_token_destroy(token);
+    }
+    ruyi_lexer_reader_close(reader);
+}
+
+void test_unicode_string(void) {
+    ruyi_unicode_string *us1 = ruyi_unicode_string_init_from_utf8("abc中午123", 0);
+    ruyi_bytes_string* s1 = NULL;
+    assert(8 == ruyi_unicode_string_length(us1));
+    ruyi_unicode_string_append_utf8(us1, "我的世界456测试啦啦4567", 0);
+    assert(23 == ruyi_unicode_string_length(us1));
+    s1 = ruyi_unicode_string_decode_utf8(us1);
+    
+    printf("%s\n", s1->str);
+    
+    ruyi_unicode_string_destroy(us1);
+    ruyi_unicode_bytes_string_destroy(s1);
+
+}
+
 void run_test_cases(void) {
     test_lists();
     test_vectors();
     test_hashtable();
     test_unicode();
-    test_file();
-   // test_unicode_file();
+    test_unicode_string();
+  //  test_file();
+  //  test_unicode_file();
+    test_lexer_1();
 }
