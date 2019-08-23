@@ -69,6 +69,9 @@ BOOL ruyi_list_remove_first(ruyi_list* list, ruyi_value *ret_value) {
     if (curr_first->next) {
         curr_first->next->prev = NULL;
     }
+    if (list->first == NULL) {
+        list->last = NULL;
+    }
     if (ret_value) {
         *ret_value = curr_first->value;
     }
@@ -85,6 +88,9 @@ BOOL ruyi_list_remove_last(ruyi_list* list, ruyi_value *ret_value) {
     list->last = curr_last->prev;
     if (curr_last->prev) {
         curr_last->prev->next = NULL;
+    }
+    if (list->last == NULL) {
+        list->first = NULL;
     }
     if (ret_value) {
         *ret_value = curr_last->value;
