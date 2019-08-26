@@ -16,6 +16,12 @@ typedef struct {
     WIDE_CHAR c;
 } ruyi_pos_char;
 
+typedef enum {
+    Ruyi_r_OK,
+    Ruyi_r_END,
+    Ruyi_r_ERROR
+} ruyi_lexer_result;
+
 ruyi_lexer_reader* ruyi_lexer_reader_open(ruyi_file *file) {
     assert(file);
     ruyi_lexer_reader *reader = (ruyi_lexer_reader*)ruyi_mem_alloc(sizeof(ruyi_lexer_reader));
@@ -25,6 +31,10 @@ ruyi_lexer_reader* ruyi_lexer_reader_open(ruyi_file *file) {
     reader->line = 1;
     reader->column = 1;
     return reader;
+}
+
+static void ruyi_lexer_error_message(const char* msg, ruyi_pos_char first) {
+    printf("lexer error: %s at line: %d, column: %d\n", msg, first.line, first.column);
 }
 
 void ruyi_lexer_reader_close(ruyi_lexer_reader *reader) {
@@ -100,6 +110,8 @@ static BOOL ruyi_lexer_peek_char(ruyi_lexer_reader *reader, ruyi_pos_char *pos_c
 #define RUYI_IS_SPACE(c) \
 ((c == ' ' || c == '\t' || c == '\r'))
 
+
+
 static ruyi_token* ruyi_lexer_make_token(ruyi_token_type token_type, ruyi_pos_char first) {
     ruyi_token* token = (ruyi_token*)ruyi_mem_alloc(sizeof(ruyi_token));
     token->type = token_type;
@@ -108,29 +120,163 @@ static ruyi_token* ruyi_lexer_make_token(ruyi_token_type token_type, ruyi_pos_ch
     return token;
 }
 
-static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos_char pc) {
-    assert(reader);
-    ruyi_pos_char ch;
-    BOOL minus = FALSE;
-    if ('-' == pc.c) {
-        if (!ruyi_lexer_peek_char(reader, &ch)) {
-            return NULL;
-        }
-        if (!RUYI_IS_DIGIT(ch.c) && ch.c != '.') {
-            return ruyi_lexer_make_token(Ruyi_tt_SYMBOL_SUB, pc);
-        }
-        minus = TRUE;
-        // read first char
-        if (!ruyi_lexer_read_next_char(reader, &ch)) {
-            return NULL;
-        }
-    }
-    if ('0' == pc.c) {
-        
+static ruyi_token * ruyi_lexer_make_number_token(INT64 integer_part, double fraction_part, BOOL has_dot, ruyi_pos_char first, UINT32 size) {
+    ruyi_token * token = ruyi_lexer_make_token(has_dot ? Ruyi_tt_FLOAT : Ruyi_tt_INTEGER, first);
+    if (!has_dot) {
+        token->value.int_value = integer_part;
     } else {
-        
+        token->value.float_value = integer_part + fraction_part;
     }
-    
+    token->size = size;
+    return token;
+}
+
+static ruyi_lexer_result ruyi_lexer_get_digit(ruyi_pos_char first, ruyi_pos_char ch, INT64 radix, int *out) {
+    switch (radix) {
+        case 2:
+            if (ch.c == '0' || ch.c == '1') {
+                *out = ch.c - '0';
+                return Ruyi_r_OK;
+            } else if (ch.c >= '2' && ch.c <= '9') {
+                ruyi_lexer_error_message("binary number only support digit 0 and 1", first);
+                return Ruyi_r_ERROR;
+            } else {
+                return Ruyi_r_END;
+            }
+        case 8:
+            if (ch.c >= '0' && ch.c <= '7') {
+                *out = ch.c - '0';
+                return Ruyi_r_OK;
+            } else if (ch.c >= '8' && ch.c <= '9') {
+                ruyi_lexer_error_message("octal number only support digit 0 to 7", first);
+                return Ruyi_r_ERROR;
+            } else {
+                return Ruyi_r_END;
+            }
+        case 10:
+            if (ch.c >= '0' && ch.c <= '9') {
+                *out = ch.c - '0';
+                return Ruyi_r_OK;
+            } else {
+                return Ruyi_r_END;
+            }
+        case 16:
+            if (ch.c >= '0' && ch.c <= '9') {
+                *out = ch.c - '0';
+                return Ruyi_r_OK;
+            } else if (ch.c >= 'A' && ch.c <= 'F') {
+                *out = ch.c - 'A' + 10;
+                return Ruyi_r_OK;
+            } else if (ch.c >= 'a' && ch.c <= 'f') {
+                *out = ch.c - 'a' + 10;
+                return Ruyi_r_OK;
+            } else {
+                return Ruyi_r_END;
+            }
+        default:
+            ruyi_lexer_error_message("unsupport number radix", first);
+            return Ruyi_r_ERROR;
+    }
+}
+
+static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos_char first) {
+    assert(reader);
+    ruyi_pos_char ch = first;
+    INT64 integer_part = 0;
+    double fraction_part = 0;
+    double fraction_base = 0.1;
+    INT64 radix = 10;
+    UINT32 size = 0;
+    BOOL has_dot = FALSE;
+    ruyi_lexer_result lr;
+    int out;
+    if ('.' == first.c) {
+        if (!ruyi_lexer_peek_char(reader, &ch)) {
+            return ruyi_lexer_make_token(Ruyi_tt_SYMBOL_DOT, first);
+        }
+        if (!RUYI_IS_DIGIT(ch.c)) {
+            return ruyi_lexer_make_token(Ruyi_tt_SYMBOL_DOT, first);
+        }
+        size++;
+        for (;;) {
+            if (!ruyi_lexer_read_next_char(reader, &ch)) {
+                return ruyi_lexer_make_number_token(0, fraction_part, TRUE, first, size);
+            }
+            size++;
+            if (!RUYI_IS_DIGIT(ch.c)) {
+                return ruyi_lexer_make_number_token(0, fraction_part, TRUE, first, size);
+            }
+            fraction_part = fraction_part + (ch.c - '0') * fraction_base;
+            fraction_base *= 0.1;
+        }
+    } else if (first.c == '0') {
+        if (!ruyi_lexer_read_next_char(reader, &ch)) {
+            return ruyi_lexer_make_number_token(integer_part, 0, FALSE, first, size);
+        }
+        size ++;
+        if (ch.c == 'x' || ch.c == 'X') {
+            radix = 16;
+            
+        } else if ( ch.c >= '0' && ch.c <= '7') {
+            radix = 8;
+            integer_part = integer_part * radix + ch.c - '0';
+        } else if ( ch.c >= '8' && ch.c <= '9') {
+            ruyi_lexer_error_message("unsupport number, the decimal must start with none-zero", first);
+            return NULL;
+        } else if ( ch.c == 'b' || ch.c == 'B') {
+            radix = 2;
+        } else {
+            // just 0
+            ruyi_lexer_reader_push_back_char(reader, ch);
+            return ruyi_lexer_make_number_token(0, 0, FALSE, first, size);
+        }
+        for (;;) {
+            if (!ruyi_lexer_read_next_char(reader, &ch)) {
+                return ruyi_lexer_make_number_token(integer_part, 0, FALSE, first, size);
+            }
+            size++;
+            if ('.' == ch.c) {
+                ruyi_lexer_error_message("unsupport float number for explicit radix number", first);
+                return NULL;
+            }
+            lr = ruyi_lexer_get_digit(first, ch, radix, &out);
+            if (Ruyi_r_ERROR == lr) {
+                return NULL;
+            } else if (Ruyi_r_END == lr) {
+                return ruyi_lexer_make_number_token(integer_part, 0, FALSE, first, size);
+            } else {
+                integer_part = radix * integer_part + out;
+            }
+        }
+    } else {
+        // 10-base
+        integer_part = radix * integer_part + first.c - '0';
+        for (;;) {
+            if (!ruyi_lexer_read_next_char(reader, &ch)) {
+                ruyi_lexer_reader_push_back_char(reader, ch);
+                return ruyi_lexer_make_number_token(integer_part, fraction_part, has_dot, first, size);
+            }
+            size++;
+            if (RUYI_IS_DIGIT(ch.c)) {
+                if (has_dot) {
+                    fraction_part = fraction_part + (ch.c - '0') * fraction_base;
+                    fraction_base *= 0.1;
+                } else {
+                    integer_part = radix * integer_part + ch.c - '0';
+                }
+            } else if ('.' == ch.c) {
+                if (has_dot) {
+                    ruyi_lexer_reader_push_back_char(reader, ch);
+                    return ruyi_lexer_make_number_token(integer_part, fraction_part, TRUE, first, size);
+                } else {
+                    has_dot = TRUE;
+                }
+            } else {
+                ruyi_lexer_reader_push_back_char(reader, ch);
+                return ruyi_lexer_make_number_token(integer_part, fraction_part, has_dot, first, size);
+            }
+        }
+    }
     return NULL;
 }
 
@@ -184,7 +330,7 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
         switch (c) {
             case '\n':
                 return ruyi_lexer_make_token(Ruyi_tt_EOL, pc);
-                
+            
             default:
                 break;
         }

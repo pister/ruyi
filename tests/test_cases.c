@@ -323,8 +323,8 @@ void test_file() {
 }
 
 void test_lexer_1(void) {
-    FILE *fp = fopen("/Users/songlihuang/work/ketui/ktopenapi/ktopenapi-web/src/main/java/com/ketuitech/ktopenapi/biz/ao/impl/ApiAOImpl.java", "rb");
-    ruyi_file *file = ruyi_file_open_by_file(fp);
+    const char* src = "hello world 124, 5412.455 0x123 0b1101 0431 a";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_token *token;
     ruyi_bytes_string* cstr;
@@ -339,10 +339,24 @@ void test_lexer_1(void) {
             printf("<END>");
             break;
         }
-        if (token->type == Ruyi_tt_IDENTITY) {
-            cstr = ruyi_unicode_string_decode_utf8(token->value.str_value);
-            printf("<id>: %s (%d, %d)\n", cstr->str, token->line, token->column);
-            ruyi_unicode_bytes_string_destroy(cstr);
+        switch (token->type) {
+            case Ruyi_tt_IDENTITY:
+                cstr = ruyi_unicode_string_decode_utf8(token->value.str_value);
+                printf("<Id>: %s (%d, %d)\n", cstr->str, token->line, token->column);
+                ruyi_unicode_bytes_string_destroy(cstr);
+                break;
+            case Ruyi_tt_INTEGER:
+                printf("<Integer>: %lld (%d, %d)\n", token->value.int_value, token->line, token->column);
+                break;
+            case Ruyi_tt_FLOAT:
+                printf("<Float>: %lf (%d, %d)\n", token->value.float_value, token->line, token->column);
+                break;
+            case Ruyi_tt_SYMBOL_DOT:
+                printf("<DOT>: . (%d, %d)\n", token->line, token->column);
+                break;
+                
+            default:
+                break;
         }
         ruyi_lexer_token_destroy(token);
     }
