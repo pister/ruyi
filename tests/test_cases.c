@@ -322,12 +322,49 @@ void test_file() {
     ruyi_file_close(file2);
 }
 
+static
+BOOL double_equals(double v1, double v2) {
+    double v3 =  v1 - v2;
+    return v3 >= -0.000001 && v3 <=  0.000001;
+}
+
+static
+void assert_lexer_token(ruyi_vector * vector, UINT32 index, ruyi_token_type type, const char* input, INT64 int_value, double float_value) {
+    ruyi_token *token;
+    ruyi_unicode_string * temp;
+    ruyi_value val;
+    ruyi_vector_get(vector, index, &val);
+    token = (ruyi_token *)val.data.ptr;
+    assert(token->type == type);
+    switch (token->type) {
+        case Ruyi_tt_IDENTITY:
+            if (input) {
+                temp = ruyi_unicode_string_init_from_utf8(input, 0);
+                assert(ruyi_unicode_string_equals(token->value.str_value, temp));
+                ruyi_unicode_string_destroy(temp);
+            }
+            break;
+        case Ruyi_tt_INTEGER:
+            assert(token->value.int_value == int_value);
+            break;
+        case Ruyi_tt_FLOAT:
+            assert(double_equals(token->value.float_value, float_value));
+            break;
+        default:
+            break;
+    }
+    
+    
+}
+
 void test_lexer_1(void) {
-    const char* src = "hello world 124, 5412.455 0x123 0b1101 0431 a";
+    const char* src = "hello world 124 5412.455 0x123 0b1101 0431 0 0.0 . .1230 a";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_token *token;
-    ruyi_bytes_string* cstr;
+    UINT32 i;
+    ruyi_value val;
+    ruyi_vector * vector = ruyi_vector_create();
     printf("----------------------test_lexer_1>>>>>>>>>>>>>>>\n");
     for (;;) {
         token = ruyi_lexer_reader_next_token(reader);
@@ -335,32 +372,36 @@ void test_lexer_1(void) {
             printf("read next token error\n");
             break;
         }
+        ruyi_vector_add(vector, ruyi_value_ptr(token));
         if (token->type == Ruyi_tt_END) {
-            printf("<END>");
             break;
         }
-        switch (token->type) {
-            case Ruyi_tt_IDENTITY:
-                cstr = ruyi_unicode_string_decode_utf8(token->value.str_value);
-                printf("<Id>: %s (%d, %d)\n", cstr->str, token->line, token->column);
-                ruyi_unicode_bytes_string_destroy(cstr);
-                break;
-            case Ruyi_tt_INTEGER:
-                printf("<Integer>: %lld (%d, %d)\n", token->value.int_value, token->line, token->column);
-                break;
-            case Ruyi_tt_FLOAT:
-                printf("<Float>: %lf (%d, %d)\n", token->value.float_value, token->line, token->column);
-                break;
-            case Ruyi_tt_SYMBOL_DOT:
-                printf("<DOT>: . (%d, %d)\n", token->line, token->column);
-                break;
-                
-            default:
-                break;
-        }
-        ruyi_lexer_token_destroy(token);
     }
     ruyi_lexer_reader_close(reader);
+    
+    assert(13 == ruyi_vector_length(vector));
+    
+    assert_lexer_token(vector, 0, Ruyi_tt_IDENTITY, "hello", 0, 0);
+    assert_lexer_token(vector, 1, Ruyi_tt_IDENTITY, "world", 0, 0);
+    assert_lexer_token(vector, 2, Ruyi_tt_INTEGER, NULL, 124, 0);
+    assert_lexer_token(vector, 3, Ruyi_tt_FLOAT, NULL, 0, 5412.455);
+    assert_lexer_token(vector, 4, Ruyi_tt_INTEGER, NULL, 0x123, 0);
+    assert_lexer_token(vector, 5, Ruyi_tt_INTEGER, NULL, 0b1101, 0);
+    assert_lexer_token(vector, 6, Ruyi_tt_INTEGER, NULL, 0431, 0);
+    assert_lexer_token(vector, 7, Ruyi_tt_INTEGER, NULL, 0, 0);
+    assert_lexer_token(vector, 8, Ruyi_tt_FLOAT, NULL, 0, 0);
+    assert_lexer_token(vector, 9, Ruyi_tt_SYMBOL_DOT, NULL, 0, 0);
+    assert_lexer_token(vector, 10, Ruyi_tt_FLOAT, NULL, 0, 0.123);
+    assert_lexer_token(vector, 11, Ruyi_tt_IDENTITY, "a", 0, 0);
+    assert_lexer_token(vector, 12, Ruyi_tt_END, NULL, 0, 0);  
+
+    for (i = 0; i < ruyi_vector_length(vector); i++) {
+        ruyi_vector_get(vector, i, &val);
+        token = (ruyi_token *)val.data.ptr;
+        ruyi_lexer_token_destroy(token);
+    }
+    
+    ruyi_vector_destroy(vector);
 }
 
 void test_unicode_string(void) {

@@ -405,3 +405,22 @@ void ruyi_unicode_bytes_string_destroy(ruyi_bytes_string* s) {
     }
     ruyi_mem_free(s);
 }
+
+BOOL ruyi_unicode_string_equals(const ruyi_unicode_string *unicode_str, const ruyi_unicode_string *unicode_str_other) {
+    UINT32 pos;
+    if (unicode_str == unicode_str_other) {
+        return TRUE;
+    }
+    if (unicode_str == NULL || unicode_str_other == NULL) {
+        return FALSE;
+    }
+    if (unicode_str->length != unicode_str_other->length) {
+        return FALSE;
+    }
+    for (pos = 0; pos < unicode_str->length; pos++) {
+        if (unicode_str->data[pos] != unicode_str_other->data[pos]) {
+            return FALSE;
+        }
+    }
+    return TRUE;
+}

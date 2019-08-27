@@ -81,5 +81,7 @@ ruyi_bytes_string* ruyi_unicode_string_decode_utf8(const ruyi_unicode_string *un
 
 void ruyi_unicode_bytes_string_destroy(ruyi_bytes_string* s);
 
+BOOL ruyi_unicode_string_equals(const ruyi_unicode_string *unicode_str, const ruyi_unicode_string *unicode_str_other);
+
 #endif /* ruyi_unicode_h */
 

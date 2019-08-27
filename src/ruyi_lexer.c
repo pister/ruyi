@@ -179,6 +179,43 @@ static ruyi_lexer_result ruyi_lexer_get_digit(ruyi_pos_char first, ruyi_pos_char
     }
 }
 
+static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_char first) {
+    ruyi_pos_char ch = first;
+    INT64 integer_part = 0;
+    double fraction_part = 0;
+    double fraction_base = 0.1;
+    INT64 radix = 10;
+    UINT32 size = 0;
+    BOOL has_dot = FALSE;
+    // 10-base
+    integer_part = radix * integer_part + first.c - '0';
+    for (;;) {
+        if (!ruyi_lexer_read_next_char(reader, &ch)) {
+            ruyi_lexer_reader_push_back_char(reader, ch);
+            return ruyi_lexer_make_number_token(integer_part, fraction_part, has_dot, first, size);
+        }
+        size++;
+        if (RUYI_IS_DIGIT(ch.c)) {
+            if (has_dot) {
+                fraction_part = fraction_part + (ch.c - '0') * fraction_base;
+                fraction_base *= 0.1;
+            } else {
+                integer_part = radix * integer_part + ch.c - '0';
+            }
+        } else if ('.' == ch.c) {
+            if (has_dot) {
+                ruyi_lexer_reader_push_back_char(reader, ch);
+                return ruyi_lexer_make_number_token(integer_part, fraction_part, TRUE, first, size);
+            } else {
+                has_dot = TRUE;
+            }
+        } else {
+            ruyi_lexer_reader_push_back_char(reader, ch);
+            return ruyi_lexer_make_number_token(integer_part, fraction_part, has_dot, first, size);
+        }
+    }
+}
+
 static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos_char first) {
     assert(reader);
     ruyi_pos_char ch = first;
@@ -187,7 +224,6 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
     double fraction_base = 0.1;
     INT64 radix = 10;
     UINT32 size = 0;
-    BOOL has_dot = FALSE;
     ruyi_lexer_result lr;
     int out;
     if ('.' == first.c) {
@@ -197,6 +233,12 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
         if (!RUYI_IS_DIGIT(ch.c)) {
             return ruyi_lexer_make_token(Ruyi_tt_SYMBOL_DOT, first);
         }
+        
+        ch.c = '0';
+        ruyi_lexer_reader_push_back_char(reader, first);
+        return ruyi_lexer_get_decimal(reader, ch);
+        /*
+        
         size++;
         for (;;) {
             if (!ruyi_lexer_read_next_char(reader, &ch)) {
@@ -209,6 +251,7 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
             fraction_part = fraction_part + (ch.c - '0') * fraction_base;
             fraction_base *= 0.1;
         }
+         */
     } else if (first.c == '0') {
         if (!ruyi_lexer_read_next_char(reader, &ch)) {
             return ruyi_lexer_make_number_token(integer_part, 0, FALSE, first, size);
@@ -225,6 +268,9 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
             return NULL;
         } else if ( ch.c == 'b' || ch.c == 'B') {
             radix = 2;
+        } else if (ch.c == '.') {
+            ruyi_lexer_reader_push_back_char(reader, ch);
+            return ruyi_lexer_get_decimal(reader, first);
         } else {
             // just 0
             ruyi_lexer_reader_push_back_char(reader, ch);
@@ -250,32 +296,7 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
         }
     } else {
         // 10-base
-        integer_part = radix * integer_part + first.c - '0';
-        for (;;) {
-            if (!ruyi_lexer_read_next_char(reader, &ch)) {
-                ruyi_lexer_reader_push_back_char(reader, ch);
-                return ruyi_lexer_make_number_token(integer_part, fraction_part, has_dot, first, size);
-            }
-            size++;
-            if (RUYI_IS_DIGIT(ch.c)) {
-                if (has_dot) {
-                    fraction_part = fraction_part + (ch.c - '0') * fraction_base;
-                    fraction_base *= 0.1;
-                } else {
-                    integer_part = radix * integer_part + ch.c - '0';
-                }
-            } else if ('.' == ch.c) {
-                if (has_dot) {
-                    ruyi_lexer_reader_push_back_char(reader, ch);
-                    return ruyi_lexer_make_number_token(integer_part, fraction_part, TRUE, first, size);
-                } else {
-                    has_dot = TRUE;
-                }
-            } else {
-                ruyi_lexer_reader_push_back_char(reader, ch);
-                return ruyi_lexer_make_number_token(integer_part, fraction_part, has_dot, first, size);
-            }
-        }
+        return ruyi_lexer_get_decimal(reader, first);
     }
     return NULL;
 }
@@ -330,7 +351,9 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
         switch (c) {
             case '\n':
                 return ruyi_lexer_make_token(Ruyi_tt_EOL, pc);
-            
+            case '.':
+                return ruyi_lexer_handle_number(reader, pc);
+
             default:
                 break;
         }
