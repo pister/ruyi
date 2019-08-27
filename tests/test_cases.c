@@ -380,7 +380,7 @@ void assert_lexer_token(ruyi_vector * vector, UINT32 index, ruyi_token_type type
     
 }
 
-void test_lexer_1(void) {
+void test_lexer_id_number(void) {
     const char* src = "hello world 124 5412.455 0x123 0b1101 0431 0 0.0 . .1230 1.23e6 4.56e-12 12e3 a";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -450,5 +450,5 @@ void run_test_cases(void) {
     test_unicode_string();
   //  test_file();
   //  test_unicode_file();
-    test_lexer_1();
+    test_lexer_id_number();
 }

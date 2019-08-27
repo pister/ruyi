@@ -272,7 +272,6 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
         if (!RUYI_IS_DIGIT(ch.c)) {
             return ruyi_lexer_make_token(Ruyi_tt_SYMBOL_DOT, first);
         }
-        
         ch.c = '0';
         ruyi_lexer_reader_push_back_char(reader, first);
         return ruyi_lexer_get_decimal(reader, ch);
@@ -325,24 +324,23 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
     return NULL;
 }
 
-static ruyi_token * ruyi_lexer_handle_identifier(ruyi_lexer_reader *reader, ruyi_pos_char pc) {
+static ruyi_token * ruyi_lexer_handle_identifier(ruyi_lexer_reader *reader, ruyi_pos_char first) {
     assert(reader);
     ruyi_unicode_string* string_value = ruyi_unicode_string_init_with_capacity(64);
-    ruyi_pos_char first = pc;
-    ruyi_pos_char pos_char;
+    ruyi_pos_char ch = first;
     WIDE_CHAR c;
     ruyi_token* token;
     do {
-        ruyi_unicode_string_append_wide_char(string_value, first.c);
+        ruyi_unicode_string_append_wide_char(string_value, ch.c);
         for(;;) {
-            if (!ruyi_lexer_read_next_char(reader, &pos_char)) {
+            if (!ruyi_lexer_read_next_char(reader, &ch)) {
                 break;
             }
-            c = pos_char.c;
+            c = ch.c;
             if (RUYI_IS_LETTER(c) || c == '_' || RUYI_IS_DIGIT(c)) {
                 ruyi_unicode_string_append_wide_char(string_value, c);
             } else {
-                ruyi_lexer_reader_push_back_char(reader, pos_char);
+                ruyi_lexer_reader_push_back_char(reader, ch);
                 break;
             }
         }
@@ -351,6 +349,11 @@ static ruyi_token * ruyi_lexer_handle_identifier(ruyi_lexer_reader *reader, ruyi
     token->value.str_value = string_value;
     token->size = string_value->length;
     return token;
+}
+
+static ruyi_token * ruyi_lexer_handle_string(ruyi_lexer_reader *reader, ruyi_pos_char first) {
+// TODO
+    return NULL;
 }
 
 static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
@@ -375,6 +378,8 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
                 return ruyi_lexer_make_token(Ruyi_tt_EOL, pc);
             case '.':
                 return ruyi_lexer_handle_number(reader, pc);
+            case '"':
+                return ruyi_lexer_handle_string(reader, pc);
             default:
                 break;
         }

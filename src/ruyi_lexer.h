@@ -21,6 +21,7 @@ typedef enum {
     Ruyi_tt_INTEGER,        // exmpale: 1234
     Ruyi_tt_FLOAT,          // exmpale: 1234.5678
     Ruyi_tt_STRING,         // exmpale: "hello"
+    Ruyi_tt_CHAR,           // exmpale: 'A', in unicode
     Ruyi_tt_EOL,            // \n
     Ruyi_tt_END,            // EOF
     Ruyi_tt_SYMBOL_SUB,     // -
