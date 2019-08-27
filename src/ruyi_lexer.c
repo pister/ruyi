@@ -248,7 +248,7 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
                 }
             } else {
                 ruyi_lexer_error_message("exponent miss digit", first);
-                NULL;
+                return NULL;
             }
         } else {
             ruyi_lexer_reader_push_back_char(reader, ch);
