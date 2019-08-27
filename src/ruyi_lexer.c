@@ -120,12 +120,24 @@ static ruyi_token* ruyi_lexer_make_token(ruyi_token_type token_type, ruyi_pos_ch
     return token;
 }
 
-static ruyi_token * ruyi_lexer_make_number_token(INT64 integer_part, double fraction_part, BOOL has_dot, ruyi_pos_char first, UINT32 size) {
+static ruyi_token * ruyi_lexer_make_number_token(INT64 integer_part, double fraction_part, INT32 exponent_part, BOOL has_dot, ruyi_pos_char first, UINT32 size) {
     ruyi_token * token = ruyi_lexer_make_token(has_dot ? Ruyi_tt_FLOAT : Ruyi_tt_INTEGER, first);
+    double exponent = 1;
+    while (exponent_part != 0) {
+        if (exponent_part > 0) {
+            exponent *= 10;
+            exponent_part--;
+        } else if (exponent_part < 0) {
+            exponent *= 0.1;
+            exponent_part++;
+        }
+    }
     if (!has_dot) {
         token->value.int_value = integer_part;
+        token->value.int_value *= exponent;
     } else {
         token->value.float_value = integer_part + fraction_part;
+        token->value.float_value *= exponent;
     }
     token->size = size;
     return token;
@@ -184,6 +196,7 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
     INT64 integer_part = 0;
     double fraction_part = 0;
     double fraction_base = 0.1;
+    UINT32 exponent_part = 0;
     INT64 radix = 10;
     UINT32 size = 0;
     BOOL has_dot = FALSE;
@@ -192,7 +205,7 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
     for (;;) {
         if (!ruyi_lexer_read_next_char(reader, &ch)) {
             ruyi_lexer_reader_push_back_char(reader, ch);
-            return ruyi_lexer_make_number_token(integer_part, fraction_part, has_dot, first, size);
+            return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
         }
         size++;
         if (RUYI_IS_DIGIT(ch.c)) {
@@ -205,13 +218,52 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
         } else if ('.' == ch.c) {
             if (has_dot) {
                 ruyi_lexer_reader_push_back_char(reader, ch);
-                return ruyi_lexer_make_number_token(integer_part, fraction_part, TRUE, first, size);
+                return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, TRUE, first, size);
             } else {
                 has_dot = TRUE;
             }
+        } else if ('e' == ch.c || 'E' == ch.c) {
+            // exp part
+            ruyi_lexer_peek_char(reader, &ch);
+            if (RUYI_IS_DIGIT(ch.c)) {
+                for (;;) {
+                    if (!ruyi_lexer_read_next_char(reader, &ch)) {
+                        ruyi_lexer_reader_push_back_char(reader, ch);
+                        return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
+                    }
+                    if (!RUYI_IS_DIGIT(ch.c)) {
+                        ruyi_lexer_reader_push_back_char(reader, ch);
+                        return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
+                    }
+                    size++;
+                    exponent_part = 10 * exponent_part + ch.c - '0';
+                }
+            } else if ('-' == ch.c) {
+                ruyi_lexer_read_next_char(reader, &ch);
+                exponent_part = -1;
+                ruyi_lexer_peek_char(reader, &ch);
+                if (!RUYI_IS_DIGIT(ch.c)) {
+                    ruyi_lexer_error_message("exponent miss digit", first);
+                }
+                for (;;) {
+                    if (!ruyi_lexer_read_next_char(reader, &ch)) {
+                        ruyi_lexer_reader_push_back_char(reader, ch);
+                        return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
+                    }
+                    if (!RUYI_IS_DIGIT(ch.c)) {
+                        ruyi_lexer_reader_push_back_char(reader, ch);
+                        return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
+                    }
+                    size++;
+                    exponent_part = 10 * exponent_part + ch.c - '0';
+                }
+            } else {
+                ruyi_lexer_error_message("exponent miss digit", first);
+                NULL;
+            }
         } else {
             ruyi_lexer_reader_push_back_char(reader, ch);
-            return ruyi_lexer_make_number_token(integer_part, fraction_part, has_dot, first, size);
+            return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
         }
     }
 }
@@ -220,8 +272,6 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
     assert(reader);
     ruyi_pos_char ch = first;
     INT64 integer_part = 0;
-    double fraction_part = 0;
-    double fraction_base = 0.1;
     INT64 radix = 10;
     UINT32 size = 0;
     ruyi_lexer_result lr;
@@ -237,24 +287,9 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
         ch.c = '0';
         ruyi_lexer_reader_push_back_char(reader, first);
         return ruyi_lexer_get_decimal(reader, ch);
-        /*
-        
-        size++;
-        for (;;) {
-            if (!ruyi_lexer_read_next_char(reader, &ch)) {
-                return ruyi_lexer_make_number_token(0, fraction_part, TRUE, first, size);
-            }
-            size++;
-            if (!RUYI_IS_DIGIT(ch.c)) {
-                return ruyi_lexer_make_number_token(0, fraction_part, TRUE, first, size);
-            }
-            fraction_part = fraction_part + (ch.c - '0') * fraction_base;
-            fraction_base *= 0.1;
-        }
-         */
     } else if (first.c == '0') {
         if (!ruyi_lexer_read_next_char(reader, &ch)) {
-            return ruyi_lexer_make_number_token(integer_part, 0, FALSE, first, size);
+            return ruyi_lexer_make_number_token(integer_part, 0, 0, FALSE, first, size);
         }
         size ++;
         if (ch.c == 'x' || ch.c == 'X') {
@@ -274,11 +309,11 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
         } else {
             // just 0
             ruyi_lexer_reader_push_back_char(reader, ch);
-            return ruyi_lexer_make_number_token(0, 0, FALSE, first, size);
+            return ruyi_lexer_make_number_token(0, 0, 0, FALSE, first, size);
         }
         for (;;) {
             if (!ruyi_lexer_read_next_char(reader, &ch)) {
-                return ruyi_lexer_make_number_token(integer_part, 0, FALSE, first, size);
+                return ruyi_lexer_make_number_token(integer_part, 0, 0, FALSE, first, size);
             }
             size++;
             if ('.' == ch.c) {
@@ -289,7 +324,7 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
             if (Ruyi_r_ERROR == lr) {
                 return NULL;
             } else if (Ruyi_r_END == lr) {
-                return ruyi_lexer_make_number_token(integer_part, 0, FALSE, first, size);
+                return ruyi_lexer_make_number_token(integer_part, 0, 0, FALSE, first, size);
             } else {
                 integer_part = radix * integer_part + out;
             }

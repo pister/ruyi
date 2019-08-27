@@ -140,13 +140,9 @@ static void test_vectors(void) {
     ruyi_vector_add(vector, ruyi_value_int64(150));
 
     ruyi_vector_sort(vector, int64_comp);
-    
-    printf("=>>>>>>>>>>>>>>>>>>\n");
-    for (pos = 0; pos < ruyi_vector_length(vector); pos++) {
-        ruyi_vector_get(vector, pos, &value);
-        printf("%lld\n", value.data.int64_value);
-    }
-    printf("=>>>>>>>>>>>>>>>>>>\n");
+    assert(5 == ruyi_vector_length(vector));
+    values[0] = 10; values[1] = 111; values[2] = 150; values[3] = 333; values[4] = 2200;
+    assert_vector_values(vector, values, 5);
 
     ruyi_vector_destroy(vector);
 }
@@ -358,14 +354,13 @@ void assert_lexer_token(ruyi_vector * vector, UINT32 index, ruyi_token_type type
 }
 
 void test_lexer_1(void) {
-    const char* src = "hello world 124 5412.455 0x123 0b1101 0431 0 0.0 . .1230 a";
+    const char* src = "hello world 124 5412.455 0x123 0b1101 0431 0 0.0 . .1230 1.23e6 4.56e-12 12e3 a";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_token *token;
     UINT32 i;
     ruyi_value val;
     ruyi_vector * vector = ruyi_vector_create();
-    printf("----------------------test_lexer_1>>>>>>>>>>>>>>>\n");
     for (;;) {
         token = ruyi_lexer_reader_next_token(reader);
         if (!token) {
@@ -379,7 +374,7 @@ void test_lexer_1(void) {
     }
     ruyi_lexer_reader_close(reader);
     
-    assert(13 == ruyi_vector_length(vector));
+    assert(16 == ruyi_vector_length(vector));
     
     assert_lexer_token(vector, 0, Ruyi_tt_IDENTITY, "hello", 0, 0);
     assert_lexer_token(vector, 1, Ruyi_tt_IDENTITY, "world", 0, 0);
@@ -392,8 +387,11 @@ void test_lexer_1(void) {
     assert_lexer_token(vector, 8, Ruyi_tt_FLOAT, NULL, 0, 0);
     assert_lexer_token(vector, 9, Ruyi_tt_SYMBOL_DOT, NULL, 0, 0);
     assert_lexer_token(vector, 10, Ruyi_tt_FLOAT, NULL, 0, 0.123);
-    assert_lexer_token(vector, 11, Ruyi_tt_IDENTITY, "a", 0, 0);
-    assert_lexer_token(vector, 12, Ruyi_tt_END, NULL, 0, 0);  
+    assert_lexer_token(vector, 11, Ruyi_tt_FLOAT, NULL, 0, 1.23e6);
+    assert_lexer_token(vector, 12, Ruyi_tt_FLOAT, NULL, 0, 4.56e-12);
+    assert_lexer_token(vector, 13, Ruyi_tt_INTEGER, NULL, 12e3, 0);
+    assert_lexer_token(vector, 14, Ruyi_tt_IDENTITY, "a", 0, 0);
+    assert_lexer_token(vector, 15, Ruyi_tt_END, NULL, 0, 0);
 
     for (i = 0; i < ruyi_vector_length(vector); i++) {
         ruyi_vector_get(vector, i, &val);
