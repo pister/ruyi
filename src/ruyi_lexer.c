@@ -225,25 +225,14 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
         } else if ('e' == ch.c || 'E' == ch.c) {
             // exp part
             ruyi_lexer_peek_char(reader, &ch);
-            if (RUYI_IS_DIGIT(ch.c)) {
-                for (;;) {
-                    if (!ruyi_lexer_read_next_char(reader, &ch)) {
-                        ruyi_lexer_reader_push_back_char(reader, ch);
-                        return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
-                    }
+            if (RUYI_IS_DIGIT(ch.c) || '-' == ch.c) {
+                if ('-' == ch.c) {
+                    ruyi_lexer_read_next_char(reader, &ch);
+                    exponent_part = -1;
+                    ruyi_lexer_peek_char(reader, &ch);
                     if (!RUYI_IS_DIGIT(ch.c)) {
-                        ruyi_lexer_reader_push_back_char(reader, ch);
-                        return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
+                        ruyi_lexer_error_message("exponent miss digit", first);
                     }
-                    size++;
-                    exponent_part = 10 * exponent_part + ch.c - '0';
-                }
-            } else if ('-' == ch.c) {
-                ruyi_lexer_read_next_char(reader, &ch);
-                exponent_part = -1;
-                ruyi_lexer_peek_char(reader, &ch);
-                if (!RUYI_IS_DIGIT(ch.c)) {
-                    ruyi_lexer_error_message("exponent miss digit", first);
                 }
                 for (;;) {
                     if (!ruyi_lexer_read_next_char(reader, &ch)) {
@@ -364,8 +353,6 @@ static ruyi_token * ruyi_lexer_handle_identifier(ruyi_lexer_reader *reader, ruyi
     return token;
 }
 
-
-
 static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
     ruyi_pos_char pc;
     WIDE_CHAR c;
@@ -388,7 +375,6 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
                 return ruyi_lexer_make_token(Ruyi_tt_EOL, pc);
             case '.':
                 return ruyi_lexer_handle_number(reader, pc);
-
             default:
                 break;
         }

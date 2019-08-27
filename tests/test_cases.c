@@ -147,12 +147,33 @@ static void test_vectors(void) {
     ruyi_vector_destroy(vector);
 }
 
+static void test_hashtable_it(ruyi_hashtable_iterator *it, ruyi_value *keys, ruyi_value *values, UINT32 length) {
+    ruyi_hashtable * hashtable = ruyi_hashtable_create();
+    UINT32 i, n;
+    ruyi_value key, value, value2;
+    for (i = 0 ; i < length; i++) {
+        ruyi_hashtable_put(hashtable, keys[i], values[i]);
+    }
+    n = 0;
+    while (ruyi_hashtable_iterator_next(it, &key, &value)) {
+        if (!ruyi_hashtable_get(hashtable, key, &value2)) {
+            assert(0);
+        }
+        assert(ruyi_value_equals(value, value2));
+        n++;
+    }
+    assert(n == length);
+    ruyi_hashtable_destory(hashtable);
+}
+
 static void test_hashtable(void) {
     ruyi_hashtable * hashtable = ruyi_hashtable_create();
     ruyi_value key;
     ruyi_value value;
     BOOL success;
     ruyi_hashtable_iterator it;
+    ruyi_value keys[10];
+    ruyi_value values[10];
     
     ruyi_hashtable_put(hashtable, ruyi_value_str("name1"), ruyi_value_int64(111));
     assert(1 == ruyi_hashtable_length(hashtable));
@@ -193,10 +214,15 @@ static void test_hashtable(void) {
     assert(999 == value.data.int64_value);
     
     ruyi_hashtable_iterator_get(hashtable, &it);
-    while (ruyi_hashtable_iterator_next(&it, &key, &value)) {
-        printf("%s ==> %lld\n", (char*)key.data.ptr, value.data.int64_value);
-    }
-    
+    keys[0] = ruyi_value_str("name1"); values[0] = ruyi_value_int64(999);
+    keys[1] = ruyi_value_str("name2"); values[1] = ruyi_value_int64(222);
+    keys[2] = ruyi_value_str("weight"); values[2] = ruyi_value_int64(160);
+    keys[3] = ruyi_value_str("number"); values[3] = ruyi_value_int64(1234);
+    keys[4] = ruyi_value_str("tall"); values[4] = ruyi_value_int64(888);
+    keys[5] = ruyi_value_str("age"); values[5] = ruyi_value_int64(12);
+
+    test_hashtable_it(&it, keys, values, 6);
+   
     ruyi_hashtable_clear(hashtable);
     assert(0 == ruyi_hashtable_length(hashtable));
     
@@ -208,11 +234,12 @@ static void test_hashtable(void) {
     
     ruyi_hashtable_put(hashtable, ruyi_value_str("name6"), ruyi_value_int64(666));
 
-    printf("==========--------->>>>>>>>>>>>>>\n");
     ruyi_hashtable_iterator_get(hashtable, &it);
-    while (ruyi_hashtable_iterator_next(&it, &key, &value)) {
-        printf("%s ==> %lld\n", (char*)key.data.ptr, value.data.int64_value);
-    }
+    
+    keys[0] = ruyi_value_str("name1"); values[0] = ruyi_value_int64(112);
+    keys[1] = ruyi_value_str("name6"); values[1] = ruyi_value_int64(666);
+
+    test_hashtable_it(&it, keys, values, 2);
     ruyi_hashtable_destory(hashtable);
 }
 
@@ -410,11 +437,9 @@ void test_unicode_string(void) {
     assert(23 == ruyi_unicode_string_length(us1));
     s1 = ruyi_unicode_string_decode_utf8(us1);
     
-    printf("%s\n", s1->str);
-    
+    assert(0 == strncmp(s1->str, "abc中午123我的世界456测试啦啦4567", strlen(s1->str)));
     ruyi_unicode_string_destroy(us1);
     ruyi_unicode_bytes_string_destroy(s1);
-
 }
 
 void run_test_cases(void) {
