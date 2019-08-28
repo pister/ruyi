@@ -277,7 +277,6 @@ void test_unicode_file() {
     WIDE_CHAR buf[16];
     BYTE temp[512];
     UINT32 readCount = 0;
-    UINT32 writeCount = 0;
    // UINT32 i = 0;
     while (TRUE) {
         readCount = ruyi_io_unicode_file_read_utf8(file, buf, sizeof(buf)/sizeof(*buf));
@@ -361,6 +360,7 @@ void assert_lexer_token(ruyi_vector * vector, UINT32 index, ruyi_token_type type
     assert(token->type == type);
     switch (token->type) {
         case Ruyi_tt_IDENTITY:
+        case Ruyi_tt_STRING:
             if (input) {
                 temp = ruyi_unicode_string_init_from_utf8(input, 0);
                 assert(ruyi_unicode_string_equals(token->value.str_value, temp));
@@ -368,6 +368,7 @@ void assert_lexer_token(ruyi_vector * vector, UINT32 index, ruyi_token_type type
             }
             break;
         case Ruyi_tt_INTEGER:
+        case Ruyi_tt_CHAR:
             assert(token->value.int_value == int_value);
             break;
         case Ruyi_tt_FLOAT:
@@ -400,9 +401,7 @@ void test_lexer_id_number(void) {
         }
     }
     ruyi_lexer_reader_close(reader);
-    
     assert(16 == ruyi_vector_length(vector));
-    
     assert_lexer_token(vector, 0, Ruyi_tt_IDENTITY, "hello", 0, 0);
     assert_lexer_token(vector, 1, Ruyi_tt_IDENTITY, "world", 0, 0);
     assert_lexer_token(vector, 2, Ruyi_tt_INTEGER, NULL, 124, 0);
@@ -412,14 +411,56 @@ void test_lexer_id_number(void) {
     assert_lexer_token(vector, 6, Ruyi_tt_INTEGER, NULL, 0431, 0);
     assert_lexer_token(vector, 7, Ruyi_tt_INTEGER, NULL, 0, 0);
     assert_lexer_token(vector, 8, Ruyi_tt_FLOAT, NULL, 0, 0);
-    assert_lexer_token(vector, 9, Ruyi_tt_SYMBOL_DOT, NULL, 0, 0);
+    assert_lexer_token(vector, 9, Ruyi_tt_DOT, NULL, 0, 0);
     assert_lexer_token(vector, 10, Ruyi_tt_FLOAT, NULL, 0, 0.123);
     assert_lexer_token(vector, 11, Ruyi_tt_FLOAT, NULL, 0, 1.23e6);
     assert_lexer_token(vector, 12, Ruyi_tt_FLOAT, NULL, 0, 4.56e-12);
     assert_lexer_token(vector, 13, Ruyi_tt_INTEGER, NULL, 12e3, 0);
     assert_lexer_token(vector, 14, Ruyi_tt_IDENTITY, "a", 0, 0);
     assert_lexer_token(vector, 15, Ruyi_tt_END, NULL, 0, 0);
+    for (i = 0; i < ruyi_vector_length(vector); i++) {
+        ruyi_vector_get(vector, i, &val);
+        token = (ruyi_token *)val.data.ptr;
+        ruyi_lexer_token_destroy(token);
+    }
+    
+    ruyi_vector_destroy(vector);
+}
 
+void test_lexer_id_number_string_char_comments(void) {
+    const char* src = "hello 124 \"5412sksx\" \"你的x\ny\txxxa\\\"az\" 'a' '\\t' '\\'' //line comments\n /* asdsd \nxxx\n yyy*/ / ";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_token *token;
+    UINT32 i;
+    ruyi_value val;
+    ruyi_vector * vector = ruyi_vector_create();
+    for (;;) {
+        token = ruyi_lexer_reader_next_token(reader);
+        if (!token) {
+            printf("read next token error\n");
+            break;
+        }
+        ruyi_vector_add(vector, ruyi_value_ptr(token));
+        if (token->type == Ruyi_tt_END) {
+            break;
+        }
+    }
+    ruyi_lexer_reader_close(reader);
+    assert(11 == ruyi_vector_length(vector));
+    assert_lexer_token(vector, 0, Ruyi_tt_IDENTITY, "hello", 0, 0);
+    assert_lexer_token(vector, 1, Ruyi_tt_INTEGER, NULL, 124, 0);
+    assert_lexer_token(vector, 2, Ruyi_tt_STRING, "5412sksx", 0, 0);
+    assert_lexer_token(vector, 3, Ruyi_tt_STRING, "你的x\ny\txxxa\"az", 0, 0);
+    assert_lexer_token(vector, 4, Ruyi_tt_CHAR, NULL, 'a', 0);
+    assert_lexer_token(vector, 5, Ruyi_tt_CHAR, NULL, '\t', 0);
+    assert_lexer_token(vector, 6, Ruyi_tt_CHAR, NULL, '\'', 0);
+    assert_lexer_token(vector, 7, Ruyi_tt_LINE_COMMENTS, NULL, 0, 0);
+    assert_lexer_token(vector, 8, Ruyi_tt_MLINES_COMMENTS, NULL, 0, 0);
+    assert_lexer_token(vector, 9, Ruyi_tt_DIV, NULL, 0, 0);
+    
+    assert_lexer_token(vector, 10, Ruyi_tt_END, NULL, 0, 0);
+    
     for (i = 0; i < ruyi_vector_length(vector); i++) {
         ruyi_vector_get(vector, i, &val);
         token = (ruyi_token *)val.data.ptr;
@@ -451,4 +492,5 @@ void run_test_cases(void) {
   //  test_file();
   //  test_unicode_file();
     test_lexer_id_number();
+    test_lexer_id_number_string_char_comments();
 }
