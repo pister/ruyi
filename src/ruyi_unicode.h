@@ -43,7 +43,7 @@ UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_use
  */
 UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR *src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length);
 
-WIDE_CHAR ruyi_unicode_wide_char(const BYTE *str);
+WIDE_CHAR ruyi_unicode_wide_char_utf8(const char *str);
 
 UINT32 ruyi_unicode_bytes(WIDE_CHAR c, BYTE *buf, UINT32 buf_length);
 

@@ -431,7 +431,7 @@ static ruyi_token * ruyi_lexer_handle_char(ruyi_lexer_reader *reader, ruyi_pos_c
                 content = '\"';
                 break;
             case 't':
-                 content = '\t';
+                content = '\t';
                 break;
             case 'r':
                 content = '\r';

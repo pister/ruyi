@@ -255,9 +255,9 @@ UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR* src_utf8, UINT32 src_len, UINT3
     return out_pos;
 }
 
-WIDE_CHAR ruyi_unicode_wide_char(const BYTE* str) {
+WIDE_CHAR ruyi_unicode_wide_char_utf8(const char* str) {
     WIDE_CHAR ret;
-    if (0 == ruyi_unicode_decode_utf8(str, 6, NULL, &ret, 1)) {
+    if (0 == ruyi_unicode_decode_utf8((const BYTE*)str, 6, NULL, &ret, 1)) {
         return 0;
     }
     return ret;

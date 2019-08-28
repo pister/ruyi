@@ -168,7 +168,6 @@ static void test_hashtable_it(ruyi_hashtable_iterator *it, ruyi_value *keys, ruy
 
 static void test_hashtable(void) {
     ruyi_hashtable * hashtable = ruyi_hashtable_create();
-    ruyi_value key;
     ruyi_value value;
     BOOL success;
     ruyi_hashtable_iterator it;
@@ -428,7 +427,7 @@ void test_lexer_id_number(void) {
 }
 
 void test_lexer_id_number_string_char_comments(void) {
-    const char* src = "hello 124 \"5412sksx\" \"你的x\ny\txxxa\\\"az\" 'a' '\\t' '\\'' //line comments\n /* asdsd \nxxx\n yyy*/ / ";
+    const char* src = "hello 124 \"5412sksx\" \"你的x\ny\txxxa\\\"az\" 'a' '\\t' '\\'' '中' //line comments\n /* asdsd \nxxx\n yyy*/ / ";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_token *token;
@@ -447,7 +446,7 @@ void test_lexer_id_number_string_char_comments(void) {
         }
     }
     ruyi_lexer_reader_close(reader);
-    assert(11 == ruyi_vector_length(vector));
+    assert(12 == ruyi_vector_length(vector));
     assert_lexer_token(vector, 0, Ruyi_tt_IDENTITY, "hello", 0, 0);
     assert_lexer_token(vector, 1, Ruyi_tt_INTEGER, NULL, 124, 0);
     assert_lexer_token(vector, 2, Ruyi_tt_STRING, "5412sksx", 0, 0);
@@ -455,11 +454,12 @@ void test_lexer_id_number_string_char_comments(void) {
     assert_lexer_token(vector, 4, Ruyi_tt_CHAR, NULL, 'a', 0);
     assert_lexer_token(vector, 5, Ruyi_tt_CHAR, NULL, '\t', 0);
     assert_lexer_token(vector, 6, Ruyi_tt_CHAR, NULL, '\'', 0);
-    assert_lexer_token(vector, 7, Ruyi_tt_LINE_COMMENTS, NULL, 0, 0);
-    assert_lexer_token(vector, 8, Ruyi_tt_MLINES_COMMENTS, NULL, 0, 0);
-    assert_lexer_token(vector, 9, Ruyi_tt_DIV, NULL, 0, 0);
+    assert_lexer_token(vector, 7, Ruyi_tt_CHAR, NULL, ruyi_unicode_wide_char_utf8("中"), 0);
+    assert_lexer_token(vector, 8, Ruyi_tt_LINE_COMMENTS, NULL, 0, 0);
+    assert_lexer_token(vector, 9, Ruyi_tt_MLINES_COMMENTS, NULL, 0, 0);
+    assert_lexer_token(vector, 10, Ruyi_tt_DIV, NULL, 0, 0);
     
-    assert_lexer_token(vector, 10, Ruyi_tt_END, NULL, 0, 0);
+    assert_lexer_token(vector, 11, Ruyi_tt_END, NULL, 0, 0);
     
     for (i = 0; i < ruyi_vector_length(vector); i++) {
         ruyi_vector_get(vector, i, &val);
