@@ -20,7 +20,7 @@ typedef enum {
     Ruyi_tt_IDENTITY,       // example: name1
     Ruyi_tt_INTEGER,        // example: 1234
     Ruyi_tt_FLOAT,          // example: 1234.5678
-    Ruyi_tt_STRING,         // example: "hello"
+    Ruyi_tt_STRING,         // example: "hello", in unicode
     Ruyi_tt_CHAR,           // example: 'A', in unicode
     Ruyi_tt_LINE_COMMENTS,  // example: // xxxxx
     Ruyi_tt_MLINES_COMMENTS,// example: /* xxx\nxx\n */
@@ -29,6 +29,14 @@ typedef enum {
     Ruyi_tt_MUL,            // *
     Ruyi_tt_DIV,            // /
     Ruyi_tt_MOD,            // %
+    Ruyi_tt_ADD_ASS,        // +=
+    Ruyi_tt_SUB_ASS,        // -=
+    Ruyi_tt_MUL_ASS,        // *=
+    Ruyi_tt_DIV_ASS,        // /=
+    Ruyi_tt_MOD_ASS,        // %=
+    Ruyi_tt_INC,            // ++
+    Ruyi_tt_DEC,            // --
+    
     Ruyi_tt_EOL,            // \n
     Ruyi_tt_END,            // EOF
     Ruyi_tt_DOT,     // .
