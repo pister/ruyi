@@ -37,6 +37,40 @@ typedef enum {
     Ruyi_tt_INC,            // ++
     Ruyi_tt_DEC,            // --
     
+    Ruyi_tt_LPAREN,         // (
+    Ruyi_tt_RPAREN,         // (
+    Ruyi_tt_LBRACKET,       // [
+    Ruyi_tt_RBRACKET,       // ]
+    Ruyi_tt_LBRACE,         // {
+    Ruyi_tt_RBRACE,         // }
+    Ruyi_tt_COMMA,          // ,
+    Ruyi_tt_SEMICOLON,      // ;
+    Ruyi_tt_COLON,          // :
+    Ruyi_tt_LT,             // <
+    Ruyi_tt_GT,             // >
+    Ruyi_tt_ASSIGN,         // =
+    Ruyi_tt_EQUALS,         // ==
+    Ruyi_tt_LTE,            // <=
+    Ruyi_tt_GTE,            // >=
+    Ruyi_tt_NOT_EQUALS,     // !=
+    Ruyi_tt_SHFT_LEFT,      // <<
+    Ruyi_tt_SHFT_RIGHT,     // >>
+    Ruyi_tt_SHFT_LEFT_ASS,  // <<=
+    Ruyi_tt_SHFT_RIGHT_ASS, // >>=
+    Ruyi_tt_BIT_AND,        // &
+    Ruyi_tt_BIT_OR,         // |
+    Ruyi_tt_BIT_XOR,        // ^
+    Ruyi_tt_BIT_INVERSE,    // ~
+    Ruyi_tt_BIT_AND_ASS,    // &=
+    Ruyi_tt_BIT_OR_ASS,     // |=
+    Ruyi_tt_BIT_XOR_ASS,    // ^=
+    Ruyi_tt_BIT_INVERSE_ASS,// ~=
+    Ruyi_tt_LOGIC_AND,      // &&
+    Ruyi_tt_LOGIC_OR,       // ||
+    Ruyi_tt_LOGIC_NOT,      // !
+    
+    Ruyi_tt_QM,             // ?
+    
     Ruyi_tt_EOL,            // \n
     Ruyi_tt_END,            // EOF
     Ruyi_tt_DOT,     // .

@@ -110,13 +110,17 @@ static BOOL ruyi_lexer_peek_char(ruyi_lexer_reader *reader, ruyi_pos_char *pos_c
 #define RUYI_IS_SPACE(c) \
 ((c == ' ' || c == '\t' || c == '\r'))
 
-static ruyi_token* ruyi_lexer_make_token(ruyi_token_type token_type, ruyi_pos_char first) {
+static ruyi_token* ruyi_lexer_make_token_with_size(ruyi_token_type token_type, ruyi_pos_char first, UINT32 size) {
     ruyi_token* token = (ruyi_token*)ruyi_mem_alloc(sizeof(ruyi_token));
     token->type = token_type;
     token->line = first.line;
     token->column = first.column;
-    token->size = 1;
+    token->size = size;
     return token;
+}
+
+static ruyi_token* ruyi_lexer_make_token(ruyi_token_type token_type, ruyi_pos_char first) {
+    return ruyi_lexer_make_token_with_size(token_type, first, 1);
 }
 
 static ruyi_token * ruyi_lexer_make_number_token(INT64 integer_part, double fraction_part, INT32 exponent_part, BOOL has_dot, ruyi_pos_char first, UINT32 size) {
@@ -488,6 +492,7 @@ static ruyi_token * ruyi_lexer_handle_mul_tokens(ruyi_lexer_reader *reader, ruyi
             return token;
         }
     }
+    ruyi_lexer_reader_push_back_char(reader, pc);
     return ruyi_lexer_make_token(not_match, first);
 }
 
@@ -548,6 +553,62 @@ static ruyi_token * ruyi_lexer_handle_div_or_comments(ruyi_lexer_reader *reader,
     return NULL;
 }
 
+static ruyi_token* ruyi_lexer_token_lt(ruyi_lexer_reader *reader, ruyi_pos_char first) {
+    ruyi_pos_char pc;
+    UINT32 size = 1;
+    if (!ruyi_lexer_read_next_char(reader, &pc)) {
+        ruyi_lexer_reader_push_back_char(reader, pc);
+        return ruyi_lexer_make_token(Ruyi_tt_LT, first);
+    }
+    size++;
+    switch (pc.c) {
+        case '=':
+            return ruyi_lexer_make_token_with_size(Ruyi_tt_LTE, first, size);
+        case '<':
+            if (!ruyi_lexer_peek_char(reader, &pc)) {
+                return ruyi_lexer_make_token_with_size(Ruyi_tt_SHFT_LEFT, first, size);
+            } else if ('=' == pc.c) {
+                ruyi_lexer_read_next_char(reader, &pc);
+                size++;
+                return ruyi_lexer_make_token_with_size(Ruyi_tt_SHFT_LEFT_ASS, first, size);
+            } else {
+                return ruyi_lexer_make_token_with_size(Ruyi_tt_SHFT_LEFT, first, size);
+            }
+        default:
+            ruyi_lexer_reader_push_back_char(reader, pc);
+            return ruyi_lexer_make_token(Ruyi_tt_LT, first);
+    }
+    return NULL;
+}
+
+static ruyi_token* ruyi_lexer_token_gt(ruyi_lexer_reader *reader, ruyi_pos_char first) {
+    ruyi_pos_char pc;
+    UINT32 size = 1;
+    if (!ruyi_lexer_read_next_char(reader, &pc)) {
+        ruyi_lexer_reader_push_back_char(reader, pc);
+        return ruyi_lexer_make_token(Ruyi_tt_GT, first);
+    }
+    size++;
+    switch (pc.c) {
+        case '=':
+            return ruyi_lexer_make_token_with_size(Ruyi_tt_GTE, first, size);
+        case '>':
+            if (!ruyi_lexer_peek_char(reader, &pc)) {
+                return ruyi_lexer_make_token_with_size(Ruyi_tt_SHFT_RIGHT, first, size);
+            } else if ('=' == pc.c) {
+                ruyi_lexer_read_next_char(reader, &pc);
+                size++;
+                return ruyi_lexer_make_token_with_size(Ruyi_tt_SHFT_RIGHT_ASS, first, size);
+            } else {
+                return ruyi_lexer_make_token_with_size(Ruyi_tt_SHFT_RIGHT, first, size);
+            }
+        default:
+            ruyi_lexer_reader_push_back_char(reader, pc);
+            return ruyi_lexer_make_token(Ruyi_tt_GT, first);
+    }
+    return NULL;
+}
+
 static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
     ruyi_pos_char pc;
     WIDE_CHAR c;
@@ -591,12 +652,57 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
             case '%':
                 choose_tt[0].c = '='; choose_tt[0].token_type = Ruyi_tt_MOD_ASS;
                 return ruyi_lexer_handle_mul_tokens(reader, pc, choose_tt, 1, Ruyi_tt_MOD);
+            case '(':
+                return ruyi_lexer_make_token(Ruyi_tt_LPAREN, pc);
+            case ')':
+                return ruyi_lexer_make_token(Ruyi_tt_RPAREN, pc);
+            case '[':
+                return ruyi_lexer_make_token(Ruyi_tt_LBRACKET, pc);
+            case ']':
+                return ruyi_lexer_make_token(Ruyi_tt_RBRACKET, pc);
+            case '{':
+                return ruyi_lexer_make_token(Ruyi_tt_LBRACE, pc);
+            case '}':
+                return ruyi_lexer_make_token(Ruyi_tt_RBRACE, pc);
+            case ',':
+                return ruyi_lexer_make_token(Ruyi_tt_COMMA, pc);
+            case ';':
+                return ruyi_lexer_make_token(Ruyi_tt_SEMICOLON, pc);
+            case ':':
+                return ruyi_lexer_make_token(Ruyi_tt_COLON, pc);
+            case '<':
+                return ruyi_lexer_token_lt(reader, pc);
+            case '>':
+                return ruyi_lexer_token_gt(reader, pc);
+            case '=':
+                choose_tt[0].c = '='; choose_tt[0].token_type = Ruyi_tt_EQUALS;
+                return ruyi_lexer_handle_mul_tokens(reader, pc, choose_tt, 1, Ruyi_tt_ASSIGN);
+            case '!':
+                choose_tt[0].c = '='; choose_tt[0].token_type = Ruyi_tt_NOT_EQUALS;
+                return ruyi_lexer_handle_mul_tokens(reader, pc, choose_tt, 1, Ruyi_tt_LOGIC_NOT);
+            case '&':
+                choose_tt[0].c = '&'; choose_tt[0].token_type = Ruyi_tt_LOGIC_AND;
+                choose_tt[1].c = '='; choose_tt[1].token_type = Ruyi_tt_BIT_AND_ASS;
+                return ruyi_lexer_handle_mul_tokens(reader, pc, choose_tt, 2, Ruyi_tt_BIT_AND);
+            case '|':
+                choose_tt[0].c = '|'; choose_tt[0].token_type = Ruyi_tt_LOGIC_OR;
+                choose_tt[1].c = '='; choose_tt[1].token_type = Ruyi_tt_BIT_OR_ASS;
+                return ruyi_lexer_handle_mul_tokens(reader, pc, choose_tt, 2, Ruyi_tt_BIT_OR);
+            case '^':
+                choose_tt[0].c = '='; choose_tt[0].token_type = Ruyi_tt_BIT_XOR_ASS;
+                return ruyi_lexer_handle_mul_tokens(reader, pc, choose_tt, 1, Ruyi_tt_BIT_XOR);
+            case '~':
+                choose_tt[0].c = '='; choose_tt[0].token_type = Ruyi_tt_BIT_INVERSE_ASS;
+                return ruyi_lexer_handle_mul_tokens(reader, pc, choose_tt, 1, Ruyi_tt_BIT_INVERSE);
+            case '?':
+                return ruyi_lexer_make_token(Ruyi_tt_QM, pc);
             default:
                 break;
         }
     }
     return NULL;
 }
+
 
 void ruyi_lexer_reader_push_back(ruyi_lexer_reader *reader, ruyi_token *token) {
     assert(reader);
