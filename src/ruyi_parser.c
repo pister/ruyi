@@ -13,12 +13,21 @@
 
 
 static
-ruyi_error* variable_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <variable declaration> ::= KW_VAR <variable declaration tail>
+ruyi_error* variable_declaration_tail(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <variable declaration tail> ::= (LBRACKET RBRACKET) * IDENTITY (ASSIGN <variable initializer>) ?
     
     return NULL;
 }
 
+static
+ruyi_error* variable_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <variable declaration> ::= KW_VAR <variable declaration tail>
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_VAR)) {
+        
+    }
+    *out_ast = NULL;
+    return NULL;
+}
 
 static
 ruyi_error* global_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {

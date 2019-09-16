@@ -814,6 +814,31 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
     return NULL;
 }
 
+BOOL ruyi_lexer_reader_consume_token_if_match(ruyi_lexer_reader *reader, ruyi_token_type type) {
+    assert(reader);
+    ruyi_token* token = ruyi_lexer_reader_next_token(reader);
+    if (token == NULL) {
+        return FALSE;
+    }
+    if (token->type == type) {
+        ruyi_lexer_token_destroy(token);
+        return TRUE;
+    } else {
+        ruyi_lexer_reader_push_back(reader, token);
+        return FALSE;
+    }
+}
+
+ruyi_token_type ruyi_lexer_reader_peek_token_type(ruyi_lexer_reader *reader) {
+    assert(reader);
+    ruyi_token* token = ruyi_lexer_reader_next_token(reader);
+    if (token == NULL) {
+        return Ruyi_tt_END;
+    }
+    ruyi_token_type type = token->type;
+    ruyi_lexer_reader_push_back(reader, token);
+    return type;
+}
 
 void ruyi_lexer_reader_push_back(ruyi_lexer_reader *reader, ruyi_token *token) {
     assert(reader);
