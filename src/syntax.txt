@@ -20,9 +20,7 @@
 
 
 <variable initializer> ::= <expression> | <array initializer>
-<array initializer> ::= LBRACE <variable initializers>? COMMA ? RBRACE
-<variable initializers> ::= <variable initializer> | <variable initializers> COMMA <variable initializer>
-
+<array initializer> ::= LBRACKET (<variable initializer> (COMMA <variable initializer>) * ) ? COMMA ? RBRACKET
 
 <formal parameter list> ::= <formal parameter> | <formal parameter list> COMMA <formal parameter>
 <formal parameter> ::= IDENTITY DOT3? <type>
@@ -84,13 +82,13 @@
 
 <primary> ::= <primary no new array> | <array creation expression>
 <primary no new array> ::= <literal> | KW_THIS | LPARAN <expression> RPARAN  | <variable access> | <field access> | <function invocation> | <array access> | <class instance creation expression>
-<class instance creation expression> ::= new IDENTITY ( <argument list>? )
+<class instance creation expression> ::= new LPARAN IDENTITY (LBRACE (IDENTITY COLON <expression> (COMMA IDENTITY COLON <expression>) *)? RBRACE)? RPARAN
 <argument list> ::= <expression> | <argument list> COMMA <expression>
-<array creation expression> ::= new LPARAN <dims> <raw type> COMMA INTEGER (COMMA INTEGER)? RPARAN
-<dims> ::= LBRACKET RBRACKET | <dims> LBRACKET RBRACKET
+<array creation> ::= <array new creation> | <array direct creation>
+<array new creation> ::= new LPARAN (LBRACKET RBRACKET)+ <raw type> COMMA INTEGER (COMMA INTEGER)? RPARAN
+<array direct creation> ::= LBRACKET (<expression> (COMMA <expression>) * ) ? RBRACKET
 <array access> ::= <expression name> [ <expression> ] | <primary no new array> [ <expression>]
 <variable access> ::= IDENTITY
-
 
 # Types
 <type> ::= <primitive type> | <reference type>
