@@ -9,6 +9,50 @@
 #include "ruyi_lexer.h"
 #include "ruyi_mem.h"
 #include "ruyi_unicode.h"
+#include "ruyi_hashtable.h"
+
+typedef struct {
+    ruyi_token_type type;
+    char keyword[64];
+} ruyi_keyword;
+
+ruyi_keyword g_ruyi_keywords[] = {
+    {Ruyi_tt_KW_IF, "if"},
+    {Ruyi_tt_KW_FOR, "for"},
+};
+
+
+ruyi_token_type ruyi_lexer_keywords_get_type(ruyi_unicode_string * token_value) {
+    static ruyi_hashtable* keywords;
+    UINT32 i;
+    ruyi_value ret_type;
+    if (keywords == NULL) {
+        keywords = ruyi_hashtable_create();
+        for (i = 0; i < sizeof(g_ruyi_keywords)/sizeof(ruyi_keyword); i++) {
+            ruyi_hashtable_put(keywords, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8(g_ruyi_keywords[i].keyword, 0)), ruyi_value_int64(g_ruyi_keywords[i].type));
+        }
+    }
+    if (ruyi_hashtable_get(keywords, ruyi_value_unicode_str(token_value), &ret_type)) {
+        return (ruyi_token_type)ret_type.data.int64_value;
+    }
+    return Ruyi_tt_IDENTITY;
+}
+
+ruyi_unicode_string* ruyi_lexer_keywords_get_str(ruyi_token_type type) {
+    static ruyi_hashtable* keywords;
+    UINT32 i;
+    ruyi_value ret_str;
+    if (keywords == NULL) {
+        keywords = ruyi_hashtable_create();
+        for (i = 0; i < sizeof(g_ruyi_keywords)/sizeof(ruyi_keyword); i++) {
+            ruyi_hashtable_put(keywords, ruyi_value_int64(g_ruyi_keywords[i].type), ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8(g_ruyi_keywords[i].keyword, 0)));
+        }
+    }
+    if (ruyi_hashtable_get(keywords, ruyi_value_int64(type), &ret_str)) {
+        return ret_str.data.unicode_str;
+    }
+    return NULL;
+}
 
 typedef struct {
     UINT32 line;
@@ -260,6 +304,28 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
     }
 }
 
+static ruyi_token * ruyi_lexer_handle_dot3(ruyi_lexer_reader *reader, ruyi_pos_char first) {
+    ruyi_pos_char ch1 = first;
+    ruyi_pos_char ch2 = first;
+    if (!ruyi_lexer_read_next_char(reader, &ch1)) {
+        return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
+    }
+    if ('.' != ch1.c) {
+        ruyi_lexer_reader_push_back_char(reader, ch1);
+        return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
+    }
+    if (!ruyi_lexer_peek_char(reader, &ch2)) {
+        ruyi_lexer_reader_push_back_char(reader, ch1);
+        return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
+    }
+    if ('.' != ch2.c) {
+        ruyi_lexer_reader_push_back_char(reader, ch1);
+        return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
+    }
+    ruyi_lexer_read_next_char(reader, &ch2);
+    return ruyi_lexer_make_token(Ruyi_tt_DOT3, first);
+}
+
 static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos_char first) {
     assert(reader);
     ruyi_pos_char ch = first;
@@ -273,7 +339,9 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
             return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
         }
         if (!RUYI_IS_DIGIT(ch.c)) {
-            return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
+            // Ruyi_tt_DOT3
+            return ruyi_lexer_handle_dot3(reader, first);
+           // return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
         }
         ch.c = '0';
         ruyi_lexer_reader_push_back_char(reader, first);
@@ -332,6 +400,7 @@ static ruyi_token * ruyi_lexer_handle_identifier(ruyi_lexer_reader *reader, ruyi
     ruyi_pos_char ch = first;
     WIDE_CHAR c;
     ruyi_token* token;
+    ruyi_token_type type;
     ruyi_unicode_string_append_wide_char(string_value, ch.c);
     for(;;) {
         if (!ruyi_lexer_read_next_char(reader, &ch)) {
@@ -345,9 +414,17 @@ static ruyi_token * ruyi_lexer_handle_identifier(ruyi_lexer_reader *reader, ruyi
             break;
         }
     }
-    token = ruyi_lexer_make_token(Ruyi_tt_IDENTITY, first);
-    token->value.str_value = string_value;
-    token->size = string_value->length;
+    
+    type = ruyi_lexer_keywords_get_type(string_value);
+    if (type == Ruyi_tt_IDENTITY) {
+        token = ruyi_lexer_make_token(Ruyi_tt_IDENTITY, first);
+        token->value.str_value = string_value;
+        token->size = string_value->length;
+    } else {
+        token = ruyi_lexer_make_token(type, first);
+        
+        ruyi_unicode_string_destroy(string_value);
+    }
     return token;
 }
 
@@ -669,7 +746,8 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
             case ';':
                 return ruyi_lexer_make_token(Ruyi_tt_SEMICOLON, pc);
             case ':':
-                return ruyi_lexer_make_token(Ruyi_tt_COLON, pc);
+                choose_tt[0].c = '='; choose_tt[0].token_type = Ruyi_tt_COLON_ASSIGN;
+                return ruyi_lexer_handle_mul_tokens(reader, pc, choose_tt, 1, Ruyi_tt_COLON);
             case '<':
                 return ruyi_lexer_token_lt(reader, pc);
             case '>':

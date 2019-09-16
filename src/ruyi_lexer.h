@@ -46,6 +46,7 @@ typedef enum {
     Ruyi_tt_COMMA,          // ,
     Ruyi_tt_SEMICOLON,      // ;
     Ruyi_tt_COLON,          // :
+    Ruyi_tt_COLON_ASSIGN,   // :=
     Ruyi_tt_LT,             // <
     Ruyi_tt_GT,             // >
     Ruyi_tt_ASSIGN,         // =
@@ -68,12 +69,14 @@ typedef enum {
     Ruyi_tt_LOGIC_AND,      // &&
     Ruyi_tt_LOGIC_OR,       // ||
     Ruyi_tt_LOGIC_NOT,      // !
-    
     Ruyi_tt_QM,             // ?
-    
+    Ruyi_tt_DOT,            // .
+    Ruyi_tt_DOT3,           // ...
     Ruyi_tt_EOL,            // \n
     Ruyi_tt_END,            // EOF
-    Ruyi_tt_DOT,     // .
+    
+    Ruyi_tt_KW_IF,          // if
+    Ruyi_tt_KW_FOR,         // for
 } ruyi_token_type;
 
 typedef struct {
@@ -114,5 +117,12 @@ void ruyi_lexer_reader_push_back(ruyi_lexer_reader *reader, ruyi_token *token);
 ruyi_token_type ruyi_lexer_reader_peek_token_type(ruyi_lexer_reader *reader);
 
 void ruyi_lexer_token_destroy(ruyi_token * token);
+
+
+// keywords
+ruyi_token_type ruyi_lexer_keywords_get_type(ruyi_unicode_string * token_value);
+
+// keywords
+ruyi_unicode_string* ruyi_lexer_keywords_get_str(ruyi_token_type type);
 
 #endif /* ruyi_lexer_h */

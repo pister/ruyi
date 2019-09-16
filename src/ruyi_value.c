@@ -91,7 +91,7 @@ ruyi_value ruyi_value_str(const char *str) {
     return v;
 }
 
-ruyi_value ruyi_value_unicode_str(const WIDE_CHAR *unicode_str) {
+ruyi_value ruyi_value_unicode_str(ruyi_unicode_string *unicode_str) {
     ruyi_value v;
     v.type = Ruyi_value_type_unicode_str;
     // fill 0 for the other bits on 32-bit env
@@ -113,32 +113,39 @@ static UINT32 hash_for_bytes(const BYTE* byte_ptr) {
 }
 
 
-static UINT32 hash_for_unicode(const WIDE_CHAR* wchar_ptr) {
+static UINT32 hash_for_unicode(ruyi_unicode_string* ustr) {
     UINT32 i;
     UINT32 hash = 0;
-    for (i = 0; i < MAX_HASH_LENGTH_FOR_PTR; i++) {
-        if (wchar_ptr[i] == '\0') {
-            break;
-        }
-        hash = 31 * hash + wchar_ptr[i];
+    WIDE_CHAR c;
+    UINT32 len = ruyi_unicode_string_length(ustr);
+    for (i = 0; i < len; i++) {
+        c = ruyi_unicode_string_at(ustr, i);
+        hash = 31 * hash + c;
     }
     return hash;
 }
 
-static int unicode_cmp(const WIDE_CHAR* w1, const WIDE_CHAR* w2) {
-    int v1, v2;
-    while (TRUE) {
-        v1 = (int)*w1;
-        v2 = (int)*w2;
-        if (v1 == '\0' && v2 == '\0') {
-            return 0;
-        }
+static int unicode_str_cmp(ruyi_unicode_string* w1, ruyi_unicode_string* w2) {
+    WIDE_CHAR v1, v2;
+    UINT32 pos;
+    UINT32 len1 = ruyi_unicode_string_length(w1);
+    UINT32 len2 = ruyi_unicode_string_length(w2);
+    for (pos = 0; pos < len1 && pos < len2; pos++) {
+        v1 = ruyi_unicode_string_at(w1, pos);
+        v2 = ruyi_unicode_string_at(w2, pos);
         if (v1 == v2) {
             continue;
         }
         return v1 > v2 ? 1 : -1;
     }
+    if (len1 > len2) {
+        return 1;
+    } else if (len1 < len2) {
+        return -1;
+    }
+    return 0;
 }
+
 
 UINT32 ruyi_value_get_unicode_str(ruyi_value value, WIDE_CHAR* out_buf, UINT32 buf_length) {
     UINT32 pos = 0;
@@ -147,7 +154,7 @@ UINT32 ruyi_value_get_unicode_str(ruyi_value value, WIDE_CHAR* out_buf, UINT32 b
         return 0;
     }
     while (pos < buf_length) {
-        c = value.data.unicode_str[pos];
+        c = ruyi_unicode_string_at(value.data.unicode_str, pos);
         out_buf[pos] = c;
         if (c == '\0') {
             break;
@@ -223,7 +230,7 @@ BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2) {
             }
             return FALSE;
         case Ruyi_value_type_unicode_str:
-            if (unicode_cmp(v1.data.unicode_str, v2.data.unicode_str) == 0) {
+            if (unicode_str_cmp(v1.data.unicode_str, v2.data.unicode_str) == 0) {
                 return TRUE;
             }
             return FALSE;

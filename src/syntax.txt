@@ -1,0 +1,110 @@
+# Ruyi Program Language Syntax
+
+# Programs
+<root> ::= <global declarations>?
+
+# Declarations
+<global declarations> ::= <global declaration> *
+<global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration> | <statement ends>
+
+<variable declaration> ::= KW_VAR <variable declaration tail>
+<function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <type>? <function body>
+<class declaration> ::= KW_CLASS IDENTITY <class body>
+<interface declaration> ::= KW_INTERFACE IDENTITY <interface body>
+<constant declaration> ::= KW_CONST IDENTITY ASSIGN <constant initializer>
+
+<class body> ::= LBRACE <class body declarations>? RBRACE
+<class body declarations> ::= <class body declaration> | <class body declarations> <class body declaration>
+
+<variable declaration tail> ::= <variable declarator id> | <variable declarator id> ASSIGN <variable initializer>
+<variable declarator id> ::= IDENTITY | LBRACKET RBRACKET <variable declarator id>
+
+<variable initializer> ::= <expression> | <array initializer>
+<array initializer> ::= LBRACE <variable initializers>? COMMA ? RBRACE
+<variable initializers> ::= <variable initializer> | <variable initializers> COMMA <variable initializer>
+
+
+<formal parameter list> ::= <formal parameter> | <formal parameter list> COMMA <formal parameter>
+<formal parameter> ::= IDENTITY DOT3? <type>
+<method body> ::= <block> | <statement ends>
+
+
+# Blocks
+<block> ::= LBRACE <block statements>? RBRACE
+<block statements> ::= <block statement> | <block statements> <block statement>
+<block statement> ::= <local variable declaration statement> | <statement>
+<local variable declaration statement> ::= <local variable declaration> <statement ends>
+<local variable declaration> ::= <variable declaration> | <local direct assign>
+<local direct assign> ::= IDENTITY COLON_ASSIGN <expression>
+<statement> ::= <labeled statement> | <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement>
+<sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>
+
+<expression statement> ::= <statement expression> <statement ends>
+<statement expression> ::= <assignment> | <preincrement expression> | <postincrement expression> | <postdecrement expression> | <function invocation> | <class instance creation expression>
+
+
+
+<empty statement> ::= <statement ends>
+<labeled statement> ::= IDENTITY COLON <statement>
+
+
+#
+<statement ends> ::= <statement end> | <statement ends> <statement end>
+<statement end> ::= SEMICOLON | EOL
+
+# Expression
+<expression> ::= <assignment expression>
+<assignment expression> ::= <conditional expression> | <assignment>
+<assignment> ::= <left hand side> <assignment operator> <assignment expression>
+<left hand side> ::= <expression name> | <field access> | <array access>
+<assignment operator> ::= ASSIGN | MUL_ASS | DIV_ASS | MOD_ASS | ADD_ASS | SUB_ASS | SHFT_LEFT_ASS | SHFT_RIGHT_ASS | BIT_AND_ASS | BIT_XOR_ASS | BIT_OR_ASS
+<conditional expression> ::= <conditional or expression> | <conditional or expression> QM <expression> : <conditional expression>
+<conditional or expression> ::= <conditional and expression> | <conditional or expression> LOGIC_OR <conditional and expression>
+<conditional and expression> ::= <inclusive or expression> | <conditional and expression> LOGIC_AND <inclusive or expression>
+<inclusive or expression> ::= <exclusive or expression> | <inclusive or expression> | <exclusive or expression>
+<exclusive or expression> ::= <and expression> | <exclusive or expression> BIT_XOR <and expression>
+<and expression> ::= <equality expression> | <and expression> BIT_AND <equality expression>
+<equality expression> ::= <relational expression> | <equality expression> == <relational expression> | <equality expression> NOT_EQUALS <relational expression>
+<relational expression> ::= <shift expression> | <relational expression> LT <shift expression> | <relational expression> GT <shift expression> | <relational expression> LTE <shift expression> | <relational expression> GTE <shift expression> | <relational expression> instanceof <reference type>
+<shift expression> ::= <additive expression> | <shift expression> SHFT_LEFT <additive expression> | <shift expression> SHFT_RIGHT <additive expression>
+<additive expression> ::= <multiplicative expression> | <additive expression> ADD <multiplicative expression> | <additive expression> SUB <multiplicative expression>
+<multiplicative expression> ::= <unary expression> | <multiplicative expression> MUL <unary expression> | <multiplicative expression> DIV <unary expression> | <multiplicative expression> MOD <unary expression>
+<cast expression> ::= LPARAN <primitive type> RPARAN <unary expression> | LPARAN <reference type> RPARAN <unary expression not plus minus>
+<unary expression> ::= <preincrement expression> | ADD <unary expression> | SUB <unary expression> | <unary expression not plus minus>
+<unary expression not plus minus> ::= <postfix expression> | BIT_INVERSE <unary expression> | LOGIC_NOT <unary expression> | <cast expression>
+<postdecrement expression> ::= <postfix expression> DEC
+<postincrement expression> ::= <postfix expression> INC
+<postfix expression> ::= <primary> | <expression name> | <postincrement expression> | <postdecrement expression>
+
+<function invocation> ::= <method name> ( <argument list>? ) | <primary> DOT IDENTITY ( <argument list>? )
+## | super . <identifier> ( <argument list>? )
+
+<field access> ::= <primary> DOT IDENTITY
+## | super . <identifier>
+
+<primary> ::= <primary no new array> | <array creation expression>
+<primary no new array> ::= <literal> | KW_THIS | LPARAN <expression> RPARAN  | <variable access> | <field access> | <function invocation> | <array access> | <class instance creation expression>
+<class instance creation expression> ::= new IDENTITY ( <argument list>? )
+<argument list> ::= <expression> | <argument list> COMMA <expression>
+<array creation expression> ::= new LPARAN <dims> <raw type> COMMA INTEGER (COMMA INTEGER)? RPARAN
+<dims> ::= LBRACKET RBRACKET | <dims> LBRACKET RBRACKET
+<array access> ::= <expression name> [ <expression> ] | <primary no new array> [ <expression>]
+<variable access> ::= IDENTITY
+
+
+# Types
+<type> ::= <primitive type> | <reference type>
+<raw type> ::= <primitive type> | IDENTITY
+<primitive type> ::= <numeric type> | bool
+<numeric type> ::= <integral type> | <floating-point type>
+<integral type> ::= KW_CHAR | KW_INT | <integral sp-type>
+<integral sp-type> ::= KW_INT8 | KW_INT16 | KW_INT32 | KW_INT64 | KW_UINT8 | KW_UINT16 | KW_UINT32 | KW_UINT64
+<floating-point type> ::= KW_FLOAT
+<reference type> ::= IDENTITY | <array type>
+<array type> ::= LBRACKET RBRACKET <type>
+
+# Tokens
+<expression name> ::= IDENTITY | <ambiguous name> DOT IDENTITY
+<method name> ::= IDENTITY | <ambiguous name> DOT IDENTITY
+<ambiguous name> ::= IDENTITY | <ambiguous name> DOT IDENTITY
+<literal> ::= INTEGER | FLOAT | KW_TRUE | KW_FALSE | CHAR | STRING | KW_NULL

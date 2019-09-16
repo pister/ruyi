@@ -321,7 +321,7 @@ ruyi_unicode_string * ruyi_unicode_string_init_from_utf8(const char* src, UINT32
     if (len == 0) {
         len = (UINT32)strlen(src);
     }
-    unicode_str = ruyi_unicode_string_init_with_capacity(len/2 + 1);
+    unicode_str = ruyi_unicode_string_init_with_capacity(len + 1);
     ruyi_unicode_string_append_utf8(unicode_str, src, len);
     return unicode_str;
 }

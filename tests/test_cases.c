@@ -242,6 +242,33 @@ static void test_hashtable(void) {
     ruyi_hashtable_destory(hashtable);
 }
 
+static void test_hashtable_unicode_str(void) {
+    ruyi_hashtable * hashtable = ruyi_hashtable_create();
+    ruyi_unicode_string *us1;
+    ruyi_unicode_string *us2;
+    ruyi_value value;
+    BOOL result;
+    
+    us1 = ruyi_unicode_string_init_from_utf8("name1", 0);
+    us2 = ruyi_unicode_string_init_from_utf8("name22", 0);
+    
+    
+    ruyi_hashtable_put(hashtable, ruyi_value_unicode_str(us1), ruyi_value_int64(111));
+    assert(1 == ruyi_hashtable_length(hashtable));
+    ruyi_hashtable_put(hashtable, ruyi_value_unicode_str(us2), ruyi_value_int64(222));
+    assert(2 == ruyi_hashtable_length(hashtable));
+    
+    result = ruyi_hashtable_get(hashtable,  ruyi_value_unicode_str(us1), &value);
+    assert(result);
+    assert(111 == value.data.int64_value);
+    result = ruyi_hashtable_get(hashtable,  ruyi_value_unicode_str(us2), &value);
+    assert(result);
+    assert(222 == value.data.int64_value);
+
+    ruyi_hashtable_destory(hashtable);
+}
+
+
 void test_unicode() {
     const BYTE str[] = {0xE6,0xB1,0x89,0xE5,0xAD,0x97, 'a', 'b'};
     WIDE_CHAR ch[128];
@@ -381,7 +408,7 @@ void assert_lexer_token(ruyi_vector * vector, UINT32 index, ruyi_token_type type
 }
 
 void test_lexer_id_number(void) {
-    const char* src = "hello  124 world 5412.455 0x123 0b1101 0431 0 0.0 . .1230 1.23e6 4.56e-12 12e3 a";
+    const char* src = "hello  124 world 5412.455 0x123 0b1101 0431 0 0.0 . .1230 1.23e6 4.56e-12 12e3 a .. ... .1";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_token *token;
@@ -400,7 +427,7 @@ void test_lexer_id_number(void) {
         }
     }
     ruyi_lexer_reader_close(reader);
-    assert(16 == ruyi_vector_length(vector));
+    assert(20 == ruyi_vector_length(vector));
     assert_lexer_token(vector, 0, Ruyi_tt_IDENTITY, "hello", 0, 0);
     assert_lexer_token(vector, 1, Ruyi_tt_INTEGER, NULL, 124, 0);
     assert_lexer_token(vector, 2, Ruyi_tt_IDENTITY, "world", 0, 0);
@@ -416,7 +443,11 @@ void test_lexer_id_number(void) {
     assert_lexer_token(vector, 12, Ruyi_tt_FLOAT, NULL, 0, 4.56e-12);
     assert_lexer_token(vector, 13, Ruyi_tt_INTEGER, NULL, 12e3, 0);
     assert_lexer_token(vector, 14, Ruyi_tt_IDENTITY, "a", 0, 0);
-    assert_lexer_token(vector, 15, Ruyi_tt_END, NULL, 0, 0);
+    assert_lexer_token(vector, 15, Ruyi_tt_DOT, NULL, 0, 0);
+    assert_lexer_token(vector, 16, Ruyi_tt_DOT, NULL, 0, 0);
+    assert_lexer_token(vector, 17, Ruyi_tt_DOT3, NULL, 0, 0);
+    assert_lexer_token(vector, 18, Ruyi_tt_FLOAT, NULL, 0, 0.1);
+    assert_lexer_token(vector, 19, Ruyi_tt_END, NULL, 0, 0);
     for (i = 0; i < ruyi_vector_length(vector); i++) {
         ruyi_vector_get(vector, i, &val);
         token = (ruyi_token *)val.data.ptr;
@@ -447,33 +478,33 @@ void test_lexer_id_number_string_char_comments(void) {
         }
     }
     ruyi_lexer_reader_close(reader);
-    assert(24 == ruyi_vector_length(vector));
-    assert_lexer_token(vector, 0, Ruyi_tt_IDENTITY, "hello", 0, 0);
-    assert_lexer_token(vector, 1, Ruyi_tt_INTEGER, NULL, 124, 0);
-    assert_lexer_token(vector, 2, Ruyi_tt_STRING, "5412sksx", 0, 0);
-    assert_lexer_token(vector, 3, Ruyi_tt_STRING, "你的x\ny\txxxa\"az", 0, 0);
-    assert_lexer_token(vector, 4, Ruyi_tt_CHAR, NULL, 'a', 0);
-    assert_lexer_token(vector, 5, Ruyi_tt_CHAR, NULL, '\t', 0);
-    assert_lexer_token(vector, 6, Ruyi_tt_CHAR, NULL, '\'', 0);
-    assert_lexer_token(vector, 7, Ruyi_tt_CHAR, NULL, ruyi_unicode_wide_char_utf8("中"), 0);
-    assert_lexer_token(vector, 8, Ruyi_tt_LINE_COMMENTS, NULL, 0, 0);
-    assert_lexer_token(vector, 9, Ruyi_tt_MLINES_COMMENTS, NULL, 0, 0);
-    assert_lexer_token(vector, 10, Ruyi_tt_DIV, NULL, 0, 0);
+    i = 0;
+    assert_lexer_token(vector, i++, Ruyi_tt_IDENTITY, "hello", 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_INTEGER, NULL, 124, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_STRING, "5412sksx", 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_STRING, "你的x\ny\txxxa\"az", 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_CHAR, NULL, 'a', 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_CHAR, NULL, '\t', 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_CHAR, NULL, '\'', 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_CHAR, NULL, ruyi_unicode_wide_char_utf8("中"), 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_LINE_COMMENTS, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_MLINES_COMMENTS, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_DIV, NULL, 0, 0);
     
-    assert_lexer_token(vector, 11, Ruyi_tt_ADD, NULL, 0, 0);
-    assert_lexer_token(vector, 12, Ruyi_tt_IDENTITY, "ab", 0, 0);
-    assert_lexer_token(vector, 13, Ruyi_tt_INC, NULL, 0, 0);
-    assert_lexer_token(vector, 14, Ruyi_tt_ADD_ASS, NULL, 0, 0);
-    assert_lexer_token(vector, 15, Ruyi_tt_SUB, NULL, 0, 0);
-    assert_lexer_token(vector, 16, Ruyi_tt_DEC, NULL, 0, 0);
-    assert_lexer_token(vector, 17, Ruyi_tt_SUB_ASS, NULL, 0, 0);
-    assert_lexer_token(vector, 18, Ruyi_tt_MUL, NULL, 0, 0);
-    assert_lexer_token(vector, 19, Ruyi_tt_MUL_ASS, NULL, 0, 0);
-    assert_lexer_token(vector, 20, Ruyi_tt_DIV_ASS, NULL, 0, 0);
-    assert_lexer_token(vector, 21, Ruyi_tt_MOD, NULL, 0, 0);
-    assert_lexer_token(vector, 22, Ruyi_tt_MOD_ASS, NULL, 0, 0);
-    
-    assert_lexer_token(vector, 23, Ruyi_tt_END, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_ADD, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_IDENTITY, "ab", 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_INC, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_ADD_ASS, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_SUB, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_DEC, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_SUB_ASS, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_MUL, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_MUL_ASS, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_DIV_ASS, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_MOD, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_MOD_ASS, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_END, NULL, 0, 0);
+    assert(i == ruyi_vector_length(vector));
     
     for (i = 0; i < ruyi_vector_length(vector); i++) {
         ruyi_vector_get(vector, i, &val);
@@ -485,7 +516,7 @@ void test_lexer_id_number_string_char_comments(void) {
 }
 
 void test_lexer_symbols(void) {
-    const char* src = "={a|b?(a|=b) || a&b a&=b && a<b << a<<=b > >= >> >>= a==b != ! ^ ~ [x]}";
+    const char* src = "={a|b?(a|=b) || a&b a&=b && a<b << a<<=b > >= >> >>= a==b != ! ^ ~ [x]} : :=";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_token *token;
@@ -550,11 +581,50 @@ void test_lexer_symbols(void) {
     assert_lexer_token(vector, i++, Ruyi_tt_IDENTITY, "x", 0, 0);
     assert_lexer_token(vector, i++, Ruyi_tt_RBRACKET, NULL, 0, 0);
     assert_lexer_token(vector, i++, Ruyi_tt_RBRACE, NULL, 0, 0);
-
+    assert_lexer_token(vector, i++, Ruyi_tt_COLON, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_COLON_ASSIGN, NULL, 0, 0);
     assert_lexer_token(vector, i++, Ruyi_tt_END, NULL, 0, 0);
     
     assert(i == ruyi_vector_length(vector));
 
+    for (i = 0; i < ruyi_vector_length(vector); i++) {
+        ruyi_vector_get(vector, i, &val);
+        token = (ruyi_token *)val.data.ptr;
+        ruyi_lexer_token_destroy(token);
+    }
+    
+    ruyi_vector_destroy(vector);
+}
+
+
+void test_lexer_keywords(void) {
+    const char* src = "hello \"abc\" if for";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_token *token;
+    UINT32 i;
+    ruyi_value val;
+    ruyi_vector * vector = ruyi_vector_create();
+    for (;;) {
+        token = ruyi_lexer_reader_next_token(reader);
+        if (!token) {
+            printf("read next token error\n");
+            break;
+        }
+        ruyi_vector_add(vector, ruyi_value_ptr(token));
+        if (token->type == Ruyi_tt_END) {
+            break;
+        }
+    }
+    ruyi_lexer_reader_close(reader);
+    i = 0;
+    assert_lexer_token(vector, i++, Ruyi_tt_IDENTITY, "hello", 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_STRING, "abc", 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_KW_IF, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_KW_FOR, NULL, 0, 0);
+    assert_lexer_token(vector, i++, Ruyi_tt_END, NULL, 0, 0);
+    
+    assert(5 == ruyi_vector_length(vector));
     
     for (i = 0; i < ruyi_vector_length(vector); i++) {
         ruyi_vector_get(vector, i, &val);
@@ -567,7 +637,10 @@ void test_lexer_symbols(void) {
 
 
 void test_unicode_string(void) {
+    ruyi_value v2, v3;
     ruyi_unicode_string *us1 = ruyi_unicode_string_init_from_utf8("abc中午123", 0);
+    ruyi_unicode_string *us2 = ruyi_unicode_string_init_from_utf8("abc中午123", 0);
+    ruyi_unicode_string *us3 = ruyi_unicode_string_init_from_utf8("abc中午123", 0);
     ruyi_bytes_string* s1 = NULL;
     assert(8 == ruyi_unicode_string_length(us1));
     ruyi_unicode_string_append_utf8(us1, "我的世界456测试啦啦4567", 0);
@@ -575,7 +648,13 @@ void test_unicode_string(void) {
     s1 = ruyi_unicode_string_decode_utf8(us1);
     
     assert(0 == strncmp(s1->str, "abc中午123我的世界456测试啦啦4567", strlen(s1->str)));
+    
+    v2 = ruyi_value_unicode_str(us2);
+    v3 = ruyi_value_unicode_str(us3);
+    assert(ruyi_value_equals(v2, v3));
+    
     ruyi_unicode_string_destroy(us1);
+    ruyi_unicode_string_destroy(us2);
     ruyi_unicode_bytes_string_destroy(s1);
 }
 
@@ -583,6 +662,7 @@ void run_test_cases(void) {
     test_lists();
     test_vectors();
     test_hashtable();
+    test_hashtable_unicode_str();
     test_unicode();
     test_unicode_string();
   //  test_file();
@@ -590,4 +670,5 @@ void run_test_cases(void) {
     test_lexer_id_number();
     test_lexer_id_number_string_char_comments();
     test_lexer_symbols();
+    test_lexer_keywords();
 }

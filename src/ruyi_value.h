@@ -10,6 +10,7 @@
 #define ruyi_value_h
 
 #include "ruyi_basics.h"
+#include "ruyi_unicode.h"
 
 typedef enum {
     Ruyi_value_type_uint64,
@@ -32,7 +33,7 @@ typedef struct {
         INT64 int64_value;
         void * ptr;
         const char * str;
-        const WIDE_CHAR * unicode_str;
+        ruyi_unicode_string * unicode_str;
         UINT32 uint32_value;
         INT32 int32_value;
         UINT16 uint16_value;
@@ -52,7 +53,7 @@ ruyi_value ruyi_value_uint8(UINT8 value);
 ruyi_value ruyi_value_int8(INT8 value);
 ruyi_value ruyi_value_ptr(void *ptr);
 ruyi_value ruyi_value_str(const char *str);
-ruyi_value ruyi_value_unicode_str(const WIDE_CHAR *unicode_str);
+ruyi_value ruyi_value_unicode_str(ruyi_unicode_string *unicode_str);
 
 
 BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2);
