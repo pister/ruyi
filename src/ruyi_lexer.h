@@ -117,7 +117,7 @@ typedef enum {
     
 } ruyi_token_type;
 
-typedef struct {
+typedef struct _ruyi_token {
     ruyi_token_type type;
     UINT32 line;
     UINT32 column;
@@ -156,7 +156,7 @@ ruyi_token_type ruyi_lexer_reader_peek_token_type(ruyi_lexer_reader *reader);
 
 void ruyi_lexer_token_destroy(ruyi_token * token);
 
-BOOL ruyi_lexer_reader_consume_token_if_match(ruyi_lexer_reader *reader, ruyi_token_type type);
+BOOL ruyi_lexer_reader_consume_token_if_match(ruyi_lexer_reader *reader, ruyi_token_type type, ruyi_token* out_token);
 
 // keywords
 ruyi_token_type ruyi_lexer_keywords_get_type(ruyi_unicode_string * token_value);

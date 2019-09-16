@@ -13,15 +13,18 @@ void ruyi_ast_destroy(ruyi_ast *ast) {
     UINT32 i, len;
     ruyi_value sub_ast_value;
     ruyi_ast *sub_ast_ptr;
+    ruyi_unicode_string * ustr;
     assert(ast);
     // TODO
-    switch (ast->type) {
-        case Ruyi_at_global_declaration:
-        
+    switch (ast->adt_type) {
+    case Ruyi_adt_unicode_str:
+            ustr = (ruyi_unicode_string *)ast->data.ptr_value;
+            if (ustr) {
+                ruyi_unicode_string_destroy(ustr);
+                ast->data.ptr_value = NULL;
+            }
         break;
-        case Ruyi_at_root:
-        
-        default:
+    default:
         break;
     }
     if (ast->child_asts) {
@@ -43,8 +46,16 @@ void ruyi_ast_destroy(ruyi_ast *ast) {
 ruyi_ast * ruyi_ast_create(ruyi_ast_type type) {
     ruyi_ast *ast = ruyi_mem_alloc(sizeof(ruyi_ast));
     ast->type = type;
+    ast->adt_type = Ruyi_adt_value;
     ast->data.int64_value = 0;
     ast->child_asts = NULL;
+    return ast;
+}
+
+ruyi_ast * ruyi_ast_create_with_unicode(ruyi_ast_type type, ruyi_unicode_string *str) {
+    ruyi_ast *ast = ruyi_ast_create(type);
+    ast->adt_type = Ruyi_adt_unicode_str;
+    ast->data.ptr_value = ruyi_unicode_string_copy_from(str);
     return ast;
 }
 

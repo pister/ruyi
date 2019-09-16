@@ -326,6 +326,20 @@ ruyi_unicode_string * ruyi_unicode_string_init_from_utf8(const char* src, UINT32
     return unicode_str;
 }
 
+ruyi_unicode_string * ruyi_unicode_string_copy_from(const ruyi_unicode_string * src) {
+    ruyi_unicode_string * unicode_str;
+    if (src == NULL) {
+        return NULL;
+    }
+    
+    unicode_str = (ruyi_unicode_string *)ruyi_mem_alloc(sizeof(ruyi_unicode_string));
+    unicode_str->capacity = src->capacity;
+    unicode_str->length = src->length;
+    unicode_str->data = (WIDE_CHAR*)ruyi_mem_alloc(sizeof(WIDE_CHAR) * unicode_str->capacity);
+    memcpy(unicode_str->data, src->data, unicode_str->length);
+    return unicode_str;
+}
+
 UINT32 ruyi_unicode_string_length(const ruyi_unicode_string *unicode_str) {
     assert(unicode_str);
     return unicode_str->length;

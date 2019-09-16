@@ -63,6 +63,8 @@ ruyi_unicode_string * ruyi_unicode_string_init_with_capacity(UINT32 capacity);
 
 ruyi_unicode_string * ruyi_unicode_string_init_from_utf8(const char* src, UINT32 len);
 
+ruyi_unicode_string * ruyi_unicode_string_copy_from(const ruyi_unicode_string * src);
+
 void ruyi_unicode_string_append(ruyi_unicode_string *unicode_str, WIDE_CHAR *data, UINT32 len);
 
 void ruyi_unicode_string_append_wide_char(ruyi_unicode_string *unicode_str, WIDE_CHAR c);

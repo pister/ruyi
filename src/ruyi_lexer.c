@@ -814,11 +814,14 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
     return NULL;
 }
 
-BOOL ruyi_lexer_reader_consume_token_if_match(ruyi_lexer_reader *reader, ruyi_token_type type) {
+BOOL ruyi_lexer_reader_consume_token_if_match(ruyi_lexer_reader *reader, ruyi_token_type type, ruyi_token* out_token) {
     assert(reader);
     ruyi_token* token = ruyi_lexer_reader_next_token(reader);
     if (token == NULL) {
         return FALSE;
+    }
+    if (out_token) {
+        *out_token = *token;
     }
     if (token->type == type) {
         ruyi_lexer_token_destroy(token);
