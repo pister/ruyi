@@ -27,36 +27,8 @@ ruyi_error* expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
 }
 
 static
-ruyi_error* array_initializer(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    
-    return NULL;
-}
-
-static
-ruyi_error* variable_initializer(ruyi_lexer_reader *reader, ruyi_ast **out_ast, ruyi_token_pos pos) {
-    // <variable initializer> ::= <expression> | <array initializer>
-    ruyi_ast *ast = NULL;
-    ruyi_error* err;
-    if ((err = expression(reader, &ast)) != NULL) {
-        return err;
-    }
-    if (ast != NULL) {
-        *out_ast = ast;
-        return NULL;
-    }
-    if ((err = array_initializer(reader, &ast)) != NULL) {
-        return err;
-    }
-    if (ast != NULL) {
-        *out_ast = ast;
-        return NULL;
-    }
-    return ruyi_error_make_by_pos(Ruyi_et_Parser, "miss expression or array after '='", pos);
-}
-
-static
 ruyi_error* variable_declaration_tail(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <variable declaration tail> ::= (LBRACKET RBRACKET) * IDENTITY (ASSIGN <variable initializer>) ?
+    // <variable declaration tail> ::= (LBRACKET RBRACKET) * IDENTITY (ASSIGN <expression>) ?
     ruyi_error* err;
     ruyi_token token1;
     ruyi_token token2;
@@ -84,8 +56,11 @@ ruyi_error* variable_declaration_tail(ruyi_lexer_reader *reader, ruyi_ast **out_
         return NULL;
     }
     ruyi_lexer_reader_consume_token(reader); // ASSIGN
-    if ((err = variable_initializer(reader, &ast_var_init, ruyi_token_pos_make(&token1))) != NULL) {
+    if ((err = expression(reader, &ast_var_init)) != NULL) {
         return err;
+    }
+    if (ast_var_init == NULL) {
+        return ruyi_error_make(Ruyi_et_Parser, "miss expression or array after '='", &token1);
     }
     ruyi_ast_add_child(var_declare_ast, ast_var_init);
     *out_ast = var_declare_ast;

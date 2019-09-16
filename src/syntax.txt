@@ -16,11 +16,7 @@
 <class body> ::= LBRACE <class body declarations>? RBRACE
 <class body declarations> ::= <class body declaration> | <class body declarations> <class body declaration>
 
-<variable declaration tail> ::= (LBRACKET RBRACKET) * IDENTITY (ASSIGN <variable initializer>) ?
-
-
-<variable initializer> ::= <expression> | <array initializer>
-<array initializer> ::= LBRACKET (<variable initializer> (COMMA <variable initializer>) * ) ? COMMA ? RBRACKET
+<variable declaration tail> ::= (LBRACKET RBRACKET) * IDENTITY (ASSIGN <expression>) ?
 
 <formal parameter list> ::= <formal parameter> | <formal parameter list> COMMA <formal parameter>
 <formal parameter> ::= IDENTITY DOT3? <type>
