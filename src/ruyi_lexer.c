@@ -10,6 +10,7 @@
 #include "ruyi_mem.h"
 #include "ruyi_unicode.h"
 #include "ruyi_hashtable.h"
+#include <string.h> // for memcpy
 
 typedef struct {
     ruyi_token_type type;
@@ -52,6 +53,13 @@ ruyi_keyword g_ruyi_keywords[] = {
     {Ruyi_tt_KW_DOUBLE, "double"},
     {Ruyi_tt_KW_PACKAGE,"package"},
     {Ruyi_tt_KW_IMPORT, "import"},
+    {Ruyi_tt_KW_TRUE,   "true"},
+    {Ruyi_tt_KW_FALSE,  "false"},
+    {Ruyi_tt_KW_NULL,   "null"},
+    {Ruyi_tt_KW_ARRAY,  "array"},
+    {Ruyi_tt_KW_MAP,    "map"},
+    {Ruyi_tt_KW_THIS,   "this"},
+
 };
 
 
@@ -112,6 +120,48 @@ ruyi_lexer_reader* ruyi_lexer_reader_open(ruyi_file *file) {
 
 static void ruyi_lexer_error_message(const char* msg, ruyi_pos_char first) {
     printf("lexer error: %s at line: %d, column: %d\n", msg, first.line, first.column);
+}
+
+static void ruyi_lexer_copy_last_n_chars(WIDE_CHAR *dest, UINT32 dest_size, ruyi_unicode_string* src) {
+    UINT32 size = ruyi_unicode_string_length(src);
+    UINT32 copy_pos, copy_len;
+    if (size < dest_size - 1) {
+        copy_pos = 0;
+        copy_len = size;
+    } else {
+        copy_len = dest_size - 1;
+        copy_pos = size - dest_size + 1;
+    }
+    memcpy(dest, src->data + copy_pos, copy_len * sizeof(WIDE_CHAR));
+    dest[copy_len] = '\0';
+}
+
+static void ruyi_lexer_set_snapshot(ruyi_token_snapshot *token_snapshot, ruyi_token *token) {
+    ruyi_unicode_string* keyword;
+    if (token == NULL) {
+        token_snapshot->column = 0;
+        token_snapshot->line = 0;
+        token_snapshot->size = 0;
+        token_snapshot->value.int_value = 0;
+        token_snapshot->str_snapshot[0] = '\0';
+    } else {
+        token_snapshot->column = token->column;
+        token_snapshot->line = token->line;
+        token_snapshot->size = token->size;
+        keyword = ruyi_lexer_keywords_get_str(token->type);
+        if (keyword) {
+            ruyi_lexer_copy_last_n_chars(token_snapshot->str_snapshot, LEXER_TOKEN_SNAPSHOT_STR_SIZE, keyword);
+        } else {
+            switch (token->type) {
+                case Ruyi_tt_IDENTITY:
+                case Ruyi_tt_STRING:
+                    ruyi_lexer_copy_last_n_chars(token_snapshot->str_snapshot, LEXER_TOKEN_SNAPSHOT_STR_SIZE, token->value.str_value);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
 }
 
 void ruyi_lexer_reader_close(ruyi_lexer_reader *reader) {
@@ -852,16 +902,21 @@ void ruyi_lexer_reader_push_back(ruyi_lexer_reader *reader, ruyi_token *token) {
 ruyi_token* ruyi_lexer_reader_next_token(ruyi_lexer_reader *reader) {
     assert(reader);
     ruyi_value value;
+    ruyi_token* token;
     if (!ruyi_list_empty(reader->token_buffer_queue)) {
         ruyi_list_remove_first(reader->token_buffer_queue, &value);
-        return (ruyi_token*)value.data.ptr;
+        token = (ruyi_token*)value.data.ptr;
+    } else {
+        token = ruyi_lexer_next_token_impl(reader);
     }
-    return ruyi_lexer_next_token_impl(reader);
+    ruyi_lexer_set_snapshot(&reader->token_snapshot, token);
+    return token;
 }
 
 void ruyi_lexer_reader_consume_token(ruyi_lexer_reader *reader) {
     ruyi_token * token = ruyi_lexer_reader_next_token(reader);
     if (token) {
+        ruyi_lexer_set_snapshot(&reader->token_snapshot, token);
         ruyi_lexer_token_destroy(token);
     }
 }

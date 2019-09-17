@@ -88,6 +88,7 @@ typedef enum {
     Ruyi_tt_KW_CONTINUE,    // continue
     Ruyi_tt_KW_DEFAULT,     // default
     
+    Ruyi_tt_KW_THIS,        // this
     Ruyi_tt_KW_FUNC,        // func
     Ruyi_tt_KW_CLASS,       // class
     Ruyi_tt_KW_NEW,         // new
@@ -98,14 +99,21 @@ typedef enum {
     Ruyi_tt_KW_FLOAT,       // float
     Ruyi_tt_KW_RUNE,        // rune
     Ruyi_tt_KW_BYTE,        // byte
-    Ruyi_tt_KW_DOUBLE,       // double
-    Ruyi_tt_KW_LONG,         // long
-    Ruyi_tt_KW_SHORT,        // short
+    Ruyi_tt_KW_DOUBLE,      // double
+    Ruyi_tt_KW_LONG,        // long
+    Ruyi_tt_KW_SHORT,       // short
+    
+    Ruyi_tt_KW_ARRAY,       // array
+    Ruyi_tt_KW_MAP,         // map
     
     Ruyi_tt_KW_TRY,         // try
     Ruyi_tt_KW_CATCH,       // catch
     Ruyi_tt_KW_THROW,       // throw
     
+    Ruyi_tt_KW_TRUE,        // true
+    Ruyi_tt_KW_FALSE,       // false
+    Ruyi_tt_KW_NULL,        // null
+
     Ruyi_tt_KW_STATIC,       // static
     Ruyi_tt_KW_ENUM,         // enum
     Ruyi_tt_KW_DO,           // do
@@ -129,7 +137,21 @@ typedef struct _ruyi_token {
     } value;
 } ruyi_token;
 
+#define LEXER_TOKEN_SNAPSHOT_STR_SIZE 128
+
 typedef struct {
+    ruyi_token_type type;
+    UINT32 line;
+    UINT32 column;
+    UINT32 size;
+    union {
+        INT64 int_value;
+        double float_value;
+    } value;
+    WIDE_CHAR str_snapshot[LEXER_TOKEN_SNAPSHOT_STR_SIZE];
+} ruyi_token_snapshot;
+
+typedef struct _ruyi_lexer_reader {
     ruyi_list *token_buffer_queue;
     ruyi_unicode_file *file;
     /*
@@ -140,6 +162,7 @@ typedef struct {
     ruyi_list *chars_buffer_queue;
     UINT32 line;
     UINT32 column;
+    ruyi_token_snapshot token_snapshot;
 } ruyi_lexer_reader;
 
 ruyi_lexer_reader* ruyi_lexer_reader_open(ruyi_file *file);

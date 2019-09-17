@@ -52,6 +52,12 @@ ruyi_ast * ruyi_ast_create(ruyi_ast_type type) {
     return ast;
 }
 
+ruyi_ast * ruyi_ast_create_by_token_type(ruyi_ast_type type, ruyi_token_type token_type) {
+    ruyi_ast *ast = ruyi_ast_create(type);
+    ast->data.int64_value = token_type;
+    return ast;
+}
+
 ruyi_ast * ruyi_ast_create_with_unicode(ruyi_ast_type type, ruyi_unicode_string *str) {
     ruyi_ast *ast = ruyi_ast_create(type);
     ast->adt_type = Ruyi_adt_unicode_str;

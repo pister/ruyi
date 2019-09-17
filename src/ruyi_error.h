@@ -17,6 +17,7 @@ typedef enum {
 } ruyi_error_type;
 
 struct _ruyi_token;
+struct _ruyi_lexer_reader;
 
 typedef struct {
     UINT32 line;
@@ -34,10 +35,11 @@ typedef struct {
 
 ruyi_token_pos ruyi_token_pos_make(struct _ruyi_token* token);
 
+ruyi_error * ruyi_error_by_parser(struct _ruyi_lexer_reader *reader, const char *message);
+
 ruyi_error * ruyi_error_make(ruyi_error_type type, const char *message, struct _ruyi_token* token);
 
 ruyi_error * ruyi_error_make_by_pos(ruyi_error_type type, const char *message, ruyi_token_pos pos);
-
 
 void ruyi_error_destroy(ruyi_error * err);
 

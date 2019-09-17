@@ -11,11 +11,32 @@
 
 #include "ruyi_basics.h"
 #include "ruyi_vector.h"
+#include "ruyi_lexer.h"
 
 typedef enum {
     Ruyi_at_root,
     Ruyi_at_global_declaration,
     Ruyi_at_var_declaration,
+    Ruyi_at_assignment,
+    Ruyi_at_assign_operator,
+    Ruyi_at_name,
+    Ruyi_at_name_part,
+    Ruyi_at_integer,
+    Ruyi_at_float,
+    Ruyi_at_bool,
+    Ruyi_at_null,
+    Ruyi_at_rune,
+    Ruyi_at_string,
+    Ruyi_at_field_access,
+    Ruyi_at_array_variable_access,
+    Ruyi_at_array_primary_access,
+    Ruyi_at_array_creation_with_init,
+    Ruyi_at_array_creation_with_cap,
+    Ruyi_at_map_creation,
+    Ruyi_at_this,
+
+
+
 } ruyi_ast_type;
 
 
@@ -34,12 +55,14 @@ typedef struct _ruyi_ast {
         UINT32 int32_value;
         UINT64 int64_value;
         void* ptr_value;
-        double double_value;
+        double float_value;
     } data;
     ruyi_vector* child_asts;
 } ruyi_ast;
 
 ruyi_ast * ruyi_ast_create(ruyi_ast_type type);
+
+ruyi_ast * ruyi_ast_create_by_token_type(ruyi_ast_type type, ruyi_token_type token_type);
 
 ruyi_ast * ruyi_ast_create_with_unicode(ruyi_ast_type type, ruyi_unicode_string *str);
 
