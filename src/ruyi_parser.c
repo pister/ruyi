@@ -41,7 +41,8 @@ ruyi_error* array_access(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
 static
 ruyi_error* name(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <name> ::= IDENTITY (DOT IDENTITY) *
-    ruyi_ast *name;
+    ruyi_error *err;
+    ruyi_ast *name = NULL;
     if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_IDENTITY) {
         *out_ast = NULL;
         return NULL;
@@ -52,12 +53,19 @@ ruyi_error* name(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
             break;
         }
         if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_IDENTITY) {
-            return ruyi_error_by_parser(reader, "need an identifier after '.'");
+            err = ruyi_error_by_parser(reader, "need an identifier after '.'");
+            goto name_on_error;
         }
         ruyi_ast_add_child(name, create_ast_by_consume_token_string(reader, Ruyi_at_name_part));
     }
     *out_ast = name;
     return NULL;
+name_on_error:
+    if (name) {
+        ruyi_ast_destroy(name);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
@@ -132,40 +140,77 @@ static
 ruyi_error* instance_creation(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <instance creation> ::= IDENTITY LBRACE (IDENTITY COLON <expression> (COMMA IDENTITY COLON <expression>)*)?  RBRACE
     ruyi_error *err;
-    ruyi_ast *ast = NULL;
+    ruyi_ast *ast;
     ruyi_ast *name_ast;
     ruyi_token *name_token;
-    ruyi_ast *propety_name_ast;
-    ruyi_ast *propety_expr_ast;
+    ruyi_ast *property_name_ast = NULL;
+    ruyi_ast *property_expr_ast;
+    ruyi_ast *property_ast;
+    
     if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_IDENTITY) {
         *out_ast = NULL;
         return NULL;
     }
     name_token = ruyi_lexer_reader_next_token(reader);
-    name_ast = ruyi_ast_create_with_unicode(Ruyi_at_name, name_token->value.str_value);
-    
     if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_LBRACE) {
         ruyi_lexer_reader_push_back(reader, name_token);
         *out_ast = NULL;
         return NULL;
     }
-    ruyi_lexer_token_destroy(name_token);
     
+    name_ast = ruyi_ast_create_with_unicode(Ruyi_at_name, name_token->value.str_value);
+    ruyi_lexer_token_destroy(name_token);
+    ast = ruyi_ast_create(Ruyi_at_instance_creation);
+    ruyi_ast_add_child(ast, name_ast);
+   
     if (ruyi_lexer_reader_peek_token_type(reader) == Ruyi_tt_IDENTITY) {
-        propety_name_ast = create_ast_by_consume_token_string(reader, Ruyi_at_name);
+        property_name_ast = create_ast_by_consume_token_string(reader, Ruyi_at_name);
         if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COLON, NULL)) {
-            return ruyi_error_by_parser(reader, "need ',' after property name when create instance");
+            err = ruyi_error_by_parser(reader, "need ':' after property name when create instance");
+            goto instance_creation_on_error;
         }
-        if ((err = expression(reader, &propety_expr_ast)) != NULL) {
-            return err;
+        if ((err = expression(reader, &property_expr_ast)) != NULL) {
+            goto instance_creation_on_error;
         }
-        // TODO ....
+        property_ast = ruyi_ast_create(Ruyi_at_property);
+        ruyi_ast_add_child(property_ast, property_name_ast);
+        ruyi_ast_add_child(property_ast, property_expr_ast);
+        ruyi_ast_add_child(ast, property_ast);
+        while (TRUE) {
+            if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
+                break;
+            }
+            property_name_ast = create_ast_by_consume_token_string(reader, Ruyi_at_name);
+            if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COLON, NULL)) {
+                err = ruyi_error_by_parser(reader, "need ':' after property name when create instance");
+                goto instance_creation_on_error;
+            }
+            if ((err = expression(reader, &property_expr_ast)) != NULL) {
+                goto instance_creation_on_error;
+            }
+            property_ast = ruyi_ast_create(Ruyi_at_property);
+            ruyi_ast_add_child(property_ast, property_name_ast);
+            ruyi_ast_add_child(property_ast, property_expr_ast);
+            ruyi_ast_add_child(ast, property_ast);
+        }
     }
     
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RBRACE, NULL)) {
-        return ruyi_error_by_parser(reader, "miss '}' when create instance");
+        err = ruyi_error_by_parser(reader, "miss '}' when create instance");
+        goto instance_creation_on_error;
     }
+    *out_ast = ast;
     return NULL;
+    
+instance_creation_on_error:
+    if (ast) {
+        ruyi_ast_destroy(ast);
+    }
+    if (property_name_ast) {
+        ruyi_ast_destroy(property_name_ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
@@ -241,28 +286,37 @@ ruyi_error* map_creation(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         return NULL;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
-        return ruyi_error_by_parser(reader, "miss '(' after keyword 'map'");
+        err = ruyi_error_by_parser(reader, "miss '(' after keyword 'map'");
+        goto map_creation_on_error;
     }
     if ((err = map_type(reader, &ast_map_type)) != NULL) {
-        return err;
+        goto map_creation_on_error;
     }
     if (ast_map_type == NULL) {
-        return ruyi_error_by_parser(reader, "miss map type when create map");
+        err = ruyi_error_by_parser(reader, "miss map type when create map");
+        goto map_creation_on_error;
+    }
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss ')' when create map");
+        goto map_creation_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_map_creation);
     ruyi_ast_add_child(ast, ast_map_type);
-    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
-        return ruyi_error_by_parser(reader, "miss ')' when create map");
-    }
     *out_ast = ast;
     return NULL;
+map_creation_on_error:
+    if (ast_map_type) {
+        ruyi_ast_destroy(ast_map_type);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
 ruyi_error* array_creation_with_cap(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <array creation with cap> ::= KW_ARRAY LPARAN <array type> COMMA <expression> (COMMA <expression>)? RPARAN
     ruyi_error *err;
-    ruyi_ast *ast;
+    ruyi_ast *ast = NULL;
     ruyi_ast *ast_array_type = NULL;
     ruyi_ast *expr_len = NULL;
     ruyi_ast *expr_cap = NULL;
@@ -271,47 +325,63 @@ ruyi_error* array_creation_with_cap(ruyi_lexer_reader *reader, ruyi_ast **out_as
         return NULL;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
-        return ruyi_error_by_parser(reader, "miss '(' after keyword 'array'");
+        err = ruyi_error_by_parser(reader, "miss '(' after keyword 'array'");
+        goto array_creation_with_cap_on_err;
     }
     if ((err = array_type(reader, &ast_array_type)) != NULL) {
-        return err;
+        goto array_creation_with_cap_on_err;
     }
     if (ast_array_type == NULL) {
-        return ruyi_error_by_parser(reader, "miss array type when create array");
+        err = ruyi_error_by_parser(reader, "miss array type when create array");
+        goto array_creation_with_cap_on_err;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
-        return ruyi_error_by_parser(reader, "miss ',' when create array");
+        err = ruyi_error_by_parser(reader, "miss ',' when create array");
+        goto array_creation_with_cap_on_err;
     }
     if ((err = expression(reader, &expr_len)) != NULL) {
-        return err;
+        goto array_creation_with_cap_on_err;
     }
     if (expr_len == NULL) {
-        return ruyi_error_by_parser(reader, "miss length expression after ',' when create array");
+        err = ruyi_error_by_parser(reader, "miss length expression after ',' when create array");
+        goto array_creation_with_cap_on_err;
     }
     ast = ruyi_ast_create(Ruyi_at_array_creation_with_cap);
     ruyi_ast_add_child(ast, ast_array_type);
     ruyi_ast_add_child(ast, expr_len);
+    ast_array_type = NULL;
     if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
         if ((err = expression(reader, &expr_cap)) != NULL) {
-            return err;
+            goto array_creation_with_cap_on_err;
         }
         if (expr_cap == NULL) {
-            return ruyi_error_by_parser(reader, "miss capacity expression after ',' when create array");
+            err = ruyi_error_by_parser(reader, "miss capacity expression after ',' when create array");
+            goto array_creation_with_cap_on_err;
         }
         ruyi_ast_add_child(ast, expr_cap);
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
-        return ruyi_error_by_parser(reader, "miss ')' when create array");
+        err = ruyi_error_by_parser(reader, "miss ')' when create array");
+        goto array_creation_with_cap_on_err;
     }
     *out_ast = ast;
     return NULL;
+array_creation_with_cap_on_err:
+    if (ast_array_type != NULL) {
+        ruyi_ast_destroy(ast_array_type);
+    }
+    if (ast != NULL) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
 ruyi_error* array_creation_with_init(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <array creation with init> ::= <array type> LBRACKET (<expression> (COMMA <expression>)*)? RBRACKET
     ruyi_error *err;
-    ruyi_ast *ast;
+    ruyi_ast *ast = NULL;
     ruyi_ast *expr_ast = NULL;
     ruyi_ast *ast_array_type = NULL;
     if ((err = array_type(reader, &ast_array_type)) != NULL) {
@@ -322,10 +392,11 @@ ruyi_error* array_creation_with_init(ruyi_lexer_reader *reader, ruyi_ast **out_a
         return NULL;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LBRACKET, NULL)) {
-        return ruyi_error_by_parser(reader, "miss '[' when create array");
+        err = ruyi_error_by_parser(reader, "miss '[' when create array");
+        goto array_creation_with_init_on_error;
     }
     if ((err = expression(reader, &expr_ast)) != NULL) {
-        return err;
+        goto array_creation_with_init_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_array_creation_with_init);
     if (expr_ast != NULL) {
@@ -338,16 +409,24 @@ ruyi_error* array_creation_with_init(ruyi_lexer_reader *reader, ruyi_ast **out_a
                 return err;
             }
             if (expr_ast == NULL) {
-                return ruyi_error_by_parser(reader, "miss expression after ','");
+                err = ruyi_error_by_parser(reader, "miss expression after ','");
+                goto array_creation_with_init_on_error;
             }
             ruyi_ast_add_child(ast, expr_ast);
         }
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RBRACKET, NULL)) {
-        return ruyi_error_by_parser(reader, "miss ']' when create array");
+        err = ruyi_error_by_parser(reader, "miss ']' when create array");
+        goto array_creation_with_init_on_error;
     }
     *out_ast = ast;
     return NULL;
+array_creation_with_init_on_error:
+    if (ast) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
@@ -409,16 +488,24 @@ ruyi_error* field_access(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         return NULL;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_DOT, NULL)) {
-        return ruyi_error_by_parser(reader, "miss '.' when access field");
+        err = ruyi_error_by_parser(reader, "miss '.' when access field");
+        goto field_access_on_error;
     }
     if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_IDENTITY) {
-        return ruyi_error_by_parser(reader, "need identifier after '.'");
+        err = ruyi_error_by_parser(reader, "need identifier after '.'");
+        goto field_access_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_field_access);
     ruyi_ast_add_child(ast, primary_ast);
     ruyi_ast_add_child(ast, create_ast_by_consume_token_string(reader, Ruyi_at_name_part));
     *out_ast = ast;
     return NULL;
+field_access_on_error:
+    if (primary_ast != NULL) {
+        ruyi_ast_destroy(primary_ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
@@ -436,22 +523,34 @@ ruyi_error* array_variable_access(ruyi_lexer_reader *reader, ruyi_ast **out_ast)
         return NULL;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LBRACKET, NULL)) {
-        return ruyi_error_by_parser(reader, "miss '[' where access array");
+        err = ruyi_error_by_parser(reader, "miss '[' where access array");
+        goto array_variable_access_on_error;
     }
     if ((err = expression(reader, &expr_ast)) != NULL) {
-        return err;
+        goto array_variable_access_on_error;
     }
     if (expr_ast == NULL) {
-        return ruyi_error_by_parser(reader, "miss expression after '[' where access array");
+        err = ruyi_error_by_parser(reader, "miss expression after '[' where access array");
+        goto array_variable_access_on_error;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RBRACKET, NULL)) {
-        return ruyi_error_by_parser(reader, "miss ']' where access array");
+        err = ruyi_error_by_parser(reader, "miss ']' where access array");
+        goto array_variable_access_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_array_variable_access);
     ruyi_ast_add_child(ast, name_ast);
     ruyi_ast_add_child(ast, expr_ast);
     *out_ast = ast;
     return NULL;
+array_variable_access_on_error:
+    if (name_ast != NULL) {
+        ruyi_ast_destroy(name_ast);
+    }
+    if (expr_ast != NULL) {
+        ruyi_ast_destroy(expr_ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
@@ -469,22 +568,34 @@ ruyi_error* variable_primary_access(ruyi_lexer_reader *reader, ruyi_ast **out_as
         return NULL;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LBRACKET, NULL)) {
-        return ruyi_error_by_parser(reader, "miss '[' where access array");
+        err = ruyi_error_by_parser(reader, "miss '[' where access array");
+        goto variable_primary_access_on_error;
     }
     if ((err = expression(reader, &expr_ast)) != NULL) {
-        return err;
+        goto variable_primary_access_on_error;
     }
     if (expr_ast == NULL) {
-        return ruyi_error_by_parser(reader, "miss expression after '[' where access array");
+        err = ruyi_error_by_parser(reader, "miss expression after '[' where access array");
+        goto variable_primary_access_on_error;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RBRACKET, NULL)) {
-        return ruyi_error_by_parser(reader, "miss ']' where access array");
+        err = ruyi_error_by_parser(reader, "miss ']' where access array");
+        goto variable_primary_access_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_array_primary_access);
     ruyi_ast_add_child(ast, primary_ast);
     ruyi_ast_add_child(ast, expr_ast);
     *out_ast = ast;
     return NULL;
+variable_primary_access_on_error:
+    if (primary_ast != NULL) {
+        ruyi_ast_destroy(primary_ast);
+    }
+    if (expr_ast != NULL) {
+        ruyi_ast_destroy(expr_ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
@@ -573,16 +684,18 @@ ruyi_error* assignment(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         return NULL;
     }
     if ((err = assignment_operator(reader, &ass_oper_ast)) != NULL) {
-        return err;
+        goto assignment_on_error;
     }
     if (ass_oper_ast == NULL) {
-        return ruyi_error_by_parser(reader, "miss assignment operator");
+        err = ruyi_error_by_parser(reader, "miss assignment operator");
+        goto assignment_on_error;
     }
     if ((err = assignment_expression(reader, &ass_expr_ast)) != NULL) {
-        return err;
+        goto assignment_on_error;
     }
     if (ass_expr_ast == NULL) {
-        return ruyi_error_by_parser(reader, "miss assignment expression");
+        err = ruyi_error_by_parser(reader, "miss assignment expression");
+        goto assignment_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_assignment);
     ruyi_ast_add_child(ast, left_hand_side_ast);
@@ -590,6 +703,18 @@ ruyi_error* assignment(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     ruyi_ast_add_child(ast, ass_expr_ast);
     *out_ast = ast;
     return NULL;
+assignment_on_error:
+    if (left_hand_side_ast != NULL) {
+        ruyi_ast_destroy(left_hand_side_ast);
+    }
+    if (ass_oper_ast != NULL) {
+        ruyi_ast_destroy(ass_oper_ast);
+    }
+    if (ass_expr_ast != NULL) {
+        ruyi_ast_destroy(ass_expr_ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
@@ -623,8 +748,8 @@ ruyi_error* variable_declaration_tail(ruyi_lexer_reader *reader, ruyi_ast **out_
     ruyi_error* err;
     ruyi_token token1;
     ruyi_token token2;
-    ruyi_ast *var_declare_ast;
-    ruyi_ast *ast_var_init;
+    ruyi_ast *var_declare_ast = NULL;
+    ruyi_ast *ast_var_init = NULL;
     UINT32 dims = 0;
     while (TRUE) {
         if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LBRACKET, &token1)) {
@@ -648,14 +773,24 @@ ruyi_error* variable_declaration_tail(ruyi_lexer_reader *reader, ruyi_ast **out_
     }
     ruyi_lexer_reader_consume_token(reader); // ASSIGN
     if ((err = expression(reader, &ast_var_init)) != NULL) {
-        return err;
+        goto variable_declaration_tail_on_error;
     }
     if (ast_var_init == NULL) {
-        return ruyi_error_make(Ruyi_et_Parser, "miss expression after '='", &token1);
+        err = ruyi_error_make(Ruyi_et_Parser, "miss expression after '='", &token1);
+        goto variable_declaration_tail_on_error;
     }
     ruyi_ast_add_child(var_declare_ast, ast_var_init);
     *out_ast = var_declare_ast;
     return NULL;
+variable_declaration_tail_on_error:
+    if (var_declare_ast != NULL) {
+        ruyi_ast_destroy(var_declare_ast);
+    }
+    if (ast_var_init != NULL) {
+        ruyi_ast_destroy(ast_var_init);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static

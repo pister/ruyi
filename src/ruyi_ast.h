@@ -34,7 +34,8 @@ typedef enum {
     Ruyi_at_array_creation_with_cap,
     Ruyi_at_map_creation,
     Ruyi_at_this,
-
+    Ruyi_at_property,
+    Ruyi_at_instance_creation,
 
 
 } ruyi_ast_type;
