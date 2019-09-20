@@ -179,7 +179,7 @@ static UINT64 ruyi_make_pos_value(UINT32 line, UINT32 column) {
     return v;
 }
 
-static void ruyi_lexer_reader_push_back_char(ruyi_lexer_reader *reader, ruyi_pos_char pc) {
+static void ruyi_lexer_reader_push_front_char(ruyi_lexer_reader *reader, ruyi_pos_char pc) {
     UINT64 v = ruyi_make_pos_value(pc.line, pc.column);
     ruyi_list_add_first(reader->chars_buffer_queue, ruyi_value_uint64(v));
     ruyi_list_add_first(reader->chars_buffer_queue, ruyi_value_int32(pc.c));
@@ -224,7 +224,7 @@ static BOOL ruyi_lexer_read_next_char(ruyi_lexer_reader *reader, ruyi_pos_char *
 
 static BOOL ruyi_lexer_peek_char(ruyi_lexer_reader *reader, ruyi_pos_char *pos_char)  {
     BOOL ret = ruyi_lexer_read_next_char(reader, pos_char);
-    ruyi_lexer_reader_push_back_char(reader, *pos_char);
+    ruyi_lexer_reader_push_front_char(reader, *pos_char);
     return ret;
 }
 
@@ -334,7 +334,7 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
     integer_part = radix * integer_part + first.c - '0';
     for (;;) {
         if (!ruyi_lexer_read_next_char(reader, &ch)) {
-            ruyi_lexer_reader_push_back_char(reader, ch);
+            ruyi_lexer_reader_push_front_char(reader, ch);
             return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
         }
         size++;
@@ -347,7 +347,7 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
             }
         } else if ('.' == ch.c) {
             if (has_dot) {
-                ruyi_lexer_reader_push_back_char(reader, ch);
+                ruyi_lexer_reader_push_front_char(reader, ch);
                 return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, TRUE, first, size);
             } else {
                 has_dot = TRUE;
@@ -366,11 +366,11 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
                 }
                 for (;;) {
                     if (!ruyi_lexer_read_next_char(reader, &ch)) {
-                        ruyi_lexer_reader_push_back_char(reader, ch);
+                        ruyi_lexer_reader_push_front_char(reader, ch);
                         return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
                     }
                     if (!RUYI_IS_DIGIT(ch.c)) {
-                        ruyi_lexer_reader_push_back_char(reader, ch);
+                        ruyi_lexer_reader_push_front_char(reader, ch);
                         return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
                     }
                     size++;
@@ -381,7 +381,7 @@ static ruyi_token * ruyi_lexer_get_decimal(ruyi_lexer_reader *reader, ruyi_pos_c
                 return NULL;
             }
         } else {
-            ruyi_lexer_reader_push_back_char(reader, ch);
+            ruyi_lexer_reader_push_front_char(reader, ch);
             return ruyi_lexer_make_number_token(integer_part, fraction_part, exponent_part, has_dot, first, size);
         }
     }
@@ -394,15 +394,15 @@ static ruyi_token * ruyi_lexer_handle_dot3(ruyi_lexer_reader *reader, ruyi_pos_c
         return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
     }
     if ('.' != ch1.c) {
-        ruyi_lexer_reader_push_back_char(reader, ch1);
+        ruyi_lexer_reader_push_front_char(reader, ch1);
         return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
     }
     if (!ruyi_lexer_peek_char(reader, &ch2)) {
-        ruyi_lexer_reader_push_back_char(reader, ch1);
+        ruyi_lexer_reader_push_front_char(reader, ch1);
         return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
     }
     if ('.' != ch2.c) {
-        ruyi_lexer_reader_push_back_char(reader, ch1);
+        ruyi_lexer_reader_push_front_char(reader, ch1);
         return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
     }
     ruyi_lexer_read_next_char(reader, &ch2);
@@ -427,7 +427,7 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
            // return ruyi_lexer_make_token(Ruyi_tt_DOT, first);
         }
         ch.c = '0';
-        ruyi_lexer_reader_push_back_char(reader, first);
+        ruyi_lexer_reader_push_front_char(reader, first);
         return ruyi_lexer_get_decimal(reader, ch);
     } else if (first.c == '0') {
         if (!ruyi_lexer_read_next_char(reader, &ch)) {
@@ -446,11 +446,11 @@ static ruyi_token * ruyi_lexer_handle_number(ruyi_lexer_reader *reader, ruyi_pos
         } else if ( ch.c == 'b' || ch.c == 'B') {
             radix = 2;
         } else if (ch.c == '.') {
-            ruyi_lexer_reader_push_back_char(reader, ch);
+            ruyi_lexer_reader_push_front_char(reader, ch);
             return ruyi_lexer_get_decimal(reader, first);
         } else {
             // just 0
-            ruyi_lexer_reader_push_back_char(reader, ch);
+            ruyi_lexer_reader_push_front_char(reader, ch);
             return ruyi_lexer_make_number_token(0, 0, 0, FALSE, first, size);
         }
         for (;;) {
@@ -493,7 +493,7 @@ static ruyi_token * ruyi_lexer_handle_identifier(ruyi_lexer_reader *reader, ruyi
         if (RUYI_IS_LETTER(c) || c == '_' || RUYI_IS_DIGIT(c)) {
             ruyi_unicode_string_append_wide_char(string_value, c);
         } else {
-            ruyi_lexer_reader_push_back_char(reader, ch);
+            ruyi_lexer_reader_push_front_char(reader, ch);
             break;
         }
     }
@@ -642,7 +642,7 @@ static ruyi_token * ruyi_lexer_handle_mul_tokens(ruyi_lexer_reader *reader, ruyi
     UINT32 i;
     ruyi_token* token;
     if (!ruyi_lexer_read_next_char(reader, &pc)) {
-        ruyi_lexer_reader_push_back_char(reader, pc);
+        ruyi_lexer_reader_push_front_char(reader, pc);
         return ruyi_lexer_make_token(not_match, first);
     }
     for (i = 0; i < c_tt_size; i++) {
@@ -652,7 +652,7 @@ static ruyi_token * ruyi_lexer_handle_mul_tokens(ruyi_lexer_reader *reader, ruyi
             return token;
         }
     }
-    ruyi_lexer_reader_push_back_char(reader, pc);
+    ruyi_lexer_reader_push_front_char(reader, pc);
     return ruyi_lexer_make_token(not_match, first);
 }
 
@@ -663,7 +663,7 @@ static ruyi_token * ruyi_lexer_handle_div_or_comments(ruyi_lexer_reader *reader,
     UINT32 size = 1;
     ruyi_lexer_choose_tt choose_tt[1];
     if (!ruyi_lexer_read_next_char(reader, &ch)) {
-        ruyi_lexer_reader_push_back_char(reader, ch);
+        ruyi_lexer_reader_push_front_char(reader, ch);
         return ruyi_lexer_make_token(Ruyi_tt_DIV, first);
     }
     size++;
@@ -671,7 +671,7 @@ static ruyi_token * ruyi_lexer_handle_div_or_comments(ruyi_lexer_reader *reader,
         token = ruyi_lexer_make_token(Ruyi_tt_LINE_COMMENTS, first);
         for (;;) {
             if (!ruyi_lexer_read_next_char(reader, &ch)) {
-                ruyi_lexer_reader_push_back_char(reader, ch);
+                ruyi_lexer_reader_push_front_char(reader, ch);
                 token->size = size;
                 return token;
             }
@@ -685,14 +685,14 @@ static ruyi_token * ruyi_lexer_handle_div_or_comments(ruyi_lexer_reader *reader,
         token = ruyi_lexer_make_token(Ruyi_tt_MLINES_COMMENTS, first);
         for (;;) {
             if (!ruyi_lexer_read_next_char(reader, &ch)) {
-                ruyi_lexer_reader_push_back_char(reader, ch);
+                ruyi_lexer_reader_push_front_char(reader, ch);
                 token->size = size;
                 return token;
             }
             size ++;
             if ('*' == ch.c) {
                 if (!ruyi_lexer_read_next_char(reader, &ch)) {
-                    ruyi_lexer_reader_push_back_char(reader, ch);
+                    ruyi_lexer_reader_push_front_char(reader, ch);
                     token->size = size;
                     return token;
                 }
@@ -701,12 +701,12 @@ static ruyi_token * ruyi_lexer_handle_div_or_comments(ruyi_lexer_reader *reader,
                     token->size = size;
                     return token;
                 } else {
-                    ruyi_lexer_reader_push_back_char(reader, ch);
+                    ruyi_lexer_reader_push_front_char(reader, ch);
                 }
             }
         }
     } else {
-        ruyi_lexer_reader_push_back_char(reader, ch);
+        ruyi_lexer_reader_push_front_char(reader, ch);
         choose_tt[0].c = '='; choose_tt[0].token_type = Ruyi_tt_DIV_ASS;
         return ruyi_lexer_handle_mul_tokens(reader, first, choose_tt, 1, Ruyi_tt_DIV);
     }
@@ -717,7 +717,7 @@ static ruyi_token* ruyi_lexer_token_lt(ruyi_lexer_reader *reader, ruyi_pos_char 
     ruyi_pos_char pc;
     UINT32 size = 1;
     if (!ruyi_lexer_read_next_char(reader, &pc)) {
-        ruyi_lexer_reader_push_back_char(reader, pc);
+        ruyi_lexer_reader_push_front_char(reader, pc);
         return ruyi_lexer_make_token(Ruyi_tt_LT, first);
     }
     size++;
@@ -735,7 +735,7 @@ static ruyi_token* ruyi_lexer_token_lt(ruyi_lexer_reader *reader, ruyi_pos_char 
                 return ruyi_lexer_make_token_with_size(Ruyi_tt_SHFT_LEFT, first, size);
             }
         default:
-            ruyi_lexer_reader_push_back_char(reader, pc);
+            ruyi_lexer_reader_push_front_char(reader, pc);
             return ruyi_lexer_make_token(Ruyi_tt_LT, first);
     }
     return NULL;
@@ -745,7 +745,7 @@ static ruyi_token* ruyi_lexer_token_gt(ruyi_lexer_reader *reader, ruyi_pos_char 
     ruyi_pos_char pc;
     UINT32 size = 1;
     if (!ruyi_lexer_read_next_char(reader, &pc)) {
-        ruyi_lexer_reader_push_back_char(reader, pc);
+        ruyi_lexer_reader_push_front_char(reader, pc);
         return ruyi_lexer_make_token(Ruyi_tt_GT, first);
     }
     size++;
@@ -763,7 +763,7 @@ static ruyi_token* ruyi_lexer_token_gt(ruyi_lexer_reader *reader, ruyi_pos_char 
                 return ruyi_lexer_make_token_with_size(Ruyi_tt_SHFT_RIGHT, first, size);
             }
         default:
-            ruyi_lexer_reader_push_back_char(reader, pc);
+            ruyi_lexer_reader_push_front_char(reader, pc);
             return ruyi_lexer_make_token(Ruyi_tt_GT, first);
     }
     return NULL;
@@ -877,7 +877,7 @@ BOOL ruyi_lexer_reader_consume_token_if_match(ruyi_lexer_reader *reader, ruyi_to
         ruyi_lexer_token_destroy(token);
         return TRUE;
     } else {
-        ruyi_lexer_reader_push_back(reader, token);
+        ruyi_lexer_reader_push_front(reader, token);
         return FALSE;
     }
 }
@@ -889,11 +889,11 @@ ruyi_token_type ruyi_lexer_reader_peek_token_type(ruyi_lexer_reader *reader) {
         return Ruyi_tt_END;
     }
     ruyi_token_type type = token->type;
-    ruyi_lexer_reader_push_back(reader, token);
+    ruyi_lexer_reader_push_front(reader, token);
     return type;
 }
 
-void ruyi_lexer_reader_push_back(ruyi_lexer_reader *reader, ruyi_token *token) {
+void ruyi_lexer_reader_push_front(ruyi_lexer_reader *reader, ruyi_token *token) {
     assert(reader);
     assert(token);
     ruyi_list_add_first(reader->token_buffer_queue, ruyi_value_ptr(token));

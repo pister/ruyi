@@ -173,7 +173,7 @@ ruyi_token * ruyi_lexer_reader_next_token(ruyi_lexer_reader *reader);
 
 void ruyi_lexer_reader_consume_token(ruyi_lexer_reader *reader);
 
-void ruyi_lexer_reader_push_back(ruyi_lexer_reader *reader, ruyi_token *token);
+void ruyi_lexer_reader_push_front(ruyi_lexer_reader *reader, ruyi_token *token);
 
 ruyi_token_type ruyi_lexer_reader_peek_token_type(ruyi_lexer_reader *reader);
 

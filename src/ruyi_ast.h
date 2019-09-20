@@ -36,8 +36,20 @@ typedef enum {
     Ruyi_at_this,
     Ruyi_at_property,
     Ruyi_at_instance_creation,
-
-
+    Ruyi_at_array_type,
+    Ruyi_at_map_type,
+    Ruyi_at_type_bool,
+    Ruyi_at_type_byte,
+    Ruyi_at_type_short,
+    Ruyi_at_type_int,
+    Ruyi_at_type_long,
+    Ruyi_at_type_rune,
+    Ruyi_at_type_float,
+    Ruyi_at_type_double,
+    Ruyi_at_function_invocation,
+    Ruyi_at_argument_list,
+    Ruyi_at_conditional_expression,
+    Ruyi_at_conditional_or_expression,
 } ruyi_ast_type;
 
 

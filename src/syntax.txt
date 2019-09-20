@@ -34,7 +34,7 @@
 <sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>
 
 <expression statement> ::= <statement expression> <statement ends>
-<statement expression> ::= <assignment> | <preincrement expression> | <postincrement expression> | <postdecrement expression> | <function invocation> | <class instance creation expression>
+<statement expression> ::= <assignment> | <preincrement expression> | <postincrement expression> | <postdecrement expression>  | <class instance creation expression> | <function invocation>
 
 <empty statement> ::= <statement ends>
 <labeled statement> ::= IDENTITY COLON <statement>
@@ -50,14 +50,15 @@
 <assignment> ::= <left hand side> <assignment operator> <assignment expression>
 <left hand side> ::= <name> | <field access> | <array access>
 <assignment operator> ::= ASSIGN | MUL_ASS | DIV_ASS | MOD_ASS | ADD_ASS | SUB_ASS | SHFT_LEFT_ASS | SHFT_RIGHT_ASS | BIT_AND_ASS | BIT_XOR_ASS | BIT_OR_ASS
-<conditional expression> ::= <conditional or expression> | <conditional or expression> QM <expression> : <conditional expression>
-<conditional or expression> ::= <conditional and expression> | <conditional or expression> LOGIC_OR <conditional and expression>
-<conditional and expression> ::= <inclusive or expression> | <conditional and expression> LOGIC_AND <inclusive or expression>
-<inclusive or expression> ::= <exclusive or expression> | <inclusive or expression> | <exclusive or expression>
-<exclusive or expression> ::= <and expression> | <exclusive or expression> BIT_XOR <and expression>
-<and expression> ::= <equality expression> | <and expression> BIT_AND <equality expression>
-<equality expression> ::= <relational expression> | <equality expression> == <relational expression> | <equality expression> NOT_EQUALS <relational expression>
-<relational expression> ::= <shift expression> | <relational expression> LT <shift expression> | <relational expression> GT <shift expression> | <relational expression> LTE <shift expression> | <relational expression> GTE <shift expression> | <relational expression> instanceof <reference type>
+<conditional expression> ::= <conditional or expression> (QM <expression> Ruyi_tt_COLON <conditional expression>)?
+<conditional or expression> ::= <conditional and expression> (LOGIC_OR <conditional and expression>)*
+<conditional and expression> ::= <bit or expression> ( LOGIC_AND <bit or expression>)*
+<bit or expression> ::= <bit and expression> (BIT_XOR <bit and expression>)*
+<bit and expression> ::= <equality expression> (BIT_AND <equality expression>)*
+
+<equality expression> ::= <relational expression> ((EQUALS | NOT_EQUALS) <relational expression>)?
+
+<relational expression> ::= <shift expression> | <relational expression> LT <shift expression> | <relational expression> GT <shift expression> | <relational expression> LTE <shift expression> | <relational expression> GTE <shift expression> | <relational expression> KW_INSTANCEOF <reference type>
 <shift expression> ::= <additive expression> | <shift expression> SHFT_LEFT <additive expression> | <shift expression> SHFT_RIGHT <additive expression>
 <additive expression> ::= <multiplicative expression> | <additive expression> ADD <multiplicative expression> | <additive expression> SUB <multiplicative expression>
 <multiplicative expression> ::= <unary expression> | <multiplicative expression> MUL <unary expression> | <multiplicative expression> DIV <unary expression> | <multiplicative expression> MOD <unary expression>
@@ -67,14 +68,13 @@
 <postdecrement expression> ::= <postfix expression> DEC
 <postincrement expression> ::= <postfix expression> INC
 <postfix expression> ::= <primary> | <name> | <postincrement expression> | <postdecrement expression>
-<function invocation> ::= <name> ( <argument list>? ) | <primary> DOT IDENTITY ( <argument list>? )
 <field access> ::= <primary> DOT IDENTITY
 <primary> ::= <primary no new array> | <array creation> | <map make creation> 
-<primary no new collection> ::= <literal> | KW_THIS | LPARAN <expression> RPARAN  | <field access> | <function invocation> | <array access> | <instance creation>
+<primary no new collection> ::= <literal> | KW_THIS | LPARAN <expression> RPARAN | <field access> | <array access> | <instance creation> | <function invocation>
 
 <instance creation> ::= IDENTITY LBRACE (IDENTITY COLON <expression> (COMMA IDENTITY COLON <expression>)*)?  RBRACE
 
-<argument list> ::= <expression> | <argument list> COMMA <expression>
+<argument list> ::= <expression> ( COMMA <expression> )*
 
 <array creation> ::= <array creation with cap> | <array creation with init>
 
@@ -82,6 +82,7 @@
 <array creation with init> ::= <array type> LBRACKET (<expression> (COMMA <expression>)*)?  RBRACKET
 <map creation> ::= KW_MAP LPARAN <map type> RPARAN
 
+<function invocation> ::= <expression> LPARAN <argument list>? RPARAN
 
 <array access> ::= <array variable access> | <variable primary access>
 <array variable access> ::= <name> LBRACKET <expression> RBRACKET
@@ -92,7 +93,7 @@
 <primitive type> ::= <numeric type> | bool
 <numeric type> ::= <integral type> | <floating-point type>
 <integral type> ::= KW_BYTE | KW_SHORT| KW_INT | KW_RUNE | KW_LONG
-<floating-point type> ::= KW_FLOAT
+<floating-point type> ::= KW_FLOAT | KW_DOUBLE
 <reference type> ::= IDENTITY | <array type> | <map type>
 <array type> ::= LBRACKET RBRACKET <type>
 <map type> ::= LBRACKET IDENTITY RBRACKET <type>
