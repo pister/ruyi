@@ -53,7 +53,8 @@
 <conditional expression> ::= <conditional or expression> (QM <expression> Ruyi_tt_COLON <conditional expression>)?
 <conditional or expression> ::= <conditional and expression> (LOGIC_OR <conditional and expression>)*
 <conditional and expression> ::= <bit or expression> ( LOGIC_AND <bit or expression>)*
-<bit or expression> ::= <bit and expression> (BIT_XOR <bit and expression>)*
+
+<bit or expression> ::= <bit and expression> (BIT_OR <bit and expression>)*
 <bit and expression> ::= <equality expression> (BIT_AND <equality expression>)*
 
 <equality expression> ::= <relational expression> ((EQUALS | NOT_EQUALS) <relational expression>)?

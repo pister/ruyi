@@ -50,6 +50,14 @@ typedef enum {
     Ruyi_at_argument_list,
     Ruyi_at_conditional_expression,
     Ruyi_at_conditional_or_expression,
+    Ruyi_at_conditional_and_expression,
+    Ruyi_at_bit_or_expression,
+    Ruyi_at_bit_and_expression,
+    Ruyi_at_equality_expression,
+    Ruyi_at_op_equals,
+    Ruyi_at_op_not_equals,
+
+
 } ruyi_ast_type;
 
 

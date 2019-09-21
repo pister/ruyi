@@ -39,17 +39,201 @@ static
 ruyi_error* map_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
 
 static
+ruyi_error* relational_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <relational expression> ::= <shift expression> | <relational expression> LT <shift expression> | <relational expression> GT <shift expression> | <relational expression> LTE <shift expression> | <relational expression> GTE <shift expression> | <relational expression> KW_INSTANCEOF <reference type>
+    
+    return NULL;
+}
+
+static
+ruyi_error* equality_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <equality expression> ::= <relational expression> ((EQUALS | NOT_EQUALS) <relational expression>)?
+    ruyi_error *err;
+    ruyi_ast *ast;
+    ruyi_ast *rel_expr_ast = NULL;
+    ruyi_token_type token_type;
+    if ((err = relational_expression(reader, &rel_expr_ast)) != NULL) {
+        return err;
+    }
+    if (rel_expr_ast == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    token_type = ruyi_lexer_reader_peek_token_type(reader);
+    if (token_type != Ruyi_tt_EQUALS && token_type != Ruyi_tt_NOT_EQUALS) {
+        *out_ast = rel_expr_ast;
+        return NULL;
+    }
+    ruyi_lexer_reader_consume_token(reader); // consume EQUALS or NOT_EQUALS
+    ast = ruyi_ast_create(Ruyi_at_equality_expression);
+    ruyi_ast_add_child(ast, rel_expr_ast);
+    switch (token_type) {
+        case Ruyi_tt_EQUALS:
+            ruyi_ast_add_child(ast, ruyi_ast_create(Ruyi_at_op_equals));
+            break;
+        case Ruyi_tt_NOT_EQUALS:
+            ruyi_ast_add_child(ast, ruyi_ast_create(Ruyi_at_op_not_equals));
+            break;
+        default:
+            // may not reach here
+            break;
+    }
+    if ((err = relational_expression(reader, &rel_expr_ast)) != NULL) {
+        goto equality_expression_on_error;
+    }
+    if (rel_expr_ast == NULL) {
+        if (Ruyi_tt_EQUALS == token_type) {
+            err = ruyi_error_by_parser(reader, "miss expression after '=='");
+        } else {
+            err = ruyi_error_by_parser(reader, "miss expression after '!='");
+        }
+        goto equality_expression_on_error;
+    }
+    ruyi_ast_add_child(ast, rel_expr_ast);
+    *out_ast = ast;
+    return NULL;
+equality_expression_on_error:
+    if (ast != NULL) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
+ruyi_error* bit_and_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <bit and expression> ::= <equality expression> (BIT_AND <equality expression>)*
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *eq_expr_ast = NULL;
+    if ((err = equality_expression(reader, &eq_expr_ast)) != NULL) {
+        return err;
+    }
+    if (eq_expr_ast == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_BIT_AND) {
+        *out_ast = eq_expr_ast;
+        return NULL;
+    }
+    ast = ruyi_ast_create(Ruyi_at_bit_and_expression);
+    ruyi_ast_add_child(ast, eq_expr_ast);
+    
+    while (TRUE) {
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_BIT_AND, NULL)) {
+            break;
+        }
+        if ((err = equality_expression(reader, &eq_expr_ast)) != NULL) {
+            goto bit_and_expression_on_error;
+        }
+        if (eq_expr_ast == NULL) {
+            err = ruyi_error_by_parser(reader, "miss expression after '&'");
+            goto bit_and_expression_on_error;
+        }
+        ruyi_ast_add_child(ast, eq_expr_ast);
+    }
+    *out_ast = ast;
+    return NULL;
+bit_and_expression_on_error:
+    if (ast != NULL) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
+ruyi_error* bit_or_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <bit or expression> ::= <bit and expression> (BIT_OR <bit and expression>)*
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *bit_and_expr_ast = NULL;
+    if ((err = bit_and_expression(reader, &bit_and_expr_ast)) != NULL) {
+        return err;
+    }
+    if (bit_and_expr_ast == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_BIT_OR) {
+        *out_ast = bit_and_expr_ast;
+        return NULL;
+    }
+    ast = ruyi_ast_create(Ruyi_at_bit_or_expression);
+    ruyi_ast_add_child(ast, bit_and_expr_ast);
+    
+    while (TRUE) {
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_BIT_OR, NULL)) {
+            break;
+        }
+        if ((err = bit_and_expression(reader, &bit_and_expr_ast)) != NULL) {
+            goto bit_or_expression_on_error;
+        }
+        if (bit_and_expr_ast == NULL) {
+            err = ruyi_error_by_parser(reader, "miss expression after '|'");
+            goto bit_or_expression_on_error;
+        }
+        ruyi_ast_add_child(ast, bit_and_expr_ast);
+    }
+    *out_ast = ast;
+    return NULL;
+bit_or_expression_on_error:
+    if (ast != NULL) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
 ruyi_error* conditional_and_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <conditional and expression> ::= <bit or expression> ( LOGIC_AND <bit or expression>)*
-
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *bit_or_expr_ast = NULL;
+    if ((err = bit_or_expression(reader, &bit_or_expr_ast)) != NULL) {
+        return err;
+    }
+    if (bit_or_expr_ast == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_LOGIC_AND) {
+        *out_ast = bit_or_expr_ast;
+        return NULL;
+    }
+    ast = ruyi_ast_create(Ruyi_at_conditional_and_expression);
+    ruyi_ast_add_child(ast, bit_or_expr_ast);
+    
+    while (TRUE) {
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LOGIC_AND, NULL)) {
+            break;
+        }
+        if ((err = conditional_and_expression(reader, &bit_or_expr_ast)) != NULL) {
+            goto conditional_and_expression_on_error;
+        }
+        if (bit_or_expr_ast == NULL) {
+            err = ruyi_error_by_parser(reader, "miss expression after '&&'");
+            goto conditional_and_expression_on_error;
+        }
+        ruyi_ast_add_child(ast, bit_or_expr_ast);
+    }
+    *out_ast = ast;
     return NULL;
+conditional_and_expression_on_error:
+    if (ast != NULL) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
 ruyi_error* conditional_or_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <conditional or expression> ::= <conditional and expression> (LOGIC_OR <conditional and expression>)*
     ruyi_error *err;
-    ruyi_ast *ast;
+    ruyi_ast *ast = NULL;
     ruyi_ast *expr_ast = NULL;
     if ((err = conditional_and_expression(reader, &expr_ast)) != NULL) {
         return err;
@@ -69,17 +253,17 @@ ruyi_error* conditional_or_expression(ruyi_lexer_reader *reader, ruyi_ast **out_
             break;
         }
         if ((err = conditional_and_expression(reader, &expr_ast)) != NULL) {
-            goto conditional_or_expression_or_error;
+            goto conditional_or_expression_on_error;
         }
         if (expr_ast == NULL) {
             err = ruyi_error_by_parser(reader, "miss expression after '||'");
-            goto conditional_or_expression_or_error;
+            goto conditional_or_expression_on_error;
         }
         ruyi_ast_add_child(ast, expr_ast);
     }
     *out_ast = ast;
     return NULL;
-conditional_or_expression_or_error:
+conditional_or_expression_on_error:
     if (ast != NULL) {
         ruyi_ast_destroy(ast);
     }
