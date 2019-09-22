@@ -56,7 +56,12 @@ typedef enum {
     Ruyi_at_equality_expression,
     Ruyi_at_op_equals,
     Ruyi_at_op_not_equals,
-
+    Ruyi_at_relational_expression,
+    Ruyi_at_op_instanceof,
+    Ruyi_at_op_lt,
+    Ruyi_at_op_gt,
+    Ruyi_at_op_lte,
+    Ruyi_at_op_gte,
 
 } ruyi_ast_type;
 

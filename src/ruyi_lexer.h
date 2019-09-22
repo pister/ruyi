@@ -93,6 +93,7 @@ typedef enum {
     Ruyi_tt_KW_CLASS,       // class
     Ruyi_tt_KW_NEW,         // new
     Ruyi_tt_KW_VAR,         // var
+    Ruyi_tt_KW_INSTANCEOF,  // instanceof
 
     Ruyi_tt_KW_BOOL,        // bool
     Ruyi_tt_KW_INT,         // int

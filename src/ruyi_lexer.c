@@ -59,7 +59,7 @@ ruyi_keyword g_ruyi_keywords[] = {
     {Ruyi_tt_KW_ARRAY,  "array"},
     {Ruyi_tt_KW_MAP,    "map"},
     {Ruyi_tt_KW_THIS,   "this"},
-
+    {Ruyi_tt_KW_INSTANCEOF, "instanceof"},
 };
 
 

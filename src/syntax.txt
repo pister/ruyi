@@ -53,14 +53,12 @@
 <conditional expression> ::= <conditional or expression> (QM <expression> Ruyi_tt_COLON <conditional expression>)?
 <conditional or expression> ::= <conditional and expression> (LOGIC_OR <conditional and expression>)*
 <conditional and expression> ::= <bit or expression> ( LOGIC_AND <bit or expression>)*
-
 <bit or expression> ::= <bit and expression> (BIT_OR <bit and expression>)*
 <bit and expression> ::= <equality expression> (BIT_AND <equality expression>)*
-
 <equality expression> ::= <relational expression> ((EQUALS | NOT_EQUALS) <relational expression>)?
+<relational expression> ::= <shift expression> ((KW_INSTANCEOF <reference type>) | ((LT | GT | LTE | GTE) <shift expression>)) ?
+<shift expression> ::= <additive expression> ((SHFT_LEFT | SHFT_RIGHT) <additive expression>)?
 
-<relational expression> ::= <shift expression> | <relational expression> LT <shift expression> | <relational expression> GT <shift expression> | <relational expression> LTE <shift expression> | <relational expression> GTE <shift expression> | <relational expression> KW_INSTANCEOF <reference type>
-<shift expression> ::= <additive expression> | <shift expression> SHFT_LEFT <additive expression> | <shift expression> SHFT_RIGHT <additive expression>
 <additive expression> ::= <multiplicative expression> | <additive expression> ADD <multiplicative expression> | <additive expression> SUB <multiplicative expression>
 <multiplicative expression> ::= <unary expression> | <multiplicative expression> MUL <unary expression> | <multiplicative expression> DIV <unary expression> | <multiplicative expression> MOD <unary expression>
 <cast expression> ::= LPARAN <primitive type> RPARAN <unary expression> | LPARAN <reference type> RPARAN <unary expression not plus minus>

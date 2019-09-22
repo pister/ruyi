@@ -39,10 +39,98 @@ static
 ruyi_error* map_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
 
 static
-ruyi_error* relational_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <relational expression> ::= <shift expression> | <relational expression> LT <shift expression> | <relational expression> GT <shift expression> | <relational expression> LTE <shift expression> | <relational expression> GTE <shift expression> | <relational expression> KW_INSTANCEOF <reference type>
-    
+ruyi_error* reference_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
+
+static
+ruyi_error* shift_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <shift expression> ::= <additive expression> ((SHFT_LEFT | SHFT_RIGHT) <additive expression>)?
+
     return NULL;
+}
+
+static
+ruyi_error* relational_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <relational expression> ::= <shift expression> ((KW_INSTANCEOF <reference type>) | ((LT | GT | LTE | GTE) <shift expression>)) ?
+    ruyi_error *err;
+    ruyi_ast *ast;
+    ruyi_ast *shift_expr_ast = NULL;
+    ruyi_ast *right_shift_expr_ast = NULL;
+    ruyi_ast *ref_type_ast = NULL;
+    ruyi_ast *op_ast = NULL;
+    ruyi_token_type token_type;
+    if ((err = shift_expression(reader, &shift_expr_ast)) != NULL) {
+        return err;
+    }
+    if (shift_expr_ast == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    token_type = ruyi_lexer_reader_peek_token_type(reader);
+    if (token_type == Ruyi_tt_KW_INSTANCEOF) {
+        ruyi_lexer_reader_consume_token(reader); // consume instanceof
+        if ((err = reference_type(reader, &ref_type_ast)) != NULL) {
+            goto relational_expression_on_error;
+        }
+        if (ref_type_ast == NULL) {
+            err = ruyi_error_by_parser(reader, "miss type-name after 'instanceof'");
+            goto relational_expression_on_error;
+        }
+        ast = ruyi_ast_create(Ruyi_at_relational_expression);
+        ruyi_ast_add_child(ast, shift_expr_ast);
+        ruyi_ast_add_child(ast, ruyi_ast_create(Ruyi_at_op_instanceof));
+        ruyi_ast_add_child(ast, ref_type_ast);
+        *out_ast = ast;
+        return NULL;
+    }
+    switch (token_type) {
+        case Ruyi_tt_LT:
+            ruyi_lexer_reader_consume_token(reader);
+            op_ast = ruyi_ast_create(Ruyi_at_op_lt);
+            break;
+        case Ruyi_tt_GT:
+            ruyi_lexer_reader_consume_token(reader);
+            op_ast = ruyi_ast_create(Ruyi_at_op_gt);
+            break;
+        case Ruyi_tt_LTE:
+            ruyi_lexer_reader_consume_token(reader);
+            op_ast = ruyi_ast_create(Ruyi_at_op_lte);
+            break;
+        case Ruyi_tt_GTE:
+            ruyi_lexer_reader_consume_token(reader);
+            op_ast = ruyi_ast_create(Ruyi_at_op_gte);
+            break;
+        default:
+            break;
+    }
+    if (op_ast == NULL) {
+        *out_ast = shift_expr_ast;
+        return NULL;
+    }
+    if ((err = shift_expression(reader, &right_shift_expr_ast)) != NULL) {
+        goto relational_expression_on_error;
+    }
+    if (right_shift_expr_ast == NULL) {
+        err = ruyi_error_by_parser(reader, "need expression after compare operator");
+        goto relational_expression_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_relational_expression);
+    ruyi_ast_add_child(ast, shift_expr_ast);
+    ruyi_ast_add_child(ast, op_ast);
+    ruyi_ast_add_child(ast, right_shift_expr_ast);
+    *out_ast = ast;
+    return NULL;
+relational_expression_on_error:
+    if (shift_expr_ast != NULL) {
+        ruyi_ast_destroy(shift_expr_ast);
+    }
+    if (right_shift_expr_ast != NULL) {
+        ruyi_ast_destroy(right_shift_expr_ast);
+    }
+    if (op_ast != NULL) {
+        ruyi_ast_destroy(op_ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
