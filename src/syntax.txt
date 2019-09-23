@@ -34,7 +34,7 @@
 <sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>
 
 <expression statement> ::= <statement expression> <statement ends>
-<statement expression> ::= <assignment> | <preincrement expression> | <postincrement expression> | <postdecrement expression>  | <class instance creation expression> | <function invocation>
+<statement expression> ::= <assignment> | <postincrement expression> | <postdecrement expression>  | <class instance creation expression> | <function invocation>
 
 <empty statement> ::= <statement ends>
 <labeled statement> ::= IDENTITY COLON <statement>
@@ -58,12 +58,12 @@
 <equality expression> ::= <relational expression> ((EQUALS | NOT_EQUALS) <relational expression>)?
 <relational expression> ::= <shift expression> ((KW_INSTANCEOF <reference type>) | ((LT | GT | LTE | GTE) <shift expression>)) ?
 <shift expression> ::= <additive expression> ((SHFT_LEFT | SHFT_RIGHT) <additive expression>)?
+<additive expression> ::= <multiplicative expression> ((ADD | SUB) <multiplicative expression>)*
+<multiplicative expression> ::= <unary expression> ((MUL | DIV | MOD) <unary expression>)*
 
-<additive expression> ::= <multiplicative expression> | <additive expression> ADD <multiplicative expression> | <additive expression> SUB <multiplicative expression>
-<multiplicative expression> ::= <unary expression> | <multiplicative expression> MUL <unary expression> | <multiplicative expression> DIV <unary expression> | <multiplicative expression> MOD <unary expression>
-<cast expression> ::= LPARAN <primitive type> RPARAN <unary expression> | LPARAN <reference type> RPARAN <unary expression not plus minus>
-<unary expression> ::= <preincrement expression> | ADD <unary expression> | SUB <unary expression> | <unary expression not plus minus>
-<unary expression not plus minus> ::= <postfix expression> | BIT_INVERSE <unary expression> | LOGIC_NOT <unary expression> | <cast expression>
+<unary expression> ::= ADD <unary expression> | SUB <unary expression> | <not plus minus expression>
+<not plus minus expression> ::= BIT_INVERSE <unary expression> | LOGIC_NOT <unary expression> | <primary cast expression> | <postfix expression>
+<primary cast expression> ::=  LPARAN <primary type> RPARAN  <unary expression> # not support reference cast now!!!
 <postdecrement expression> ::= <postfix expression> DEC
 <postincrement expression> ::= <postfix expression> INC
 <postfix expression> ::= <primary> | <name> | <postincrement expression> | <postdecrement expression>

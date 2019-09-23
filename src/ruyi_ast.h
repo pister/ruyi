@@ -62,6 +62,21 @@ typedef enum {
     Ruyi_at_op_gt,
     Ruyi_at_op_lte,
     Ruyi_at_op_gte,
+    Ruyi_at_shift_expression,
+    Ruyi_at_op_shift_left,
+    Ruyi_at_op_shift_right,
+    Ruyi_at_additive_expression,
+    Ruyi_at_op_add,
+    Ruyi_at_op_sub,
+    Ruyi_at_multiplicative_expression,
+    Ruyi_at_op_mul,
+    Ruyi_at_op_div,
+    Ruyi_at_op_mod,
+    Ruyi_at_unary_expression,
+    Ruyi_at_bit_inverse_expression,
+    Ruyi_at_logic_not_expression,
+    Ruyi_at_primary_cast_expression,
+
 
 } ruyi_ast_type;
 
