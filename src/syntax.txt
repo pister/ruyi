@@ -6,18 +6,14 @@
 # Declarations
 <global declarations> ::= <global declaration> *
 <global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration> | <statement ends>
-
 <variable declaration> ::= KW_VAR <variable declaration tail>
 <function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <type>? <function body>
 <class declaration> ::= KW_CLASS IDENTITY <class body>
 <interface declaration> ::= KW_INTERFACE IDENTITY <interface body>
 <constant declaration> ::= KW_CONST IDENTITY ASSIGN <constant initializer>
-
 <class body> ::= LBRACE <class body declarations>? RBRACE
 <class body declarations> ::= <class body declaration> | <class body declarations> <class body declaration>
-
 <variable declaration tail> ::= (LBRACKET RBRACKET) * IDENTITY (ASSIGN <expression>) ?
-
 <formal parameter list> ::= <formal parameter> | <formal parameter list> COMMA <formal parameter>
 <formal parameter> ::= IDENTITY DOT3? <type>
 <method body> ::= <block> | <statement ends>
@@ -60,32 +56,23 @@
 <shift expression> ::= <additive expression> ((SHFT_LEFT | SHFT_RIGHT) <additive expression>)?
 <additive expression> ::= <multiplicative expression> ((ADD | SUB) <multiplicative expression>)*
 <multiplicative expression> ::= <unary expression> ((MUL | DIV | MOD) <unary expression>)*
-
 <unary expression> ::= ADD <unary expression> | SUB <unary expression> | <not plus minus expression>
-<not plus minus expression> ::= BIT_INVERSE <unary expression> | LOGIC_NOT <unary expression> | <primary cast expression> | <postfix expression>
-<primary cast expression> ::=  LPARAN <primary type> RPARAN  <unary expression> # not support reference cast now!!!
-<postdecrement expression> ::= <postfix expression> DEC
-<postincrement expression> ::= <postfix expression> INC
-<postfix expression> ::= <primary> | <name> | <postincrement expression> | <postdecrement expression>
+<not plus minus expression> ::= BIT_INVERSE <unary expression> | LOGIC_NOT <unary expression> | <postfix expression>
+<postfix expression> ::= ( <primary> | <name> ) (DEC | INC | <type cast>) ?
+<type cast> ::= DOT RPARAN <type> RPARAN
 <field access> ::= <primary> DOT IDENTITY
-<primary> ::= <primary no new array> | <array creation> | <map make creation> 
+<primary> ::= <array creation> | <map creation> | <primary no new collection>
 <primary no new collection> ::= <literal> | KW_THIS | LPARAN <expression> RPARAN | <field access> | <array access> | <instance creation> | <function invocation>
-
 <instance creation> ::= IDENTITY LBRACE (IDENTITY COLON <expression> (COMMA IDENTITY COLON <expression>)*)?  RBRACE
-
 <argument list> ::= <expression> ( COMMA <expression> )*
-
 <array creation> ::= <array creation with cap> | <array creation with init>
-
 <array creation with cap> ::= KW_ARRAY LPARAN <array type> COMMA <expression> (COMMA <expression>)? RPARAN
 <array creation with init> ::= <array type> LBRACKET (<expression> (COMMA <expression>)*)?  RBRACKET
 <map creation> ::= KW_MAP LPARAN <map type> RPARAN
-
 <function invocation> ::= <expression> LPARAN <argument list>? RPARAN
-
 <array access> ::= <array variable access> | <variable primary access>
 <array variable access> ::= <name> LBRACKET <expression> RBRACKET
-<variable primary access> ::= <primary no new array> LBRACKET <expression> RBRACKET
+<variable primary access> ::= <primary no new collection> LBRACKET <expression> RBRACKET
 
 # Types
 <type> ::= <primitive type> | <reference type>

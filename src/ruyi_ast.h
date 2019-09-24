@@ -76,6 +76,10 @@ typedef enum {
     Ruyi_at_bit_inverse_expression,
     Ruyi_at_logic_not_expression,
     Ruyi_at_primary_cast_expression,
+    Ruyi_at_postfix_dec_expression,
+    Ruyi_at_postfix_inc_expression,
+    Ruyi_at_type_cast_expression,
+
 
 
 } ruyi_ast_type;
