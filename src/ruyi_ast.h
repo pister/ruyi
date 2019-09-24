@@ -79,8 +79,8 @@ typedef enum {
     Ruyi_at_postfix_dec_expression,
     Ruyi_at_postfix_inc_expression,
     Ruyi_at_type_cast_expression,
-
-
+    Ruyi_at_field_dot_access_expression,
+    Ruyi_at_field_bracket_access_expression
 
 } ruyi_ast_type;
 

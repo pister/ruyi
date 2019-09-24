@@ -6,14 +6,17 @@
 # Declarations
 <global declarations> ::= <global declaration> *
 <global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration> | <statement ends>
-<variable declaration> ::= KW_VAR <variable declaration tail>
+<variable declaration> ::= <variable auto infer type init> | (KW_VAR <variable declaration tail>)
+<variable declaration tail> ::= IDENTITY <type>? (ASSIGN <expression>) ?
+<variable auto infer type init> ::= IDENTITY COLON_ASSIGN <expression>
+
 <function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <type>? <function body>
 <class declaration> ::= KW_CLASS IDENTITY <class body>
 <interface declaration> ::= KW_INTERFACE IDENTITY <interface body>
 <constant declaration> ::= KW_CONST IDENTITY ASSIGN <constant initializer>
 <class body> ::= LBRACE <class body declarations>? RBRACE
 <class body declarations> ::= <class body declaration> | <class body declarations> <class body declaration>
-<variable declaration tail> ::= (LBRACKET RBRACKET) * IDENTITY (ASSIGN <expression>) ?
+
 <formal parameter list> ::= <formal parameter> | <formal parameter list> COMMA <formal parameter>
 <formal parameter> ::= IDENTITY DOT3? <type>
 <method body> ::= <block> | <statement ends>
@@ -44,7 +47,7 @@
 <expression> ::= <assignment expression>
 <assignment expression> ::= <conditional expression> | <assignment>
 <assignment> ::= <left hand side> <assignment operator> <assignment expression>
-<left hand side> ::= <name> | <field access> | <array access>
+<left hand side> ::= <name> | <field access expression> | <array access>
 <assignment operator> ::= ASSIGN | MUL_ASS | DIV_ASS | MOD_ASS | ADD_ASS | SUB_ASS | SHFT_LEFT_ASS | SHFT_RIGHT_ASS | BIT_AND_ASS | BIT_XOR_ASS | BIT_OR_ASS
 <conditional expression> ::= <conditional or expression> (QM <expression> Ruyi_tt_COLON <conditional expression>)?
 <conditional or expression> ::= <conditional and expression> (LOGIC_OR <conditional and expression>)*
@@ -58,17 +61,26 @@
 <multiplicative expression> ::= <unary expression> ((MUL | DIV | MOD) <unary expression>)*
 <unary expression> ::= ADD <unary expression> | SUB <unary expression> | <not plus minus expression>
 <not plus minus expression> ::= BIT_INVERSE <unary expression> | LOGIC_NOT <unary expression> | <postfix expression>
-<postfix expression> ::= ( <primary> | <name> ) (DEC | INC | <type cast>) ?
+
+<postfix expression> ::= ( <field access expression> | <name> ) (DEC | INC | <type cast>) ?
 <type cast> ::= DOT RPARAN <type> RPARAN
-<field access> ::= <primary> DOT IDENTITY
+
+<field access expression> ::= <primary> (DOT <dot expression tail> | LBRACKET <bracket expression tail>) *
+<dot expression tail> ::= IDENTITY (LPARAN <argument list>? RPARAN)?
+<bracket expression tail> ::= <expression> RBRACKET
+
+<access expression> = <field access expression> | <array access expression> | <function invocation>
+
+<field access expression> ::= <primary> (DOT IDENTITY)*
 <primary> ::= <array creation> | <map creation> | <primary no new collection>
-<primary no new collection> ::= <literal> | KW_THIS | LPARAN <expression> RPARAN | <field access> | <array access> | <instance creation> | <function invocation>
+<primary no new collection> ::= <literal> | KW_THIS | LPARAN <expression> RPARAN | <instance creation> | <function invocation>
 <instance creation> ::= IDENTITY LBRACE (IDENTITY COLON <expression> (COMMA IDENTITY COLON <expression>)*)?  RBRACE
 <argument list> ::= <expression> ( COMMA <expression> )*
 <array creation> ::= <array creation with cap> | <array creation with init>
 <array creation with cap> ::= KW_ARRAY LPARAN <array type> COMMA <expression> (COMMA <expression>)? RPARAN
 <array creation with init> ::= <array type> LBRACKET (<expression> (COMMA <expression>)*)?  RBRACKET
 <map creation> ::= KW_MAP LPARAN <map type> RPARAN
+
 <function invocation> ::= <expression> LPARAN <argument list>? RPARAN
 <array access> ::= <array variable access> | <variable primary access>
 <array variable access> ::= <name> LBRACKET <expression> RBRACKET

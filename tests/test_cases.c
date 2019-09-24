@@ -16,7 +16,7 @@
 #include "../src/ruyi_unicode.h"
 #include "../src/ruyi_io.h"
 #include "../src/ruyi_lexer.h"
-
+#include "../src/ruyi_parser.h"
 
 
 BOOL print_callback(ruyi_value v) {
@@ -658,6 +658,24 @@ void test_unicode_string(void) {
     ruyi_unicode_bytes_string_destroy(s1);
 }
 
+void test_parser_expression() {
+    const char* src = "b := a + 2";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_ast *ast = NULL;
+    ruyi_error *err = NULL;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+    }
+    
+    
+    
+    ruyi_ast_destroy(ast);
+}
+
 void run_test_cases(void) {
     test_lists();
     test_vectors();
@@ -671,4 +689,6 @@ void run_test_cases(void) {
     test_lexer_id_number_string_char_comments();
     test_lexer_symbols();
     test_lexer_keywords();
+    
+    test_parser_expression();
 }
