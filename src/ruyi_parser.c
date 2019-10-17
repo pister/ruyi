@@ -1978,25 +1978,115 @@ ruyi_error* variable_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) 
 static
 ruyi_error* formal_parameter(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <formal parameter> ::= IDENTITY DOT3? <type>
-
+    ruyi_error *err;
+    ruyi_ast *ast_name = NULL;
+    ruyi_ast *ast_type = NULL;
+    ruyi_ast *ast_type_temp;
+    ruyi_ast *ast;
+    if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_IDENTITY) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    ast_name = create_ast_by_consume_token_string(reader, Ruyi_at_name);
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_DOT3, NULL)) {
+        ast_type = ruyi_ast_create(Ruyi_at_var_args_type);
+    }
+    if ((err = type(reader, &ast_type_temp)) != NULL) {
+        goto formal_parameter_on_error;
+    }
+    if (ast_type_temp == NULL) {
+        err = ruyi_error_by_parser(reader, "miss type after identifier");
+        goto formal_parameter_on_error;
+    }
+    if (ast_type == NULL) {
+        ast_type = ast_type_temp;
+    } else {
+        ruyi_ast_add_child(ast_type, ast_type_temp);
+    }
+    ast = ruyi_ast_create(Ruyi_at_formal_parameter);
+    ruyi_ast_add_child(ast, ast_name);
+    ruyi_ast_add_child(ast, ast_type);
+    *out_ast = ast;
     return NULL;
+formal_parameter_on_error:
+    if (ast_name) {
+        ruyi_ast_destroy(ast_name);
+    }
+    if (ast_type) {
+        ruyi_ast_destroy(ast_type);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static
 ruyi_error* formal_parameter_list(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <formal parameter list> ::= <formal parameter> ( COMMA <formal parameter>) *
+    // <formal parameter list> ::= ( <formal parameter> ( COMMA <formal parameter>) * ) ?
     ruyi_error *err;
+    ruyi_ast *ast_formal_param = NULL;
     ruyi_ast *ast = ruyi_ast_create(Ruyi_at_formal_parameter_list);
+    if ((err = formal_parameter(reader, &ast_formal_param)) != NULL) {
+        goto formal_parameter_list_on_error;
+    }
+    if (ast_formal_param == NULL) {
+        // no params
+        *out_ast = ast;
+        return NULL;
+    }
+    ruyi_ast_add_child(ast, ast_formal_param);
+    for (;;) {
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
+            break;
+        }
+        if ((err = formal_parameter(reader, &ast_formal_param)) != NULL) {
+            goto formal_parameter_list_on_error;
+        }
+        if (ast_formal_param == NULL) {
+            err = ruyi_error_by_parser(reader, "miss formal parameter after ','");
+            goto formal_parameter_list_on_error;
+        }
+        ruyi_ast_add_child(ast, ast_formal_param);
+    }
+    *out_ast = ast;
+    return NULL;
+formal_parameter_list_on_error:
+    if (ast) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
+ruyi_error* block_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <block statement> ::= <local variable declaration statement> | <statement>
+
+    return NULL;
+}
+
+static
+ruyi_error* block_statements(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <block statements> ::= <block statement> +
+    ruyi_error *err;
+    ruyi_ast *ast;
     
     return NULL;
 }
 
 
 static
-ruyi_error* function_body(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <function body> ::= <block>
+ruyi_error* block(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <block> ::= LBRACE <block statements>? RBRACE
+    ruyi_error *err;
+    ruyi_ast *ast;
     
     return NULL;
+}
+
+static
+ruyi_error* function_body(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <function body> ::= <block>
+    return block(reader, out_ast);
 }
 
 static

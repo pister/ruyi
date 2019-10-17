@@ -17,14 +17,14 @@
 <class body> ::= LBRACE <class body declarations>? RBRACE
 <class body declarations> ::= <class body declaration> | <class body declarations> <class body declaration>
 
-<formal parameter list> ::= <formal parameter> ( COMMA <formal parameter>) *
+<formal parameter list> ::= ( )<formal parameter> ( COMMA <formal parameter>) * ) ?
 <formal parameter> ::= IDENTITY DOT3? <type>
 <function body> ::= <block>
 
 
 # Blocks
 <block> ::= LBRACE <block statements>? RBRACE
-<block statements> ::= <block statement> | <block statements> <block statement>
+<block statements> ::= <block statement> +
 <block statement> ::= <local variable declaration statement> | <statement>
 <local variable declaration statement> ::= <local variable declaration> <statement ends>
 <local variable declaration> ::= <variable declaration> | <local direct assign>
