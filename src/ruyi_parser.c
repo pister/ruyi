@@ -94,6 +94,24 @@ static
 ruyi_error* primary(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
 
 static
+BOOL statement_ends(ruyi_lexer_reader *reader) {
+    // <statement ends> ::= (SEMICOLON | EOL) +
+    BOOL matches = FALSE;
+    for (;;) {
+        if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_SEMICOLON, NULL)) {
+            matches = TRUE;
+            continue;
+        }
+        if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_EOL, NULL)) {
+            matches = TRUE;
+            continue;
+        }
+        break;
+    }
+    return matches;
+}
+
+static
 ruyi_error* type_cast(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <type cast> ::= DOT RPARAN <type> RPARAN
     ruyi_error *err;
@@ -1955,6 +1973,86 @@ ruyi_error* variable_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) 
     }
     *out_ast = var_declare_ast;
     return NULL;
+}
+
+static
+ruyi_error* formal_parameter(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <formal parameter> ::= IDENTITY DOT3? <type>
+
+    return NULL;
+}
+
+static
+ruyi_error* formal_parameter_list(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <formal parameter list> ::= <formal parameter> ( COMMA <formal parameter>) *
+    ruyi_error *err;
+    ruyi_ast *ast = ruyi_ast_create(Ruyi_at_formal_parameter_list);
+    
+    return NULL;
+}
+
+
+static
+ruyi_error* function_body(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <function body> ::= <block>
+    
+    return NULL;
+}
+
+static
+ruyi_error* function_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <type>? <function body>
+    ruyi_error *err;
+    ruyi_ast *ast;
+    ruyi_ast *ast_name = NULL;
+    ruyi_ast *ast_formal_params = NULL;
+    ruyi_ast *ast_return_type = NULL;
+    ruyi_ast *ast_body = NULL;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_FUNC, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_IDENTITY) {
+        err = ruyi_error_by_parser(reader, "miss identifier after 'func'");
+        goto function_declaration_on_error;
+    }
+    ast_name = create_ast_string_by_token(reader, Ruyi_at_name, NULL);
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss '(' after identifier when define a function");
+        goto function_declaration_on_error;
+    }
+    if ((err = formal_parameter_list(reader, &ast_formal_params)) != NULL) {
+        goto function_declaration_on_error;
+    }
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss ')' when define a function");
+        goto function_declaration_on_error;
+    }
+    if ((err = type(reader, &ast_return_type)) != NULL) {
+        goto function_declaration_on_error;
+    }
+    if ((err = function_body(reader, &ast_return_type)) != NULL) {
+        goto function_declaration_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_function_declaration);
+    ruyi_ast_add_child(ast, ast_name);
+    ruyi_ast_add_child(ast, ast_formal_params);
+    ruyi_ast_add_child(ast, ast_return_type);
+    ruyi_ast_add_child(ast, ast_body);
+    *out_ast = ast;
+    return NULL;
+function_declaration_on_error:
+    if (ast_name) {
+        ruyi_ast_destroy(ast_name);
+    }
+    if (ast_formal_params) {
+        ruyi_ast_destroy(ast_formal_params);
+    }
+    if (ast_body) {
+        ruyi_ast_destroy(ast_body);
+    }
+    *out_ast = NULL;
+    return err;
 }
 
 static

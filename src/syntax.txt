@@ -17,9 +17,9 @@
 <class body> ::= LBRACE <class body declarations>? RBRACE
 <class body declarations> ::= <class body declaration> | <class body declarations> <class body declaration>
 
-<formal parameter list> ::= <formal parameter> | <formal parameter list> COMMA <formal parameter>
+<formal parameter list> ::= <formal parameter> ( COMMA <formal parameter>) *
 <formal parameter> ::= IDENTITY DOT3? <type>
-<method body> ::= <block> | <statement ends>
+<function body> ::= <block>
 
 
 # Blocks
@@ -38,10 +38,8 @@
 <empty statement> ::= <statement ends>
 <labeled statement> ::= IDENTITY COLON <statement>
 
-
 #
-<statement ends> ::= <statement end> | <statement ends> <statement end>
-<statement end> ::= SEMICOLON | EOL
+<statement ends> ::= (SEMICOLON | EOL) +
 
 # Expression
 <expression> ::= <assignment expression>
@@ -81,10 +79,7 @@
 <array creation with init> ::= <array type> LBRACKET (<expression> (COMMA <expression>)*)?  RBRACKET
 <map creation> ::= KW_MAP LPARAN <map type> RPARAN
 
-# TODO 消除<expression>的递归
-# <function invocation> ::= <name>???? <function invocation tail>
 <function invocation tail> ::= LPARAN <argument list>? RPARAN
-
 
 <array access> ::= <array variable access> | <variable primary access>
 <array variable access> ::= <name> LBRACKET <expression> RBRACKET
