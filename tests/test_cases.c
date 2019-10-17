@@ -19,9 +19,15 @@
 #include "../src/ruyi_parser.h"
 
 
-BOOL print_callback(ruyi_value v) {
+static BOOL print_callback(ruyi_value v) {
     printf("value: %lld\n", v.data.int64_value);
     return TRUE;
+}
+
+static void print_unicode(ruyi_unicode_string* ustr) {
+    ruyi_bytes_string* bstr = ruyi_unicode_string_decode_utf8(ustr);
+    printf("%s\n", bstr->str);
+    ruyi_unicode_bytes_string_destroy(bstr);
 }
 
 static void assert_list_values(ruyi_list * list, const INT64 *values, int value_length) {
@@ -641,6 +647,7 @@ void test_unicode_string(void) {
     ruyi_unicode_string *us1 = ruyi_unicode_string_init_from_utf8("abc中午123", 0);
     ruyi_unicode_string *us2 = ruyi_unicode_string_init_from_utf8("abc中午123", 0);
     ruyi_unicode_string *us3 = ruyi_unicode_string_init_from_utf8("abc中午123", 0);
+    ruyi_unicode_string *us4 = ruyi_unicode_string_copy_from(us1);
     ruyi_bytes_string* s1 = NULL;
     assert(8 == ruyi_unicode_string_length(us1));
     ruyi_unicode_string_append_utf8(us1, "我的世界456测试啦啦4567", 0);
@@ -653,17 +660,29 @@ void test_unicode_string(void) {
     v3 = ruyi_value_unicode_str(us3);
     assert(ruyi_value_equals(v2, v3));
     
+    assert(ruyi_unicode_string_equals(us2, us4));
+    
     ruyi_unicode_string_destroy(us1);
     ruyi_unicode_string_destroy(us2);
+    ruyi_unicode_string_destroy(us4);
+
     ruyi_unicode_bytes_string_destroy(s1);
 }
 
 void test_parser_expression() {
-    const char* src = "b := a + 2";
+    const char* src = "bb := aa + 2";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_ast *ast = NULL;
+    ruyi_ast *assign_ast = NULL;
     ruyi_error *err = NULL;
+    ruyi_unicode_string* v1 = NULL;
+    ruyi_unicode_string* v2 = NULL;
+    ruyi_ast *type_ast;
+    ruyi_ast *expr_ast;
+    ruyi_ast *var_aa_ast;
+    ruyi_ast *op_ast;
+    ruyi_ast *val_2_ast;
     err = ruyi_parse_ast(reader, &ast);
     ruyi_lexer_reader_close(reader);
     if (err != NULL) {
@@ -671,24 +690,63 @@ void test_parser_expression() {
         ruyi_error_destroy(err);
     }
     
-    
-    
+    assert(Ruyi_at_root == ast->type);
+    assert(1 == ruyi_ast_child_length(ast));
+    assign_ast = ruyi_ast_get_child(ast, 0);
+    assert(Ruyi_at_var_declaration == assign_ast->type);
+    //assign_ast->data.ptr_value
+    v1 = ruyi_unicode_string_init_from_utf8("bb", 0);
+    assert(ruyi_unicode_string_equals(v1, (ruyi_unicode_string*)assign_ast->data.ptr_value));
+    assert(2 == assign_ast->child_asts->len);
+    type_ast = ruyi_ast_get_child(assign_ast, 0);
+    expr_ast = ruyi_ast_get_child(assign_ast, 1);
+    assert(type_ast->type = Ruyi_at_var_declaration_auto_type);
+    assert(expr_ast->type = Ruyi_at_additive_expression);
+    assert(3 == expr_ast->child_asts->len);
+
+    var_aa_ast = ruyi_ast_get_child(expr_ast, 0);
+    op_ast = ruyi_ast_get_child(expr_ast, 1);
+    val_2_ast = ruyi_ast_get_child(expr_ast, 2);
+
+    assert(var_aa_ast->type = Ruyi_at_name);
+    v2 = ruyi_unicode_string_init_from_utf8("aa", 0);
+    assert(ruyi_unicode_string_equals(v2, (ruyi_unicode_string*)var_aa_ast->data.ptr_value));
+    assert(op_ast->type = Ruyi_at_op_add);
+    assert(val_2_ast->type = Ruyi_at_integer);
+    assert(2 == val_2_ast->data.int32_value);
+
     ruyi_ast_destroy(ast);
+    ruyi_unicode_string_destroy(v1);
+    ruyi_unicode_string_destroy(v2);
+    
+    // type_ast, expr_ast etc ... will be auto destroy by code: ruyi_ast_destroy(ast);
 }
 
-void run_test_cases(void) {
+void run_test_cases_basic(void) {
     test_lists();
     test_vectors();
     test_hashtable();
     test_hashtable_unicode_str();
     test_unicode();
     test_unicode_string();
-  //  test_file();
-  //  test_unicode_file();
+    //  test_file();
+    //  test_unicode_file();
+}
+
+void run_test_cases_lexer(void) {
     test_lexer_id_number();
     test_lexer_id_number_string_char_comments();
     test_lexer_symbols();
     test_lexer_keywords();
-    
+}
+
+void run_test_cases_parser() {
     test_parser_expression();
+}
+
+void run_test_cases(void) {
+     // run_test_cases_basic();
+    // run_test_cases_lexer();
+   
+    run_test_cases_parser();
 }

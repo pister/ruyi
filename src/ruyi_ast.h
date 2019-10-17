@@ -17,6 +17,7 @@ typedef enum {
     Ruyi_at_root,
     Ruyi_at_global_declaration,
     Ruyi_at_var_declaration,
+    Ruyi_at_var_declaration_auto_type,
     Ruyi_at_assignment,
     Ruyi_at_assign_operator,
     Ruyi_at_name,
@@ -47,6 +48,7 @@ typedef enum {
     Ruyi_at_type_float,
     Ruyi_at_type_double,
     Ruyi_at_function_invocation,
+    Ruyi_at_function_invocation_tail,
     Ruyi_at_argument_list,
     Ruyi_at_conditional_expression,
     Ruyi_at_conditional_or_expression,
@@ -113,9 +115,9 @@ ruyi_ast * ruyi_ast_create_with_unicode(ruyi_ast_type type, ruyi_unicode_string 
 
 void ruyi_ast_add_child(ruyi_ast *ast, ruyi_ast *child);
 
+UINT32 ruyi_ast_child_length(ruyi_ast *ast);
 
 ruyi_ast * ruyi_ast_get_child(ruyi_ast *ast, UINT32 index);
-
 
 void ruyi_ast_destroy(ruyi_ast *ast);
 

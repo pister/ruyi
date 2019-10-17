@@ -87,3 +87,11 @@ ruyi_ast * ruyi_ast_get_child(ruyi_ast *ast, UINT32 index) {
     return (ruyi_ast *)child_ptr.data.ptr;
 }
 
+
+UINT32 ruyi_ast_child_length(ruyi_ast *ast) {
+    assert(ast);
+    if (ast->child_asts == NULL) {
+        return 0;
+    }
+    return ast->child_asts->len;
+}

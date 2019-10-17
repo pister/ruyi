@@ -69,11 +69,11 @@
 <dot expression tail> ::= IDENTITY (LPARAN <argument list>? RPARAN)?
 <bracket expression tail> ::= <expression> RBRACKET
 
-<access expression> = <field access expression> | <array access expression> | <function invocation>
+<field access expression> = (<field access expression> | <array access expression> ) <function invocation tail>?
 
 <field access expression> ::= <primary> (DOT IDENTITY)*
 <primary> ::= <array creation> | <map creation> | <primary no new collection>
-<primary no new collection> ::= <literal> | KW_THIS | LPARAN <expression> RPARAN | <instance creation> | <function invocation>
+<primary no new collection> ::= <literal> <function invocation tail>? | KW_THIS | LPARAN <expression> RPARAN | <instance creation>
 <instance creation> ::= IDENTITY LBRACE (IDENTITY COLON <expression> (COMMA IDENTITY COLON <expression>)*)?  RBRACE
 <argument list> ::= <expression> ( COMMA <expression> )*
 <array creation> ::= <array creation with cap> | <array creation with init>
@@ -81,7 +81,11 @@
 <array creation with init> ::= <array type> LBRACKET (<expression> (COMMA <expression>)*)?  RBRACKET
 <map creation> ::= KW_MAP LPARAN <map type> RPARAN
 
-<function invocation> ::= <expression> LPARAN <argument list>? RPARAN
+# TODO 消除<expression>的递归
+# <function invocation> ::= <name>???? <function invocation tail>
+<function invocation tail> ::= LPARAN <argument list>? RPARAN
+
+
 <array access> ::= <array variable access> | <variable primary access>
 <array variable access> ::= <name> LBRACKET <expression> RBRACKET
 <variable primary access> ::= <primary no new collection> LBRACKET <expression> RBRACKET

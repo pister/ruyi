@@ -59,6 +59,8 @@ typedef struct {
     UINT32 capacity;
 } ruyi_bytes_string;
 
+ruyi_unicode_string * ruyi_unicode_string_init(WIDE_CHAR *data, UINT32 len);
+
 ruyi_unicode_string * ruyi_unicode_string_init_with_capacity(UINT32 capacity);
 
 ruyi_unicode_string * ruyi_unicode_string_init_from_utf8(const char* src, UINT32 len);

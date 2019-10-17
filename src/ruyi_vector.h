@@ -45,6 +45,15 @@ void ruyi_vector_destroy(ruyi_vector* vector);
  */
 void ruyi_vector_add(ruyi_vector* vector, ruyi_value value);
 
+
+/**
+ * Add all values to at the last of vector
+ * params:
+ * vector - the target vector
+ * from_vector - all values to be add
+ */
+void ruyi_vector_add_all(ruyi_vector* vector, ruyi_vector* from_vector);
+
 /**
  * Get the value at the index of vector
  * params:

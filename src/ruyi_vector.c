@@ -60,6 +60,16 @@ void ruyi_vector_add(ruyi_vector* vector, ruyi_value value) {
     vector->value_data[vector->len++] = value;
 }
 
+void ruyi_vector_add_all(ruyi_vector* vector, ruyi_vector* from_vector) {
+    assert(vector);
+    assert(from_vector);
+    INT32 i;
+    INT32 len = from_vector->len;
+    for (i = 0; i < len; i++) {
+        ruyi_vector_add(vector, from_vector->value_data[i]);
+    }
+}
+
 BOOL ruyi_vector_get(ruyi_vector* vector, UINT32 index, ruyi_value *ret_value) {
     assert(vector);
     if (index >= vector->len) {

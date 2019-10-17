@@ -326,17 +326,23 @@ ruyi_unicode_string * ruyi_unicode_string_init_from_utf8(const char* src, UINT32
     return unicode_str;
 }
 
+ruyi_unicode_string * ruyi_unicode_string_init(WIDE_CHAR *data, UINT32 len) {
+    ruyi_unicode_string * unicode_str;
+    unicode_str = ruyi_unicode_string_init_with_capacity(len + 1);
+    ruyi_unicode_string_append(unicode_str, data, len);
+    return unicode_str;
+}
+
 ruyi_unicode_string * ruyi_unicode_string_copy_from(const ruyi_unicode_string * src) {
     ruyi_unicode_string * unicode_str;
     if (src == NULL) {
         return NULL;
     }
-    
     unicode_str = (ruyi_unicode_string *)ruyi_mem_alloc(sizeof(ruyi_unicode_string));
     unicode_str->capacity = src->capacity;
     unicode_str->length = src->length;
     unicode_str->data = (WIDE_CHAR*)ruyi_mem_alloc(sizeof(WIDE_CHAR) * unicode_str->capacity);
-    memcpy(unicode_str->data, src->data, unicode_str->length);
+    memcpy(unicode_str->data, src->data, sizeof(WIDE_CHAR) * unicode_str->capacity);
     return unicode_str;
 }
 
