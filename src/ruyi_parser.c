@@ -94,21 +94,13 @@ static
 ruyi_error* primary(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
 
 static
-BOOL statement_ends(ruyi_lexer_reader *reader) {
-    // <statement ends> ::= (SEMICOLON | EOL) +
-    BOOL matches = FALSE;
+void statement_ends(ruyi_lexer_reader *reader) {
+    // <statement ends> ::= SEMICOLON *
     for (;;) {
-        if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_SEMICOLON, NULL)) {
-            matches = TRUE;
-            continue;
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_SEMICOLON, NULL)) {
+            break;
         }
-        if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_EOL, NULL)) {
-            matches = TRUE;
-            continue;
-        }
-        break;
     }
-    return matches;
 }
 
 static
@@ -2058,29 +2050,118 @@ formal_parameter_list_on_error:
 }
 
 static
+ruyi_error* local_variable_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <local variable declaration> ::= <variable declaration> | <variable auto infer type init>
+    ruyi_error *err;
+    ruyi_ast *ast;
+    if ((err = variable_declaration(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    if ((err = variable_auto_infer_type_init(reader, &ast)) != NULL) {
+        return err;
+    }
+    *out_ast = ast;
+    return NULL;
+}
+
+static
+ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <statement> ::= <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement> | <labeled statement>
+    
+    return NULL;
+}
+
+static
+ruyi_error* local_variable_declaration_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <local variable declaration statement> ::= <local variable declaration> <statement ends>
+    ruyi_error *err;
+    ruyi_ast *ast;
+    if ((err = local_variable_declaration(reader, &ast)) != NULL) {
+        *out_ast = NULL;
+        return err;
+    }
+    statement_ends(reader);
+    *out_ast = ast;
+    return NULL;
+}
+
+static
 ruyi_error* block_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <block statement> ::= <local variable declaration statement> | <statement>
-
+    ruyi_error *err;
+    ruyi_ast *ast;
+    if ((err = local_variable_declaration_statement(reader, &ast)) != NULL) {
+        *out_ast = NULL;
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    if ((err = statement(reader, &ast)) != NULL) {
+        *out_ast = NULL;
+        return err;
+    }
+    *out_ast = ast;
     return NULL;
 }
 
 static
 ruyi_error* block_statements(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <block statements> ::= <block statement> +
+    // <block statements> ::= <block statement> *
     ruyi_error *err;
-    ruyi_ast *ast;
-    
+    ruyi_ast *ast = ruyi_ast_create(Ruyi_at_block_statements);
+    ruyi_ast *ast_block_stmt;
+    for (;;) {
+        if ((err = block_statement(reader, &ast_block_stmt)) != NULL) {
+            goto block_statements_on_error;
+        }
+        if (ast_block_stmt == NULL) {
+            break;
+        }
+        ruyi_ast_add_child(ast, ast_block_stmt);
+    }
+    *out_ast = ast;
     return NULL;
+block_statements_on_error:
+    if (ast) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
 }
-
 
 static
 ruyi_error* block(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <block> ::= LBRACE <block statements>? RBRACE
     ruyi_error *err;
-    ruyi_ast *ast;
-    
+    ruyi_ast *ast = NULL;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LBRACE, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if ((err = block_statements(reader, &ast)) != NULL) {
+        goto block_on_error;
+    }
+    if (ast == NULL) {
+        err = ruyi_error_by_parser(reader, "block can not be empty");
+        goto block_on_error;
+    }
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RBRACE, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss '}'");
+        goto block_on_error;
+    }
+    *out_ast = ast;
     return NULL;
+block_on_error:
+    if (ast) {
+        ruyi_ast_destroy(ast);
+    }
+    return err;
 }
 
 static
@@ -2121,7 +2202,11 @@ ruyi_error* function_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) 
     if ((err = type(reader, &ast_return_type)) != NULL) {
         goto function_declaration_on_error;
     }
-    if ((err = function_body(reader, &ast_return_type)) != NULL) {
+    if ((err = function_body(reader, &ast_body)) != NULL) {
+        goto function_declaration_on_error;
+    }
+    if (ast_body == NULL) {
+        err = ruyi_error_by_parser(reader, "miss function body");
         goto function_declaration_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_function_declaration);
@@ -2137,6 +2222,9 @@ function_declaration_on_error:
     }
     if (ast_formal_params) {
         ruyi_ast_destroy(ast_formal_params);
+    }
+    if (ast_return_type) {
+        ruyi_ast_destroy(ast_return_type);
     }
     if (ast_body) {
         ruyi_ast_destroy(ast_body);

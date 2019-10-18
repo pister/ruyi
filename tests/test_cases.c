@@ -745,8 +745,8 @@ void run_test_cases_parser() {
 }
 
 void run_test_cases(void) {
-     // run_test_cases_basic();
-    // run_test_cases_lexer();
+    run_test_cases_basic();
+    run_test_cases_lexer();
    
     run_test_cases_parser();
 }

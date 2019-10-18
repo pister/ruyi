@@ -235,7 +235,7 @@ static BOOL ruyi_lexer_peek_char(ruyi_lexer_reader *reader, ruyi_pos_char *pos_c
 ((c >= '0' && c <= '9'))
 
 #define RUYI_IS_SPACE(c) \
-((c == ' ' || c == '\t' || c == '\r'))
+((c == ' ' || c == '\t' || c == '\r' || c == '\n'))
 
 static ruyi_token* ruyi_lexer_make_token_with_size(ruyi_token_type token_type, ruyi_pos_char first, UINT32 size) {
     ruyi_token* token = (ruyi_token*)ruyi_mem_alloc(sizeof(ruyi_token));
@@ -788,8 +788,6 @@ static ruyi_token* ruyi_lexer_next_token_impl(ruyi_lexer_reader *reader) {
             return ruyi_lexer_handle_number(reader, pc);
         }
         switch (c) {
-            case '\n':
-                return ruyi_lexer_make_token(Ruyi_tt_EOL, pc);
             case '.':
                 return ruyi_lexer_handle_number(reader, pc);
             case '"':

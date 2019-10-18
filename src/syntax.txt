@@ -24,12 +24,21 @@
 
 # Blocks
 <block> ::= LBRACE <block statements>? RBRACE
-<block statements> ::= <block statement> +
+<block statements> ::= <block statement> *
 <block statement> ::= <local variable declaration statement> | <statement>
 <local variable declaration statement> ::= <local variable declaration> <statement ends>
-<local variable declaration> ::= <variable declaration> | <local direct assign>
-<local direct assign> ::= IDENTITY COLON_ASSIGN <expression>
-<statement> ::= <labeled statement> | <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement>
+<local variable declaration> ::= <variable declaration> | <variable auto infer type init>
+<statement> ::= <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement> | <return statement> | <labeled statement>
+<if statement> ::= KW_IF <expression> <block> <elseif statement>* <else statement>?
+<elseif statement> ::= KW_ELSEIF <expression> <block>
+<else statement> ::= KW_ELSE <block>
+<while statement> ::= KW_WHILE <expression> <block>
+<for statement> ::= KW_FOR (<for 3 parts> | <for each>)
+# TODO
+<for three parts> ::= <for init>? Ruyi_tt_SEMICOLON <expression>? Ruyi_tt_SEMICOLON <for update>?
+<for each> ::= 
+
+
 <sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>
 
 <expression statement> ::= <statement expression> <statement ends>
@@ -39,7 +48,7 @@
 <labeled statement> ::= IDENTITY COLON <statement>
 
 #
-<statement ends> ::= (SEMICOLON | EOL) +
+<statement ends> ::= SEMICOLON *
 
 # Expression
 <expression> ::= <assignment expression>

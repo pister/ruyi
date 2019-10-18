@@ -72,7 +72,6 @@ typedef enum {
     Ruyi_tt_QM,             // ?
     Ruyi_tt_DOT,            // .
     Ruyi_tt_DOT3,           // ...
-    Ruyi_tt_EOL,            // \n
     Ruyi_tt_END,            // EOF
     
     Ruyi_tt_KW_IF,          // if
