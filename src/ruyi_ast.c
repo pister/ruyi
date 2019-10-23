@@ -17,7 +17,6 @@ void ruyi_ast_destroy(ruyi_ast *ast) {
     if(ast == NULL) {
         return;
     }
-    // TODO
     switch (ast->adt_type) {
     case Ruyi_adt_unicode_str:
             ustr = (ruyi_unicode_string *)ast->data.ptr_value;
