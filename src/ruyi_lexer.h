@@ -86,6 +86,7 @@ typedef enum {
     Ruyi_tt_KW_CASE,        // case
     Ruyi_tt_KW_CONTINUE,    // continue
     Ruyi_tt_KW_DEFAULT,     // default
+    Ruyi_tt_KW_IN,          // in
     
     Ruyi_tt_KW_THIS,        // this
     Ruyi_tt_KW_FUNC,        // func

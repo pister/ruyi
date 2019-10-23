@@ -17,7 +17,7 @@
 <class body> ::= LBRACE <class body declarations>? RBRACE
 <class body declarations> ::= <class body declaration> | <class body declarations> <class body declaration>
 
-<formal parameter list> ::= ( )<formal parameter> ( COMMA <formal parameter>) * ) ?
+<formal parameter list> ::= ( <formal parameter> ( COMMA <formal parameter>) * ) ?
 <formal parameter> ::= IDENTITY DOT3? <type>
 <function body> ::= <block>
 
@@ -29,14 +29,15 @@
 <local variable declaration statement> ::= <local variable declaration> <statement ends>
 <local variable declaration> ::= <variable declaration> | <variable auto infer type init>
 <statement> ::= <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement> | <return statement> | <labeled statement>
-<if statement> ::= KW_IF <expression> <block> <elseif statement>* <else statement>?
-<elseif statement> ::= KW_ELSEIF <expression> <block>
+<if statement> ::= KW_IF <expression> | ( LPARAN <expression> RPARAN ) <block> <elseif statement>* <else statement>?
+<elseif statement> ::= KW_ELSEIF <expression> | ( LPARAN <expression> RPARAN ) <block>
 <else statement> ::= KW_ELSE <block>
 <while statement> ::= KW_WHILE <expression> <block>
-<for statement> ::= KW_FOR (<for 3 parts> | <for each>)
-# TODO
-<for three parts> ::= <for init>? Ruyi_tt_SEMICOLON <expression>? Ruyi_tt_SEMICOLON <for update>?
-<for each> ::= 
+<for statement> ::= KW_FOR (<for three parts> | <for in>) | ( LPARAN <for three parts> | <for in> RPARAN)
+<for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
+<for in> ::= <type> (COMMA <type>) * KW_IN <expression>
+
+<return statement> ::= KW_RETURN <expression>? <statement ends>
 
 
 <sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>
@@ -108,4 +109,4 @@
 
 # Tokens
 <name> ::= IDENTITY (DOT IDENTITY) *
-<literal> ::= INTEGER | FLOAT | KW_TRUE | KW_FALSE | RUNE | STRING | KW_NULL
+<literal> ::= INTEGER | FLOAT | KW_TRUE | KW_FALSE | RUNE | STRING | KW_NULL | <name> 

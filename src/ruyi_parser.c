@@ -94,6 +94,12 @@ static
 ruyi_error* primary(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
 
 static
+ruyi_error* block(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
+
+static
+ruyi_error* name(ruyi_lexer_reader *reader, ruyi_ast **out_ast, ruyi_vector* out_tokens);
+
+static
 void statement_ends(ruyi_lexer_reader *reader) {
     // <statement ends> ::= SEMICOLON *
     for (;;) {
@@ -888,7 +894,8 @@ name_on_error:
 
 static
 ruyi_error* literal(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <literal> ::= INTEGER | FLOAT | KW_TRUE | KW_FALSE | RUNE | STRING | KW_NULL
+    // <literal> ::= INTEGER | FLOAT | KW_TRUE | KW_FALSE | RUNE | STRING | KW_NULL | <name>
+    ruyi_error *err;
     ruyi_ast *ast = NULL;
     ruyi_token *token = ruyi_lexer_reader_next_token(reader);
     switch (token->type) {
@@ -919,9 +926,17 @@ ruyi_error* literal(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
             ast = ruyi_ast_create(Ruyi_at_null);
             break;
         default:
-            ruyi_lexer_reader_push_front(reader, token);
-            *out_ast = ast;
-            return NULL;
+            if ((err = name(reader, &ast, NULL)) != NULL) {
+                ruyi_lexer_reader_push_front(reader, token);
+                return err;
+            }
+            if (ast != NULL) {
+                ast = create_ast_by_consume_token_string(reader, Ruyi_at_name);
+            } else {
+                ruyi_lexer_reader_push_front(reader, token);
+                *out_ast = ast;
+                return NULL;
+            }
     }
     *out_ast = ast;
     return NULL;
@@ -2068,9 +2083,178 @@ ruyi_error* local_variable_declaration(ruyi_lexer_reader *reader, ruyi_ast **out
     return NULL;
 }
 
+
+static
+ruyi_error* elseif_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <elseif statement> ::= KW_ELSEIF <expression> <block>
+    ruyi_error *err;
+    ruyi_ast *expr_ast = NULL;
+    ruyi_ast *block_ast = NULL;
+    ruyi_ast *ast;
+    BOOL has_paran = FALSE;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_ELSEIF, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
+        has_paran = TRUE;
+    }
+    if ((err = expression(reader, &expr_ast)) != NULL) {
+        goto elseif_statement_on_error;
+    }
+    if (has_paran && !ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss )");
+        goto elseif_statement_on_error;
+    }
+    if ((err = block(reader, &block_ast)) != NULL) {
+        goto elseif_statement_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_elseif_statement);
+    ruyi_ast_add_child(ast, expr_ast);
+    ruyi_ast_add_child(ast, block_ast);
+    *out_ast = ast;
+    return NULL;
+elseif_statement_on_error:
+    if (expr_ast) {
+        ruyi_ast_destroy(expr_ast);
+    }
+    if (block_ast) {
+        ruyi_ast_destroy(block_ast);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
+ruyi_error* else_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <else statement> ::= KW_ELSE <block>
+    ruyi_error *err;
+    ruyi_ast *block_ast = NULL;
+    ruyi_ast *ast;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_ELSE, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if ((err = block(reader, &block_ast)) != NULL) {
+        *out_ast = NULL;
+        return err;
+    }
+    ast = ruyi_ast_create(Ruyi_at_else_statement);
+    ruyi_ast_add_child(ast, block_ast);
+    *out_ast = ast;
+    return NULL;
+}
+
+static
+ruyi_error* if_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <if statement> ::= KW_IF ( LPARAN <expression> RPARAN ) | <expression> <block> <elseif statement>* <else statement>?
+    ruyi_error *err;
+    ruyi_ast *expr_ast = NULL;
+    ruyi_ast *block_ast = NULL;
+    ruyi_ast *elseif_ast = NULL;
+    ruyi_ast *else_ast = NULL;
+    ruyi_ast *ast = NULL;
+    BOOL has_paran = FALSE;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_IF, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
+        has_paran = TRUE;
+    }
+    if ((err = expression(reader, &expr_ast)) != NULL) {
+        goto if_statement_on_error;
+    }
+    if (has_paran && !ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss )");
+        goto if_statement_on_error;
+    }
+    if ((err = block(reader, &block_ast)) != NULL) {
+        goto if_statement_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_if_statement);
+    ruyi_ast_add_child(ast, expr_ast);
+    ruyi_ast_add_child(ast, block_ast);
+    expr_ast = NULL;
+    block_ast = NULL;
+    for (;;) {
+        if ((err = elseif_statement(reader, &elseif_ast)) != NULL) {
+            goto if_statement_on_error;
+        }
+        if (elseif_ast == NULL) {
+            break;
+        }
+        ruyi_ast_add_child(ast, elseif_ast);
+    }
+    if ((err = else_statement(reader, &else_ast)) != NULL) {
+        goto if_statement_on_error;
+    }
+    if (else_ast != NULL) {
+        ruyi_ast_add_child(ast, else_ast);
+    }
+    *out_ast = ast;
+    return NULL;
+if_statement_on_error:
+    if (expr_ast != NULL) {
+        ruyi_ast_destroy(expr_ast);
+    }
+    if (block_ast != NULL) {
+        ruyi_ast_destroy(block_ast);
+    }
+    if (ast != NULL) {
+        ruyi_ast_destroy(ast);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+
+static
+ruyi_error* return_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <return statement> ::= KW_RETURN <expression>? <statement ends>
+    ruyi_error *err;
+    ruyi_ast *expr_ast = NULL;
+    ruyi_ast *ast;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_RETURN, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if ((err = expression(reader, &expr_ast)) != NULL) {
+        return err;
+    }
+    statement_ends(reader);
+    ast = ruyi_ast_create(Ruyi_at_return_statement);
+    if (expr_ast != NULL) {
+        ruyi_ast_add_child(ast, expr_ast);
+    }
+    *out_ast = ast;
+    return NULL;
+}
+
 static
 ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <statement> ::= <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement> | <labeled statement>
+    // <statement> ::= <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement> | <return statement> | <labeled statement>
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    if ((err = if_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    
+    // TODO
+
+    if ((err = return_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    // TODO
     
     return NULL;
 }
@@ -2245,9 +2429,15 @@ ruyi_error* global_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         *out_ast = ast;
         return NULL;
     }
+    
+    if ((err = function_declaration(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
     // TODO
-    // err = function_declaration(reader, &ast);
-    // ...
     
     *out_ast = NULL;
     return NULL;

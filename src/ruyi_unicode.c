@@ -400,11 +400,15 @@ void ruyi_unicode_bytes_string_append(ruyi_bytes_string* s, const char *buf, UIN
 }
 
 ruyi_bytes_string* ruyi_unicode_string_decode_utf8(const ruyi_unicode_string *unicode_str) {
-    ruyi_bytes_string* str = ruyi_bytes_string_init_with_capacity(256);
+    ruyi_bytes_string* str;
     char buf[1024];
     UINT32 wide_char_transformed = 0;
     UINT32 src_pos = 0;
     UINT32 bytes_read;
+    if (unicode_str == NULL) {
+        return NULL;
+    }
+    str = ruyi_bytes_string_init_with_capacity(256);
     while (src_pos < unicode_str->length) {
         bytes_read = ruyi_unicode_encode_utf8(unicode_str->data + src_pos, unicode_str->length - src_pos, &wide_char_transformed, (BYTE*)buf, 1024);
         if (bytes_read == 0) {

@@ -89,6 +89,10 @@ typedef enum {
     Ruyi_at_formal_parameter,
     Ruyi_at_var_args_type,
     Ruyi_at_block_statements,
+    Ruyi_at_if_statement,
+    Ruyi_at_elseif_statement,
+    Ruyi_at_else_statement,
+    Ruyi_at_return_statement,
 
 } ruyi_ast_type;
 
