@@ -93,6 +93,15 @@ typedef enum {
     Ruyi_at_elseif_statement,
     Ruyi_at_else_statement,
     Ruyi_at_return_statement,
+    Ruyi_at_while_statement,
+    Ruyi_at_left_hand_side_expression,
+    Ruyi_at_assign_statement,
+    Ruyi_at_inc_statement,
+    Ruyi_at_dec_statement,
+    Ruyi_at_function_invocation_statement,
+
+
+
 
 } ruyi_ast_type;
 

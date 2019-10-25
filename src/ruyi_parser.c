@@ -41,6 +41,10 @@ static void tokens_push_back_at_front(ruyi_lexer_reader *reader, ruyi_vector *to
     ruyi_vector_destroy(tokens);
 }
 
+static BOOL is_keyword(ruyi_token_type type) {
+    return NULL != ruyi_lexer_keywords_get_str(type);
+}
+
 
 static
 ruyi_error* assignment_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
@@ -895,7 +899,7 @@ name_on_error:
 static
 ruyi_error* literal(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <literal> ::= INTEGER | FLOAT | KW_TRUE | KW_FALSE | RUNE | STRING | KW_NULL | <name>
-    ruyi_error *err;
+    ruyi_error *err = NULL;
     ruyi_ast *ast = NULL;
     ruyi_token *token = ruyi_lexer_reader_next_token(reader);
     switch (token->type) {
@@ -927,19 +931,23 @@ ruyi_error* literal(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
             break;
         default:
             if ((err = name(reader, &ast, NULL)) != NULL) {
-                ruyi_lexer_reader_push_front(reader, token);
-                return err;
+                goto literal_on_error;
             }
             if (ast != NULL) {
-                ast = create_ast_by_consume_token_string(reader, Ruyi_at_name);
-            } else {
-                ruyi_lexer_reader_push_front(reader, token);
-                *out_ast = ast;
-                return NULL;
+                break;
             }
+            ruyi_lexer_reader_push_front(reader, token);
+            *out_ast = NULL;
+            return NULL;
     }
+    ruyi_lexer_token_destroy(token);
     *out_ast = ast;
     return NULL;
+literal_on_error:
+    if (token) {
+        ruyi_lexer_token_destroy(token);
+    }
+    return err;
 }
 
 static
@@ -1745,6 +1753,10 @@ ruyi_error* left_hand_side(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     //  <left hand side> ::= <name> | <field access expression> | <array access>
     ruyi_error *err;
     ruyi_ast *ast = NULL;
+    if (is_keyword(ruyi_lexer_reader_peek_token_type(reader))) {
+        *out_ast = NULL;
+        return NULL;
+    }
     if ((err = name(reader, &ast, NULL)) != NULL) {
         return err;
     }
@@ -2232,6 +2244,192 @@ ruyi_error* return_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
 }
 
 static
+ruyi_error* while_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <while statement> ::= KW_WHILE <expression> | ( LPARAN <expression> RPARAN ) <block>
+    ruyi_error *err;
+    ruyi_ast *expr_ast = NULL;
+    ruyi_ast *ast;
+    ruyi_ast *block_ast;
+    BOOL has_paran = FALSE;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_WHILE, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
+        has_paran = TRUE;
+    }
+    if ((err = expression(reader, &expr_ast)) != NULL) {
+        goto while_statement_on_error;
+    }
+    if (has_paran && !ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss )");
+        goto while_statement_on_error;
+    }
+    if ((err = block(reader, &block_ast)) != NULL) {
+        goto while_statement_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_while_statement);
+    ruyi_ast_add_child(ast, expr_ast);
+    ruyi_ast_add_child(ast, block_ast);
+    *out_ast = ast;
+    return NULL;
+while_statement_on_error:
+    if (expr_ast != NULL) {
+        ruyi_ast_destroy(expr_ast);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
+ruyi_error* instance_creation_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <instance creation expression> ::= <map creation> | <array creation> | <instance creation>
+    ruyi_error *err;
+    ruyi_ast *ast;
+    if ((err = map_creation(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    
+    if ((err = array_creation(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    
+    if ((err = instance_creation(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }    
+    return NULL;
+}
+
+static
+ruyi_error* left_hand_side_expression_tail(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <left hand side expression tail> ::= (ASSIGN <expression>) | INC | DEC | <function invocation tail>
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *sub_ast;
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_ASSIGN, NULL)) {
+        if ((err = expression(reader, &sub_ast)) != NULL) {
+            return err;
+        }
+        if (sub_ast == NULL) {
+            return ruyi_error_by_parser(reader, "miss expression after '='");
+        }
+        ast = ruyi_ast_create(Ruyi_at_assign_statement);
+        ruyi_ast_add_child(ast, sub_ast);
+        *out_ast = ast;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_INC, NULL)) {
+        ast = ruyi_ast_create(Ruyi_at_inc_statement);
+        *out_ast = ast;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_DEC, NULL)) {
+        ast = ruyi_ast_create(Ruyi_at_dec_statement);
+        *out_ast = ast;
+        return NULL;
+    }
+    if ((err = function_invocation_tail(reader, &sub_ast)) != NULL) {
+        return err;
+    }
+    if (sub_ast != NULL) {
+        ast = ruyi_ast_create(Ruyi_at_function_invocation_statement);
+        ruyi_ast_add_child(ast, sub_ast);
+        *out_ast = ast;
+        return NULL;
+    }
+    *out_ast = NULL;
+    return NULL;
+}
+
+static
+ruyi_error* left_hand_side_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <left hand side expression> ::= <left hand side> <left hand side expression tail>
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *left_ast = NULL;
+    ruyi_ast *tail_ast = NULL;
+    if ((err = left_hand_side(reader, &left_ast)) != NULL) {
+        return err;
+    }
+    if (left_ast == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if ((err = left_hand_side_expression_tail(reader, &tail_ast)) != NULL) {
+        goto left_hand_side_expression_on_error;
+    }
+    if (tail_ast == NULL) {
+        err = ruyi_error_by_parser(reader, "only variable access can not be a statement");
+        goto left_hand_side_expression_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_left_hand_side_expression);
+    ruyi_ast_add_child(ast, left_ast);
+    ruyi_ast_add_child(ast, tail_ast);
+    *out_ast = ast;
+    return NULL;
+left_hand_side_expression_on_error:
+    if (left_ast) {
+        ruyi_ast_destroy(left_ast);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
+ruyi_error* statement_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <statement expression> ::= <left hand side expression> | <instance creation expression>
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    if ((err = left_hand_side_expression(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    
+    if ((err = instance_creation_expression(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    
+    *out_ast = NULL;
+    return NULL;
+}
+
+static
+ruyi_error* expression_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <expression statement> ::= <statement expression> <statement ends>
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    if ((err = statement_expression(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    statement_ends(reader);
+    *out_ast = ast;
+    return NULL;
+}
+
+static
 ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <statement> ::= <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement> | <return statement> | <labeled statement>
     ruyi_error *err;
@@ -2243,7 +2441,20 @@ ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         *out_ast = ast;
         return NULL;
     }
-    
+    if ((err = while_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    if ((err = expression_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
     // TODO
 
     if ((err = return_statement(reader, &ast)) != NULL) {

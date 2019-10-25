@@ -32,7 +32,7 @@
 <if statement> ::= KW_IF <expression> | ( LPARAN <expression> RPARAN ) <block> <elseif statement>* <else statement>?
 <elseif statement> ::= KW_ELSEIF <expression> | ( LPARAN <expression> RPARAN ) <block>
 <else statement> ::= KW_ELSE <block>
-<while statement> ::= KW_WHILE <expression> <block>
+<while statement> ::= KW_WHILE <expression> | ( LPARAN <expression> RPARAN ) <block>
 <for statement> ::= KW_FOR (<for three parts> | <for in>) | ( LPARAN <for three parts> | <for in> RPARAN)
 <for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
 <for in> ::= <type> (COMMA <type>) * KW_IN <expression>
@@ -43,7 +43,12 @@
 <sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>
 
 <expression statement> ::= <statement expression> <statement ends>
-<statement expression> ::= <assignment> | <postincrement expression> | <postdecrement expression>  | <class instance creation expression> | <function invocation>
+
+<statement expression> ::= <left hand side expression> | <instance creation expression>
+<left hand side expression> ::= <left hand side> <left hand side expression tail>
+<left hand side expression tail> ::= (ASSIGN <expression>) | INC | DEC | <function invocation tail> 
+<instance creation expression> ::= <map creation> | <array creation> | <instance creation>
+
 
 <empty statement> ::= <statement ends>
 <labeled statement> ::= IDENTITY COLON <statement>
