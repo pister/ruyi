@@ -33,11 +33,14 @@
 <elseif statement> ::= KW_ELSEIF <expression> | ( LPARAN <expression> RPARAN ) <block>
 <else statement> ::= KW_ELSE <block>
 <while statement> ::= KW_WHILE <expression> | ( LPARAN <expression> RPARAN ) <block>
-<for statement> ::= KW_FOR (<for three parts> | <for in>) | ( LPARAN <for three parts> | <for in> RPARAN)
-<for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
-<for in> ::= <type> (COMMA <type>) * KW_IN <expression>
-
 <return statement> ::= KW_RETURN <expression>? <statement ends>
+
+<for statement> ::= KW_FOR (<for in> | <for three parts>) | ( LPARAN <for in> | <for three parts> RPARAN) <block>
+<for in> ::= IDENTITY (COMMA IDENTITY) * KW_IN <expression>
+<for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
+
+// TODO
+<for init> ::= (<variable declaration> (COMMA  <variable declaration>) * ) ?
 
 
 <sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>

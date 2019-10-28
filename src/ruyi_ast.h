@@ -99,6 +99,12 @@ typedef enum {
     Ruyi_at_inc_statement,
     Ruyi_at_dec_statement,
     Ruyi_at_function_invocation_statement,
+    Ruyi_at_for_in_statement,
+    Ruyi_at_for_in_header,
+    Ruyi_at_for_3_parts_statement,
+    Ruyi_at_for_3_parts_header,
+    Ruyi_at_var_list,
+    
 
 
 
