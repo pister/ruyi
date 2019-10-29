@@ -104,6 +104,9 @@ static
 ruyi_error* name(ruyi_lexer_reader *reader, ruyi_ast **out_ast, ruyi_vector* out_tokens);
 
 static
+ruyi_error* block_statements(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
+
+static
 void statement_ends(ruyi_lexer_reader *reader) {
     // <statement ends> ::= SEMICOLON *
     for (;;) {
@@ -2672,8 +2675,186 @@ for_statement_on_error:
 }
 
 static
+ruyi_error* switch_default_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <switch default statement> ::= KW_DEFAULT COLON <block statements>
+    ruyi_error *err;
+    ruyi_ast *ast;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_DEFAULT, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COLON, NULL)) {
+        return ruyi_error_by_parser(reader, "miss ':' after 'default'");
+    }
+    if ((err = block_statements(reader, &ast)) != NULL) {
+        return err;
+    }
+    // ast may be NULL
+    *out_ast = ast;
+    return NULL;
+}
+
+static
+ruyi_error* constant_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <constant expression> ::= <expression>
+    ruyi_error *err;
+    ruyi_ast *ast;
+    ruyi_ast *ast_expr;
+    if ((err = expression(reader, &ast_expr)) != NULL) {
+        return err;
+    }
+    if (ast_expr == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    ast = ruyi_ast_create(Ruyi_at_constant_expression);
+    ruyi_ast_add_child(ast, ast_expr);
+    *out_ast = ast;
+    return NULL;
+}
+
+static
+ruyi_error* switch_case_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <switch case statement> ::= KW_CASE <constant expression> (COMMA <constant expression>) * COLON <block statements>
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *ast_const_stmt_list = NULL;
+    ruyi_ast *ast_const_expr = NULL;
+    ruyi_ast *ast_block = NULL;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_CASE, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if ((err = constant_expression(reader, &ast_const_expr)) != NULL) {
+        goto switch_case_statement_on_error;
+    }
+    if (ast_const_expr == NULL) {
+        err = ruyi_error_by_parser(reader, "miss constant value in case-statement");
+        goto switch_case_statement_on_error;
+    }
+    ast_const_stmt_list = ruyi_ast_create(Ruyi_at_const_list);
+    ruyi_ast_add_child(ast_const_stmt_list, ast_const_expr);
+    for (;;) {
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
+            break;
+        }
+        if ((err = constant_expression(reader, &ast_const_expr)) != NULL) {
+            goto switch_case_statement_on_error;
+        }
+        if (ast_const_expr == NULL) {
+            err = ruyi_error_by_parser(reader, "miss constant value after ',' in case-statement");
+            goto switch_case_statement_on_error;
+        }
+        ruyi_ast_add_child(ast_const_stmt_list, ast_const_expr);
+    }
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COLON, NULL)) {
+        return ruyi_error_by_parser(reader, "miss ':' in case-statement");
+    }
+    if ((err = block_statements(reader, &ast_block)) != NULL) {
+        goto switch_case_statement_on_error;
+    }
+    // ast_block can be NULL
+    ast = ruyi_ast_create(Ruyi_at_switch_case_statement);
+    ruyi_ast_add_child(ast, ast_const_stmt_list);
+    ruyi_ast_add_child(ast, ast_block);
+    *out_ast = ast;
+    return NULL;
+switch_case_statement_on_error:
+    if (ast_const_stmt_list) {
+        ruyi_ast_destroy(ast_const_stmt_list);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
+ruyi_error* switch_statement_body(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <switch statement body> ::= LBRACE <switch case statement>* <switch default statement>? RBRACE
+    ruyi_error *err;
+    ruyi_ast *ast;
+    ruyi_ast *ast_case_stmt_list = NULL;
+    ruyi_ast *ast_default_case_stmt = NULL;
+    ruyi_ast *ast_case_stmt = NULL;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LBRACE, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss '{' in switch-statement");
+        goto switch_statement_body_on_error;
+    }
+    ast_case_stmt_list = ruyi_ast_create(Ruyi_at_switch_case_statement_list);
+    for (;;) {
+        if ((err = switch_case_statement(reader, &ast_case_stmt)) != NULL) {
+            goto switch_statement_body_on_error;
+        }
+        if (ast_case_stmt == NULL) {
+            break;
+        }
+        ruyi_ast_add_child(ast_case_stmt_list, ast_case_stmt);
+    }
+    if ((err = switch_default_statement(reader, &ast_default_case_stmt)) != NULL) {
+        goto switch_statement_body_on_error;
+    }
+    // ast_default_case_stmt can be NULL
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RBRACE, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss '}' in switch-statement");
+        goto switch_statement_body_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_switch_statement_body);
+    ruyi_ast_add_child(ast, ast_case_stmt_list);
+    ruyi_ast_add_child(ast, ast_default_case_stmt);
+    *out_ast = ast;
+    return NULL;
+switch_statement_body_on_error:
+    if (ast_case_stmt_list) {
+        ruyi_ast_destroy(ast_case_stmt_list);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
+ruyi_error* switch_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <switch statement> ::= KW_SWITCH <expression> | ( LPARAN <expression> RPARAN ) <switch statement body>
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *ast_expr = NULL;
+    ruyi_ast *ast_body = NULL;
+    BOOL has_paran = FALSE;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_SWITCH, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
+        has_paran = TRUE;
+    }
+    if ((err = expression(reader, &ast_expr)) != NULL) {
+        goto switch_statement_on_error;
+    }
+    if (has_paran && !ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss )");
+        goto switch_statement_on_error;
+    }
+    if ((err = switch_statement_body(reader, &ast_body)) != NULL) {
+        goto switch_statement_on_error;
+    }
+    if (ast_body == NULL) {
+        err = ruyi_error_by_parser(reader, "miss body for switch-statement");
+        goto switch_statement_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_switch_statement);
+    ruyi_ast_add_child(ast, ast_expr);
+    ruyi_ast_add_child(ast, ast_body);
+    *out_ast = ast;
+    return NULL;
+switch_statement_on_error:
+    if (ast_expr) {
+        ruyi_ast_destroy(ast_expr);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
 ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <statement> ::= <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement> | <return statement> | <labeled statement>
+    // <statement> ::= <if statement> | <while statement> | <expression statement>  | <for statement> | <switch statement> | <try statement> | <return statement> | <labeled statement> | <sub block statement>
     ruyi_error *err;
     ruyi_ast *ast = NULL;
     if ((err = if_statement(reader, &ast)) != NULL) {
@@ -2704,6 +2885,14 @@ ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         *out_ast = ast;
         return NULL;
     }
+    if ((err = switch_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+
     // TODO
 
     if ((err = return_statement(reader, &ast)) != NULL) {

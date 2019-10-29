@@ -26,23 +26,26 @@
 <block> ::= LBRACE <block statements>? RBRACE
 <block statements> ::= <block statement> *
 <block statement> ::= <local variable declaration statement> | <statement>
+<sub block statement> ::= LBRACE <block statements> RBRACE
 <local variable declaration statement> ::= <local variable declaration> <statement ends>
 <local variable declaration> ::= <variable declaration> | <variable auto infer type init>
-<statement> ::= <if statement> | <while statement> | <for statement> | <expression statement> | <switch statement> | <try statement> | <return statement> | <labeled statement>
+<statement> ::= <if statement> | <while statement> | <expression statement>  | <for statement> | <switch statement> | <try statement> | <return statement> | <labeled statement> | <sub block statement> | <break statement> | <continue statement>
 <if statement> ::= KW_IF <expression> | ( LPARAN <expression> RPARAN ) <block> <elseif statement>* <else statement>?
 <elseif statement> ::= KW_ELSEIF <expression> | ( LPARAN <expression> RPARAN ) <block>
 <else statement> ::= KW_ELSE <block>
 <while statement> ::= KW_WHILE <expression> | ( LPARAN <expression> RPARAN ) <block>
 <return statement> ::= KW_RETURN <expression>? <statement ends>
-
 <for statement> ::= KW_FOR (<for in> | <for three parts>) | ( LPARAN <for in> | <for three parts> RPARAN) <block>
 <for in> ::= IDENTITY (COMMA IDENTITY) * KW_IN <expression>
 <for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
-
 <for init> ::= (<variable auto infer type init> (COMMA  <variable auto infer type init>) * ) ?
 <for update> ::= (<statement expression> (COMMA <statement expression>) * ) ?
 
-<sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>
+<switch statement> ::= KW_SWITCH <expression> | ( LPARAN <expression> RPARAN ) <switch statement body>
+<switch statement body> ::= LBRACE <switch case statement>* <switch default statement>? RBRACE
+<switch case statement> ::= KW_CASE <constant expression> (COMMA <constant expression>) * COLON <block statements>
+<switch default statement> ::= KW_DEFAULT COLON <block statements>
+
 
 <expression statement> ::= <statement expression> <statement ends>
 
@@ -59,6 +62,7 @@
 <statement ends> ::= SEMICOLON *
 
 # Expression
+<constant expression> ::= <expression>
 <expression> ::= <assignment expression>
 <assignment expression> ::= <conditional expression> | <assignment>
 <assignment> ::= <left hand side> <assignment operator> <assignment expression>

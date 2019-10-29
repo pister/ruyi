@@ -1264,6 +1264,76 @@ void test_parser_function_for1() {
     ruyi_ast_destroy(ast);
 }
 
+void test_parser_function_switch1(void) {
+    const char* src = "func switch1(v int) {var b int; switch(v) {case 1,2,3: b=10;\n case 12+5: b = 20;\n default: b = 100} }";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *func_ast;
+    ruyi_unicode_string* name = NULL;
+    ruyi_ast *temp_ast = NULL;
+    ruyi_ast *temp_ast2 = NULL;
+    ruyi_ast *temp_ast3 = NULL;
+    ruyi_ast *temp_ast4 = NULL;
+    ruyi_ast *temp_ast5 = NULL;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    assert(Ruyi_at_root == ast->type);
+    assert(1 == ruyi_ast_child_length(ast));
+    func_ast = ruyi_ast_get_child(ast, 0);
+    assert(Ruyi_at_function_declaration == func_ast->type);
+    
+    // assert name
+    name = ruyi_unicode_string_init_from_utf8("switch1", 0);
+    temp_ast = ruyi_ast_get_child(func_ast, 0);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_name == temp_ast->type);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    
+    // assert formal_params
+    temp_ast = ruyi_ast_get_child(func_ast, 1);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_formal_parameter_list == temp_ast->type);
+    assert(1 == ruyi_ast_child_length(temp_ast));
+    
+    // a int
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
+    assert(temp_ast2 != NULL);
+    assert(Ruyi_at_formal_parameter == temp_ast2->type);
+    name = ruyi_unicode_string_init_from_utf8("a", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast2, 0)->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    assert(ruyi_ast_get_child(temp_ast2, 1)->type = Ruyi_at_type_int);
+    
+    // return type
+    temp_ast2 = ruyi_ast_get_child(func_ast, 2);
+    assert(temp_ast2 == NULL);
+    
+    // TODO
+    /*
+    // body
+    temp_ast = ruyi_ast_get_child(func_ast, 3);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_block_statements == temp_ast->type);
+    assert(2 == ruyi_ast_child_length(temp_ast));
+    
+    // while stmt:
+    // while(a < 10) {a++;}
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
+    assert(Ruyi_at_while_statement == temp_ast2->type);
+    assert(2 == ruyi_ast_child_length(temp_ast2));
+     */
+    ruyi_ast_destroy(ast);
+
+}
+
 void run_test_cases_basic(void) {
     test_lists();
     test_vectors();
@@ -1288,6 +1358,7 @@ void run_test_cases_parser() {
     test_parser_function_if1();
     test_parser_function_while1();
     test_parser_function_for1();
+    test_parser_function_switch1();
 
 }
 

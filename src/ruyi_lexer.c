@@ -23,8 +23,8 @@ ruyi_keyword g_ruyi_keywords[] = {
     {Ruyi_tt_KW_ELSEIF, "elseif"},
     {Ruyi_tt_KW_WHILE,  "while"},
     {Ruyi_tt_KW_FOR,    "for"},
-    {Ruyi_tt_SWITCH,    "switch"},
-    {Ruyi_tt_THIS,      "this"},
+    {Ruyi_tt_KW_SWITCH, "switch"},
+    {Ruyi_tt_KW_THIS,   "this"},
     {Ruyi_tt_KW_RETURN, "return"},
     {Ruyi_tt_KW_BREAK,  "break"},
     {Ruyi_tt_KW_CASE,   "case"},
@@ -58,7 +58,6 @@ ruyi_keyword g_ruyi_keywords[] = {
     {Ruyi_tt_KW_NULL,   "null"},
     {Ruyi_tt_KW_ARRAY,  "array"},
     {Ruyi_tt_KW_MAP,    "map"},
-    {Ruyi_tt_KW_THIS,   "this"},
     {Ruyi_tt_KW_IN,     "in"},
     {Ruyi_tt_KW_INSTANCEOF, "instanceof"},
 };

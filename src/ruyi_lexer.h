@@ -79,8 +79,7 @@ typedef enum {
     Ruyi_tt_KW_ELSEIF,      // elseif
     Ruyi_tt_KW_WHILE,       // while
     Ruyi_tt_KW_FOR,         // for
-    Ruyi_tt_SWITCH,         // switch
-    Ruyi_tt_THIS,           // this
+    Ruyi_tt_KW_SWITCH,      // switch
     Ruyi_tt_KW_RETURN,      // return
     Ruyi_tt_KW_BREAK,       // break
     Ruyi_tt_KW_CASE,        // case
