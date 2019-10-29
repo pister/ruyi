@@ -1099,6 +1099,171 @@ void test_parser_function_while1() {
     ruyi_ast_destroy(ast);
 }
 
+void test_parser_function_for1() {
+    const char* src = "func for1() {\n sum := 0 \n for (i := 0; i < 10; i++) {\n sum = sum + i;} \n for(a1, a2 in b) { sum = a1 + a2; } }";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *func_ast;
+    ruyi_unicode_string* name = NULL;
+    ruyi_ast *temp_ast = NULL;
+    ruyi_ast *temp_ast2 = NULL;
+    ruyi_ast *temp_ast3 = NULL;
+    ruyi_ast *temp_ast4 = NULL;
+    ruyi_ast *temp_ast5 = NULL;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    assert(Ruyi_at_root == ast->type);
+    assert(1 == ruyi_ast_child_length(ast));
+    func_ast = ruyi_ast_get_child(ast, 0);
+    assert(Ruyi_at_function_declaration == func_ast->type);
+    
+    // assert name
+    name = ruyi_unicode_string_init_from_utf8("for1", 0);
+    temp_ast = ruyi_ast_get_child(func_ast, 0);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_name == temp_ast->type);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    
+    // assert formal_params
+    temp_ast = ruyi_ast_get_child(func_ast, 1);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_formal_parameter_list == temp_ast->type);
+    assert(0 == ruyi_ast_child_length(temp_ast));
+    // return type
+    temp_ast2 = ruyi_ast_get_child(func_ast, 2);
+    assert(temp_ast2 == NULL);
+    // body
+    temp_ast = ruyi_ast_get_child(func_ast, 3);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_block_statements == temp_ast->type);
+    assert(3 == ruyi_ast_child_length(temp_ast));
+    
+    // sum := 0
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
+    assert(Ruyi_at_var_declaration == temp_ast2->type);
+    name = ruyi_unicode_string_init_from_utf8("sum", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast2->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    assert(Ruyi_at_var_declaration_auto_type == ruyi_ast_get_child(temp_ast2, 0)->type);
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast2, 1)->type);
+    assert(0 == ruyi_ast_get_child(temp_ast2, 1)->data.int32_value);
+
+    // for (i := 0; i < 10; i++) {\n sum = sum + i;}
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 1);
+    assert(Ruyi_at_for_3_parts_statement == temp_ast2->type);
+    // for (i := 0; i < 10; i++)
+    temp_ast3 = ruyi_ast_get_child(temp_ast2, 0);
+    assert(Ruyi_at_for_3_parts_header == temp_ast3->type);
+    // i := 0;
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_expr_statement_list == temp_ast4->type);
+    assert(1 == ruyi_ast_child_length(temp_ast4));
+    temp_ast4 = ruyi_ast_get_child(temp_ast4, 0);
+    assert(Ruyi_at_var_declaration == temp_ast4->type);
+    name = ruyi_unicode_string_init_from_utf8("i", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast4->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    assert(Ruyi_at_var_declaration_auto_type == ruyi_ast_get_child(temp_ast4, 0)->type);
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast4, 1)->type);
+    assert(0 == ruyi_ast_get_child(temp_ast4, 1)->data.int32_value);
+    // i < 10;
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 1);
+    assert(Ruyi_at_relational_expression == temp_ast4->type);
+    name = ruyi_unicode_string_init_from_utf8("i", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast4, 0)->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    assert(Ruyi_at_op_lt == ruyi_ast_get_child(temp_ast4, 1)->type);
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast4, 2)->type);
+    assert(10 == ruyi_ast_get_child(temp_ast4, 2)->data.int32_value);
+    // i++;
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 2);
+    assert(Ruyi_at_stmt_expr_list == temp_ast4->type);
+    
+    // { sum = sum + i;}
+    temp_ast3 = ruyi_ast_get_child(temp_ast2, 1);
+    assert(Ruyi_at_block_statements == temp_ast3->type);
+    assert(1 == ruyi_ast_child_length(temp_ast3));
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_left_hand_side_expression == temp_ast4->type);
+    // sum
+    temp_ast5 = ruyi_ast_get_child(temp_ast4, 0);
+    assert(Ruyi_at_name == temp_ast5->type);
+    name = ruyi_unicode_string_init_from_utf8("sum", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast5->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    // = sum + i
+    temp_ast5 = ruyi_ast_get_child(temp_ast4, 1);
+    assert(Ruyi_at_assign_statement == temp_ast5->type);
+    temp_ast5 = ruyi_ast_get_child(temp_ast5, 0);
+    assert(Ruyi_at_additive_expression == temp_ast5->type);
+    name = ruyi_unicode_string_init_from_utf8("sum", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast5, 0)->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    assert(Ruyi_at_op_add == ruyi_ast_get_child(temp_ast5, 1)->type);
+    name = ruyi_unicode_string_init_from_utf8("i", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast5, 2)->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    
+    // for(a1, a2 in b) { sum = a1 + a2; }
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 2);
+    assert(Ruyi_at_for_in_statement == temp_ast2->type);
+    // for(a1, a2 in b)
+    temp_ast3 = ruyi_ast_get_child(temp_ast2, 0);
+    assert(Ruyi_at_for_in_header == temp_ast3->type);
+    // a1, a2
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_var_list == temp_ast4->type);
+    assert(2 == ruyi_ast_child_length(temp_ast4));
+    assert(Ruyi_at_name == ruyi_ast_get_child(temp_ast4, 0)->type);
+    assert(Ruyi_at_name == ruyi_ast_get_child(temp_ast4, 1)->type);
+    name = ruyi_unicode_string_init_from_utf8("a1", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast4, 0)->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    name = ruyi_unicode_string_init_from_utf8("a2", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast4, 1)->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    // b
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 1);
+    assert(Ruyi_at_name == temp_ast4->type);
+    name = ruyi_unicode_string_init_from_utf8("b", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast4->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    // { sum = a1 + a2; }
+    temp_ast3 = ruyi_ast_get_child(temp_ast2, 1);
+    assert(Ruyi_at_block_statements == temp_ast3->type);
+    assert(1 == ruyi_ast_child_length(temp_ast3));
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_left_hand_side_expression == temp_ast4->type);
+    // sum
+    temp_ast5 = ruyi_ast_get_child(temp_ast4, 0);
+    assert(Ruyi_at_name == temp_ast5->type);
+    name = ruyi_unicode_string_init_from_utf8("sum", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast5->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    // = a1 + a2;
+    temp_ast5 = ruyi_ast_get_child(temp_ast4, 1);
+    assert(Ruyi_at_assign_statement == temp_ast5->type);
+    temp_ast5 = ruyi_ast_get_child(temp_ast5, 0);
+    assert(Ruyi_at_additive_expression == temp_ast5->type);
+    name = ruyi_unicode_string_init_from_utf8("a1", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast5, 0)->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    assert(Ruyi_at_op_add == ruyi_ast_get_child(temp_ast5, 1)->type);
+    name = ruyi_unicode_string_init_from_utf8("a2", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast5, 2)->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    
+    ruyi_ast_destroy(ast);
+}
+
 void run_test_cases_basic(void) {
     test_lists();
     test_vectors();
@@ -1122,6 +1287,8 @@ void run_test_cases_parser() {
     test_parser_function_return1();
     test_parser_function_if1();
     test_parser_function_while1();
+    test_parser_function_for1();
+
 }
 
 void run_test_cases(void) {

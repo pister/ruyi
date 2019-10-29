@@ -2430,10 +2430,115 @@ ruyi_error* expression_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) 
 }
 
 static
+ruyi_error* for_init(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <for init> ::= (<variable auto infer type init> (COMMA  <variable auto infer type init>) * ) ?
+    ruyi_error *err;
+    ruyi_ast *var_init_expr = NULL;
+    ruyi_ast *var_init_expr_list = NULL;
+    if ((err = variable_auto_infer_type_init(reader, &var_init_expr)) != NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    var_init_expr_list = ruyi_ast_create(Ruyi_at_expr_statement_list);
+    ruyi_ast_add_child(var_init_expr_list, var_init_expr);
+    for (;;) {
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
+            break;
+        }
+        if ((err = variable_auto_infer_type_init(reader, &var_init_expr)) != NULL) {
+            goto for_init_on_error;
+        }
+        if (var_init_expr == NULL) {
+            err = ruyi_error_by_parser(reader, "miss expression statement after ','");
+            goto for_init_on_error;
+        }
+        ruyi_ast_add_child(var_init_expr_list, var_init_expr);
+    }
+    *out_ast = var_init_expr_list;
+    return NULL;
+for_init_on_error:
+    if (var_init_expr_list) {
+        ruyi_ast_destroy(var_init_expr_list);
+    }
+    return err;
+}
+
+static
+ruyi_error* for_update(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <for update> ::= (<statement expression> (COMMA <statement expression>) * ) ?
+    ruyi_error *err;
+    ruyi_ast *stmt_expr = NULL;
+    ruyi_ast *stmt_expr_list = NULL;
+    if ((err = statement_expression(reader, &stmt_expr)) != NULL) {
+        *out_ast = NULL;
+        return err;
+    }
+    stmt_expr_list = ruyi_ast_create(Ruyi_at_stmt_expr_list);
+    ruyi_ast_add_child(stmt_expr_list, stmt_expr);
+    for (;;) {
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
+            break;
+        }
+        if ((err = statement_expression(reader, &stmt_expr)) != NULL) {
+            goto for_update_on_error;
+        }
+        if (stmt_expr == NULL) {
+            err = ruyi_error_by_parser(reader, "miss expression after ','");
+            goto for_update_on_error;
+        }
+        ruyi_ast_add_child(stmt_expr_list, stmt_expr);
+    }
+    *out_ast = stmt_expr_list;
+    return NULL;
+for_update_on_error:
+    if (stmt_expr_list) {
+        ruyi_ast_destroy(stmt_expr_list);
+    }
+    return err;
+}
+
+static
 ruyi_error* for_three_parts(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
-
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *ast_for_init = NULL;
+    ruyi_ast *ast_expression = NULL;
+    ruyi_ast *ast_for_update = NULL;
+    if ((err = for_init(reader, &ast_for_init)) != NULL) {
+        goto for_three_parts_on_error;
+    }
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_SEMICOLON, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss ';' in for-statement");
+        goto for_three_parts_on_error;
+    }
+    if ((err = expression(reader, &ast_expression)) != NULL) {
+        goto for_three_parts_on_error;
+    }
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_SEMICOLON, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss ';' in for-statement");
+        goto for_three_parts_on_error;
+    }
+    if ((err = for_update(reader, &ast_for_update)) != NULL) {
+        goto for_three_parts_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_for_3_parts_header);
+    ruyi_ast_add_child(ast, ast_for_init);
+    ruyi_ast_add_child(ast, ast_expression);
+    ruyi_ast_add_child(ast, ast_for_update);
+    *out_ast = ast;
     return NULL;
+for_three_parts_on_error:
+    if (ast_for_init) {
+        ruyi_ast_destroy(ast_for_init);
+    }
+    if (ast_expression) {
+        ruyi_ast_destroy(ast_expression);
+    }
+    if (ast_for_update) {
+        ruyi_ast_destroy(ast_for_update);
+    }
+    return err;
 }
 
 static
@@ -2523,7 +2628,7 @@ ruyi_error* for_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         goto for_statement_on_error;
     }
     if (ast_for_in == NULL) {
-        if ((err = for_in(reader, &ast_for_3_parts)) != NULL) {
+        if ((err = for_three_parts(reader, &ast_for_3_parts)) != NULL) {
             goto for_statement_on_error;
         }
         if (ast_for_3_parts == NULL) {
@@ -2599,7 +2704,6 @@ ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         *out_ast = ast;
         return NULL;
     }
-    
     // TODO
 
     if ((err = return_statement(reader, &ast)) != NULL) {

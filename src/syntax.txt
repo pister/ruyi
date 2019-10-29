@@ -39,9 +39,8 @@
 <for in> ::= IDENTITY (COMMA IDENTITY) * KW_IN <expression>
 <for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
 
-// TODO
-<for init> ::= (<variable declaration> (COMMA  <variable declaration>) * ) ?
-
+<for init> ::= (<variable auto infer type init> (COMMA  <variable auto infer type init>) * ) ?
+<for update> ::= (<statement expression> (COMMA <statement expression>) * ) ?
 
 <sub statement> ::= <empty statement> | <break statement> | <continue statement> | <return statement>
 
