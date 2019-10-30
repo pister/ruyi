@@ -113,6 +113,10 @@ typedef enum {
     Ruyi_at_switch_default_case_statement,
     Ruyi_at_constant_expression,
     Ruyi_at_const_list,
+    Ruyi_at_break_statement,
+    Ruyi_at_continue_statement,
+    Ruyi_at_labeled_statement,
+
 
 
 

@@ -725,7 +725,7 @@ void test_parser_expression() {
     // type_ast, expr_ast etc ... will be auto destroy by code: ruyi_ast_destroy(ast);
 }
 
-void test_parser_function_return1() {
+void test_parser_function_return() {
     const char* src = "func add1(a int, b long) long { return a*10 + b;}";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -831,7 +831,7 @@ void test_parser_function_return1() {
 }
 
 
-void test_parser_function_if1() {
+void test_parser_function_if() {
     const char* src = "func if1(a int, b long) long { if (a > 100.0) {return 100;} elseif (a > 50) {return 50;} elseif (a > b) {return a;}  else { return b;} }";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -1005,7 +1005,7 @@ void test_parser_function_if1() {
 }
 
 
-void test_parser_function_while1() {
+void test_parser_function_while() {
     // TODO use a++ instead of return a+1
     const char* src = "func while1(a int) int { while(a < 10) {a++;} return a; }";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
@@ -1099,7 +1099,7 @@ void test_parser_function_while1() {
     ruyi_ast_destroy(ast);
 }
 
-void test_parser_function_for1() {
+void test_parser_function_for() {
     const char* src = "func for1() {\n sum := 0 \n for (i := 0; i < 10; i++) {\n sum = sum + i;} \n for(a1, a2 in b) { sum = a1 + a2; } }";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -1264,7 +1264,7 @@ void test_parser_function_for1() {
     ruyi_ast_destroy(ast);
 }
 
-void test_parser_function_switch1(void) {
+void test_parser_function_switch(void) {
     const char* src = "func switch1(v int) {var b int; switch(v) {case 1,2,3: b=10;\n case 12+5: b = 20;\n default: b = 100} }";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -1436,6 +1436,127 @@ void test_parser_function_switch1(void) {
     ruyi_ast_destroy(ast);
 }
 
+void test_parser_function_break_continue() {
+    const char* src = "func break_continue1() {break ab; continue; }";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *func_ast;
+    ruyi_unicode_string* name = NULL;
+    ruyi_ast *temp_ast = NULL;
+    ruyi_ast *temp_ast2 = NULL;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    assert(Ruyi_at_root == ast->type);
+    assert(1 == ruyi_ast_child_length(ast));
+    func_ast = ruyi_ast_get_child(ast, 0);
+    assert(Ruyi_at_function_declaration == func_ast->type);
+    
+    // assert name
+    name = ruyi_unicode_string_init_from_utf8("break_continue1", 0);
+    temp_ast = ruyi_ast_get_child(func_ast, 0);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_name == temp_ast->type);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    
+    // body
+    temp_ast = ruyi_ast_get_child(func_ast, 3);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_block_statements == temp_ast->type);
+    assert(2 == ruyi_ast_child_length(temp_ast));
+    
+    // break ab;
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
+    assert(Ruyi_at_break_statement == temp_ast2->type);
+    assert(NULL != temp_ast2->data.ptr_value);
+    name = ruyi_unicode_string_init_from_utf8("ab", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast2->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    
+    // continue;
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 1);
+    assert(Ruyi_at_continue_statement == temp_ast2->type);
+    assert(NULL == temp_ast2->data.ptr_value);
+    
+    ruyi_ast_destroy(ast);
+}
+
+void test_parser_function_label(void) {
+    const char* src = "func label_1() { ab:while(1) {break ab;} }";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *func_ast;
+    ruyi_unicode_string* name = NULL;
+    ruyi_ast *temp_ast = NULL;
+    ruyi_ast *temp_ast2 = NULL;
+    ruyi_ast *temp_ast3 = NULL;
+    ruyi_ast *temp_ast4 = NULL;
+    ruyi_ast *temp_ast5 = NULL;
+
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    assert(Ruyi_at_root == ast->type);
+    assert(1 == ruyi_ast_child_length(ast));
+    func_ast = ruyi_ast_get_child(ast, 0);
+    assert(Ruyi_at_function_declaration == func_ast->type);
+    
+    // assert name
+    name = ruyi_unicode_string_init_from_utf8("label_1", 0);
+    temp_ast = ruyi_ast_get_child(func_ast, 0);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_name == temp_ast->type);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    
+    // body
+    temp_ast = ruyi_ast_get_child(func_ast, 3);
+    assert(temp_ast != NULL);
+    assert(Ruyi_at_block_statements == temp_ast->type);
+    assert(1 == ruyi_ast_child_length(temp_ast));
+    
+    // ab:while(1) {break ab;}
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
+    assert(Ruyi_at_labeled_statement == temp_ast2->type);
+    assert(NULL != temp_ast2->data.ptr_value);
+    name = ruyi_unicode_string_init_from_utf8("ab", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast2->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    // while(1) {break ab;}
+    temp_ast3 = ruyi_ast_get_child(temp_ast2, 0);
+    assert(Ruyi_at_while_statement == temp_ast3->type);
+    assert(2 == ruyi_ast_child_length(temp_ast3));
+    // expr: 1
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_integer == temp_ast4->type);
+    assert(1 == temp_ast4->data.int32_value);
+    // body: {break ab;}
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 1);
+    assert(Ruyi_at_block_statements == temp_ast4->type);
+    assert(1 == ruyi_ast_child_length(temp_ast4));
+    // {break ab;}
+    temp_ast5 = ruyi_ast_get_child(temp_ast4, 0);
+    assert(Ruyi_at_break_statement == temp_ast5->type);
+    name = ruyi_unicode_string_init_from_utf8("ab", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast5->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    
+    ruyi_ast_destroy(ast);
+}
+
 void run_test_cases_basic(void) {
     test_lists();
     test_vectors();
@@ -1456,11 +1577,14 @@ void run_test_cases_lexer(void) {
 
 void run_test_cases_parser() {
     test_parser_expression();
-    test_parser_function_return1();
-    test_parser_function_if1();
-    test_parser_function_while1();
-    test_parser_function_for1();
-    test_parser_function_switch1();
+    test_parser_function_return();
+    test_parser_function_if();
+    test_parser_function_while();
+    test_parser_function_for();
+    test_parser_function_switch();
+    test_parser_function_break_continue();
+    test_parser_function_label();
+
 
 }
 

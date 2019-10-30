@@ -29,7 +29,7 @@
 <sub block statement> ::= LBRACE <block statements> RBRACE
 <local variable declaration statement> ::= <local variable declaration> <statement ends>
 <local variable declaration> ::= <variable declaration> | <variable auto infer type init>
-<statement> ::= <if statement> | <while statement> | <expression statement>  | <for statement> | <switch statement> | <try statement> | <return statement> | <labeled statement> | <sub block statement> | <break statement> | <continue statement>
+<statement> ::= <labeled statement> | <if statement> | <while statement> | <expression statement>  | <for statement> | <switch statement> | <try statement> | <return statement> | <break statement> | <continue statement> | <sub block statement> 
 <if statement> ::= KW_IF <expression> | ( LPARAN <expression> RPARAN ) <block> <elseif statement>* <else statement>?
 <elseif statement> ::= KW_ELSEIF <expression> | ( LPARAN <expression> RPARAN ) <block>
 <else statement> ::= KW_ELSE <block>
@@ -46,6 +46,9 @@
 <switch case statement> ::= KW_CASE <constant expression> (COMMA <constant expression>) * COLON <block statements>
 <switch default statement> ::= KW_DEFAULT COLON <block statements>
 
+<break statement> ::= KW_BREAK IDENTITY?
+<continue statement> ::= KW_CONTINUE IDENTITY?
+<labeled statement> ::= IDENTITY COLON <statement>
 
 <expression statement> ::= <statement expression> <statement ends>
 
@@ -56,7 +59,6 @@
 
 
 <empty statement> ::= <statement ends>
-<labeled statement> ::= IDENTITY COLON <statement>
 
 #
 <statement ends> ::= SEMICOLON *

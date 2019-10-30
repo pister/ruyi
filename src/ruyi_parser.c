@@ -107,6 +107,9 @@ static
 ruyi_error* block_statements(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
 
 static
+ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
+
+static
 void statement_ends(ruyi_lexer_reader *reader) {
     // <statement ends> ::= SEMICOLON *
     for (;;) {
@@ -2856,10 +2859,97 @@ switch_statement_on_error:
 }
 
 static
-ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <statement> ::= <if statement> | <while statement> | <expression statement>  | <for statement> | <switch statement> | <try statement> | <return statement> | <labeled statement> | <sub block statement>
+ruyi_error* break_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <break statement> ::= KW_BREAK IDENTITY?
+    ruyi_ast *ast;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_BREAK, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_peek_token_type(reader) == Ruyi_tt_IDENTITY) {
+        ast = create_ast_by_consume_token_string(reader, Ruyi_at_break_statement);
+    } else {
+        ast = ruyi_ast_create(Ruyi_at_break_statement);
+    }
+    *out_ast = ast;
+    return NULL;
+}
+
+static
+ruyi_error* continue_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <continue statement> ::= KW_CONTINUE IDENTITY?
+    ruyi_ast *ast;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_CONTINUE, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_peek_token_type(reader) == Ruyi_tt_IDENTITY) {
+        ast = create_ast_by_consume_token_string(reader, Ruyi_at_continue_statement);
+    } else {
+        ast = ruyi_ast_create(Ruyi_at_continue_statement);
+    }
+    *out_ast = ast;
+    return NULL;
+}
+
+static
+ruyi_error* labeled_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <labeled statement> ::= IDENTITY COLON <statement>
     ruyi_error *err;
     ruyi_ast *ast = NULL;
+    ruyi_ast *sub_ast = NULL;
+    ruyi_token *label_name = NULL;
+    ruyi_token *colon = NULL;
+    if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_IDENTITY) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    label_name = ruyi_lexer_reader_next_token(reader);
+    if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_COLON) {
+        ruyi_lexer_reader_push_front(reader, label_name);
+        *out_ast = NULL;
+        return NULL;
+    }
+    colon = ruyi_lexer_reader_next_token(reader);
+    if ((err = statement(reader, &sub_ast)) != NULL) {
+        goto labeled_statement_on_error;
+    }
+    if (sub_ast == NULL) {
+        err = ruyi_error_by_parser(reader, "miss statement after label");
+        goto labeled_statement_on_error;
+    }
+    ast = ruyi_ast_create_with_unicode(Ruyi_at_labeled_statement, label_name->value.str_value);
+    ruyi_ast_add_child(ast, sub_ast);
+    
+    ruyi_lexer_token_destroy(colon);
+    ruyi_lexer_token_destroy(label_name);
+  
+    *out_ast = ast;
+    return NULL;
+labeled_statement_on_error:
+    if (colon) {
+        ruyi_lexer_token_destroy(colon);
+    }
+    if (label_name) {
+        ruyi_lexer_token_destroy(label_name);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+
+static
+ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <statement> ::= <labeled statement> | <if statement> | <while statement> | <expression statement>  | <for statement> | <switch statement> | <try statement> | <return statement> | <break statement> | <continue statement> | <sub block statement>
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    if ((err = labeled_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
     if ((err = if_statement(reader, &ast)) != NULL) {
         return err;
     }
@@ -2895,17 +2985,30 @@ ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         *out_ast = ast;
         return NULL;
     }
-
-    // TODO
-
+    // TODO <try statement> not implements in this version
     if ((err = return_statement(reader, &ast)) != NULL) {
         return err;
     }
-    
     if (ast != NULL) {
         *out_ast = ast;
         return NULL;
     }
+    if ((err = break_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    if ((err = continue_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
+    
+   
     // TODO
     
     return NULL;
