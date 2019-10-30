@@ -1277,6 +1277,9 @@ void test_parser_function_switch1(void) {
     ruyi_ast *temp_ast3 = NULL;
     ruyi_ast *temp_ast4 = NULL;
     ruyi_ast *temp_ast5 = NULL;
+    ruyi_ast *temp_ast6 = NULL;
+    ruyi_ast *temp_ast7 = NULL;
+    ruyi_ast *temp_ast8 = NULL;
     err = ruyi_parse_ast(reader, &ast);
     ruyi_lexer_reader_close(reader);
     if (err != NULL) {
@@ -1303,11 +1306,11 @@ void test_parser_function_switch1(void) {
     assert(Ruyi_at_formal_parameter_list == temp_ast->type);
     assert(1 == ruyi_ast_child_length(temp_ast));
     
-    // a int
+    // v int
     temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
     assert(temp_ast2 != NULL);
     assert(Ruyi_at_formal_parameter == temp_ast2->type);
-    name = ruyi_unicode_string_init_from_utf8("a", 0);
+    name = ruyi_unicode_string_init_from_utf8("v", 0);
     assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast2, 0)->data.ptr_value));
     ruyi_unicode_string_destroy(name);
     assert(ruyi_ast_get_child(temp_ast2, 1)->type = Ruyi_at_type_int);
@@ -1316,22 +1319,121 @@ void test_parser_function_switch1(void) {
     temp_ast2 = ruyi_ast_get_child(func_ast, 2);
     assert(temp_ast2 == NULL);
     
-    // TODO
-    /*
     // body
     temp_ast = ruyi_ast_get_child(func_ast, 3);
     assert(temp_ast != NULL);
     assert(Ruyi_at_block_statements == temp_ast->type);
     assert(2 == ruyi_ast_child_length(temp_ast));
     
-    // while stmt:
-    // while(a < 10) {a++;}
+    // var b int;
     temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
-    assert(Ruyi_at_while_statement == temp_ast2->type);
-    assert(2 == ruyi_ast_child_length(temp_ast2));
-     */
-    ruyi_ast_destroy(ast);
+    assert(Ruyi_at_var_declaration == temp_ast2->type);
+    name = ruyi_unicode_string_init_from_utf8("b", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast2->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    assert(1 == ruyi_ast_child_length(temp_ast2));
+    temp_ast3 = ruyi_ast_get_child(temp_ast2, 0);
+    assert(Ruyi_at_type_int == temp_ast3->type);
+    
+    // switch(v) {case 1,2,3: b=10;\n case 12+5: b = 20;\n default: b = 100}
+    temp_ast2 = ruyi_ast_get_child(temp_ast, 1);
+    assert(Ruyi_at_switch_statement == temp_ast2->type);
+    // v
+    temp_ast3 = ruyi_ast_get_child(temp_ast2, 0);
+    assert(Ruyi_at_name == temp_ast3->type);
+    // {case 1,2,3: b=10;\n case 12+5: b = 20;\n default: b = 100}
+    temp_ast3 = ruyi_ast_get_child(temp_ast2, 1);
+    assert(Ruyi_at_switch_statement_body == temp_ast3->type);
+    assert(2 == ruyi_ast_child_length(temp_ast3));
+    // case 1,2,3: b=10;\n case 12+5: b = 20;
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_switch_case_statement_list == temp_ast4->type);
+    assert(2 == ruyi_ast_child_length(temp_ast4));
+    // case 1,2,3: b=10;
+    temp_ast5 = ruyi_ast_get_child(temp_ast4, 0);
+    assert(Ruyi_at_switch_case_statement == temp_ast5->type);
+    assert(2 == ruyi_ast_child_length(temp_ast5));
+    // 1,2,3:
+    temp_ast6 = ruyi_ast_get_child(temp_ast5, 0);
+    assert(Ruyi_at_const_list == temp_ast6->type);
+    assert(3 == ruyi_ast_child_length(temp_ast6));
+    // 1
+    temp_ast7 = ruyi_ast_get_child(temp_ast6, 0);
+    assert(Ruyi_at_constant_expression == temp_ast7->type);
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast7, 0)->type);
+    assert(1 == ruyi_ast_get_child(temp_ast7, 0)->data.int32_value);
+    // 2
+    temp_ast7 = ruyi_ast_get_child(temp_ast6, 1);
+    assert(Ruyi_at_constant_expression == temp_ast7->type);
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast7, 0)->type);
+    assert(2 == ruyi_ast_get_child(temp_ast7, 0)->data.int32_value);
+    // 3
+    temp_ast7 = ruyi_ast_get_child(temp_ast6, 2);
+    assert(Ruyi_at_constant_expression == temp_ast7->type);
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast7, 0)->type);
+    assert(3 == ruyi_ast_get_child(temp_ast7, 0)->data.int32_value);
+    // b=10;
+    temp_ast6 = ruyi_ast_get_child(temp_ast5, 1);
+    assert(Ruyi_at_block_statements == temp_ast6->type);
+    assert(1 == ruyi_ast_child_length(temp_ast6));
+    temp_ast7 = ruyi_ast_get_child(temp_ast6, 0);
+    assert(Ruyi_at_left_hand_side_expression == temp_ast7->type);
+    // b
+    temp_ast8 = ruyi_ast_get_child(temp_ast7, 0);
+    assert(Ruyi_at_name == temp_ast8->type);
+    name = ruyi_unicode_string_init_from_utf8("b", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast8->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    // =10
+    temp_ast8 = ruyi_ast_get_child(temp_ast7, 1);
+    assert(Ruyi_at_assign_statement == temp_ast8->type);
+    assert(1 == ruyi_ast_child_length(temp_ast8));
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast8, 0)->type);
+    assert(10 == ruyi_ast_get_child(temp_ast8, 0)->data.int32_value);
+    // case 12+5: b = 20;
+    temp_ast5 = ruyi_ast_get_child(temp_ast4, 1);
+    assert(Ruyi_at_switch_case_statement == temp_ast5->type);
+    assert(2 == ruyi_ast_child_length(temp_ast5));
+    // 12+5:
+    temp_ast6 = ruyi_ast_get_child(temp_ast5, 0);
+    assert(Ruyi_at_const_list == temp_ast6->type);
+    assert(1 == ruyi_ast_child_length(temp_ast6));
+    temp_ast7 = ruyi_ast_get_child(temp_ast6, 0);
+    assert(Ruyi_at_constant_expression == temp_ast7->type);
+    temp_ast8 = ruyi_ast_get_child(temp_ast7, 0);
+    assert(Ruyi_at_additive_expression == temp_ast8->type);
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast8, 0)->type);
+    assert(Ruyi_at_op_add == ruyi_ast_get_child(temp_ast8, 1)->type);
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast8, 2)->type);
+    assert(12 == ruyi_ast_get_child(temp_ast8, 0)->data.int32_value);
+    assert(5 == ruyi_ast_get_child(temp_ast8, 2)->data.int32_value);
+    // b = 20;
+    temp_ast6 = ruyi_ast_get_child(temp_ast5, 1);
+    assert(Ruyi_at_block_statements == temp_ast6->type);
+    assert(1 == ruyi_ast_child_length(temp_ast6));
+    temp_ast7 = ruyi_ast_get_child(temp_ast6, 0);
+    assert(Ruyi_at_left_hand_side_expression == temp_ast7->type);
+    // b
+    temp_ast8 = ruyi_ast_get_child(temp_ast7, 0);
+    assert(Ruyi_at_name == temp_ast8->type);
+    name = ruyi_unicode_string_init_from_utf8("b", 0);
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast8->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
+    // = 20
+    temp_ast8 = ruyi_ast_get_child(temp_ast7, 1);
+    assert(Ruyi_at_assign_statement == temp_ast8->type);
+    assert(1 == ruyi_ast_child_length(temp_ast8));
+    assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast8, 0)->type);
+    assert(20 == ruyi_ast_get_child(temp_ast8, 0)->data.int32_value);
+    
+    // default: b = 100
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 1);
+    assert(Ruyi_at_switch_default_case_statement == temp_ast4->type);
+    // b = 100
+    temp_ast5 = ruyi_ast_get_child(temp_ast4, 0);
+    assert(Ruyi_at_block_statements == temp_ast5->type);
 
+    ruyi_ast_destroy(ast);
 }
 
 void run_test_cases_basic(void) {

@@ -2679,6 +2679,7 @@ ruyi_error* switch_default_statement(ruyi_lexer_reader *reader, ruyi_ast **out_a
     // <switch default statement> ::= KW_DEFAULT COLON <block statements>
     ruyi_error *err;
     ruyi_ast *ast;
+    ruyi_ast *ast_block = NULL;
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_DEFAULT, NULL)) {
         *out_ast = NULL;
         return NULL;
@@ -2686,10 +2687,12 @@ ruyi_error* switch_default_statement(ruyi_lexer_reader *reader, ruyi_ast **out_a
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COLON, NULL)) {
         return ruyi_error_by_parser(reader, "miss ':' after 'default'");
     }
-    if ((err = block_statements(reader, &ast)) != NULL) {
+    if ((err = block_statements(reader, &ast_block)) != NULL) {
         return err;
     }
-    // ast may be NULL
+    // ast_block may be NULL
+    ast = ruyi_ast_create(Ruyi_at_switch_default_case_statement);
+    ruyi_ast_add_child(ast, ast_block);
     *out_ast = ast;
     return NULL;
 }
