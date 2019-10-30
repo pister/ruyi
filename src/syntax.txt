@@ -54,7 +54,7 @@
 
 <statement expression> ::= <left hand side expression> | <instance creation expression>
 <left hand side expression> ::= <left hand side> <left hand side expression tail>
-<left hand side expression tail> ::= (ASSIGN <expression>) | INC | DEC | <function invocation tail> 
+<left hand side expression tail> ::= (ASSIGN <expression>) | (COLON_ASSIGN <expression>) | INC | DEC | <function invocation tail> 
 <instance creation expression> ::= <map creation> | <array creation> | <instance creation>
 
 

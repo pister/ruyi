@@ -936,15 +936,20 @@ ruyi_error* literal(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
             ast = ruyi_ast_create(Ruyi_at_null);
             break;
         default:
+            ruyi_lexer_reader_push_front(reader, token);
             if ((err = name(reader, &ast, NULL)) != NULL) {
                 goto literal_on_error;
             }
+            *out_ast = ast;
+            return NULL;
+            /*
             if (ast != NULL) {
                 break;
             }
-            ruyi_lexer_reader_push_front(reader, token);
+          //  ruyi_lexer_reader_push_front(reader, token);
             *out_ast = NULL;
             return NULL;
+             */
     }
     ruyi_lexer_token_destroy(token);
     *out_ast = ast;
@@ -2320,7 +2325,7 @@ ruyi_error* instance_creation_expression(ruyi_lexer_reader *reader, ruyi_ast **o
 
 static
 ruyi_error* left_hand_side_expression_tail(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <left hand side expression tail> ::= (ASSIGN <expression>) | INC | DEC | <function invocation tail>
+    // <left hand side expression tail> ::= (ASSIGN <expression>) | (COLON_ASSIGN <expression>) | INC | DEC | <function invocation tail>
     ruyi_error *err;
     ruyi_ast *ast = NULL;
     ruyi_ast *sub_ast;
@@ -2332,6 +2337,19 @@ ruyi_error* left_hand_side_expression_tail(ruyi_lexer_reader *reader, ruyi_ast *
             return ruyi_error_by_parser(reader, "miss expression after '='");
         }
         ast = ruyi_ast_create(Ruyi_at_assign_statement);
+        ruyi_ast_add_child(ast, sub_ast);
+        *out_ast = ast;
+        return NULL;
+    }
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COLON_ASSIGN, NULL)) {
+        if ((err = expression(reader, &sub_ast)) != NULL) {
+            return err;
+        }
+        if (sub_ast == NULL) {
+            return ruyi_error_by_parser(reader, "miss expression after ':='");
+        }
+        ast = ruyi_ast_create(Ruyi_at_var_declaration);
+        ruyi_ast_add_child(ast, ruyi_ast_create(Ruyi_at_var_declaration_auto_type));
         ruyi_ast_add_child(ast, sub_ast);
         *out_ast = ast;
         return NULL;
@@ -2939,8 +2957,38 @@ labeled_statement_on_error:
 
 
 static
+ruyi_error* sub_block_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <sub block statement> ::= LBRACE <block statements> RBRACE
+    ruyi_error *err;
+    ruyi_ast *ast = NULL;
+    ruyi_ast *ast_sub_block = NULL;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LBRACE, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if ((err = block_statements(reader, &ast_sub_block)) != NULL) {
+        return err;
+    }
+    // ast_sub_block can be NULL
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RBRACE, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss '}' at end of block");
+        goto sub_block_statement_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_sub_block_statement);
+    ruyi_ast_add_child(ast, ast_sub_block);
+    *out_ast = ast;
+    return NULL;
+sub_block_statement_on_error:
+    if (ast_sub_block) {
+        ruyi_ast_destroy(ast_sub_block);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
 ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <statement> ::= <labeled statement> | <if statement> | <while statement> | <expression statement>  | <for statement> | <switch statement> | <try statement> | <return statement> | <break statement> | <continue statement> | <sub block statement>
+    // <statement> ::= <labeled statement> | <if statement> | <while statement> | <expression statement> | <for statement> | <switch statement> | <try statement> | <return statement> | <break statement> | <continue statement> | <sub block statement>
     ruyi_error *err;
     ruyi_ast *ast = NULL;
     if ((err = labeled_statement(reader, &ast)) != NULL) {
@@ -3007,9 +3055,13 @@ ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         *out_ast = ast;
         return NULL;
     }
-    
-   
-    // TODO
+    if ((err = sub_block_statement(reader, &ast)) != NULL) {
+        return err;
+    }
+    if (ast != NULL) {
+        *out_ast = ast;
+        return NULL;
+    }
     
     return NULL;
 }
