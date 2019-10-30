@@ -22,6 +22,8 @@
 <function body> ::= <block>
 
 
+
+
 # Blocks
 <block> ::= LBRACE <block statements>? RBRACE
 <block statements> ::= <block statement> *
@@ -55,8 +57,7 @@
 <statement expression> ::= <left hand side expression> | <instance creation expression>
 <left hand side expression> ::= <left hand side> <left hand side expression tail>
 <left hand side expression tail> ::= (ASSIGN <expression>) | (COLON_ASSIGN <expression>) | INC | DEC | <function invocation tail> 
-<instance creation expression> ::= <map creation> | <array creation> | <instance creation>
-
+<instance creation expression> ::= <map creation> | <array creation> | <instance creation> 
 
 <empty statement> ::= <statement ends>
 
@@ -93,7 +94,7 @@
 <field access expression> = (<field access expression> | <array access expression> ) <function invocation tail>?
 
 <field access expression> ::= <primary> (DOT IDENTITY)*
-<primary> ::= <array creation> | <map creation> | <primary no new collection>
+<primary> ::= <array creation> | <map creation> | <anonymous function declaration> | <primary no new collection> 
 <primary no new collection> ::= <literal> <function invocation tail>? | KW_THIS | LPARAN <expression> RPARAN | <instance creation>
 <instance creation> ::= IDENTITY LBRACE (IDENTITY COLON <expression> (COMMA IDENTITY COLON <expression>)*)?  RBRACE
 <argument list> ::= <expression> ( COMMA <expression> )*
@@ -107,6 +108,8 @@
 <array access> ::= <array variable access> | <variable primary access>
 <array variable access> ::= <name> LBRACKET <expression> RBRACKET
 <variable primary access> ::= <primary no new collection> LBRACKET <expression> RBRACKET
+<anonymous function declaration> ::= KW_FUNC LPARAN <formal parameter list>? RPARAN <type>? <function body>
+
 
 # Types
 <type> ::= <primitive type> | <reference type>
@@ -114,10 +117,13 @@
 <numeric type> ::= <integral type> | <floating-point type>
 <integral type> ::= KW_BYTE | KW_SHORT| KW_INT | KW_RUNE | KW_LONG
 <floating-point type> ::= KW_FLOAT | KW_DOUBLE
-<reference type> ::= IDENTITY | <array type> | <map type>
+<reference type> ::= IDENTITY | <array type> | <map type> | <func type>
 <array type> ::= LBRACKET RBRACKET <type>
 <map type> ::= LBRACKET IDENTITY RBRACKET <type>
 <raw type> ::= <primitive type> | IDENTITY
+<func type> ::= KW_FUNC LPARAN <parameter type list> RPARAN <type>?
+<parameter type list> ::= ( <parameter type> ( COMMA <parameter type>) * ) ?
+<parameter type> ::= DOT3? <type>
 
 
 # Tokens

@@ -39,6 +39,7 @@ typedef enum {
     Ruyi_at_instance_creation,
     Ruyi_at_array_type,
     Ruyi_at_map_type,
+    Ruyi_at_func_type,
     Ruyi_at_type_bool,
     Ruyi_at_type_byte,
     Ruyi_at_type_short,
@@ -117,7 +118,9 @@ typedef enum {
     Ruyi_at_continue_statement,
     Ruyi_at_labeled_statement,
     Ruyi_at_sub_block_statement,
-
+    
+    Ruyi_at_formal_parameter_type_list,
+    Ruyi_at_parameter_type,
 
 
 
