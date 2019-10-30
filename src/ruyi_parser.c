@@ -1917,7 +1917,6 @@ ruyi_error* variable_declaration_tail(ruyi_lexer_reader *reader, ruyi_ast **out_
         *out_ast = var_declare_ast;
         return NULL;
     }
-    ruyi_lexer_reader_consume_token(reader); // ASSIGN
     if ((err = expression(reader, &ast_var_init)) != NULL) {
         goto variable_declaration_tail_on_error;
     }

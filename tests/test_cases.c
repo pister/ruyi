@@ -1558,7 +1558,7 @@ void test_parser_function_label(void) {
 }
 
 void test_parser_function_sub_block(void) {
-    const char* src = "func sub_block_1() { a := 10; { b := a+1; b++; } }";
+    const char* src = "func sub_block_1() { var a int = 10; { b := a+1; b++; } }";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_error *err = NULL;
@@ -1589,13 +1589,13 @@ void test_parser_function_sub_block(void) {
     assert(Ruyi_at_block_statements == temp_ast->type);
     assert(2 == ruyi_ast_child_length(temp_ast));
     
-    // a := 10;
+    // var a int = 10;
     temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
     assert(Ruyi_at_var_declaration == temp_ast2->type);
     name = ruyi_unicode_string_init_from_utf8("a", 0);
     assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast2->data.ptr_value));
     ruyi_unicode_string_destroy(name);
-    assert(Ruyi_at_var_declaration_auto_type == ruyi_ast_get_child(temp_ast2, 0)->type);
+    assert(Ruyi_at_type_int == ruyi_ast_get_child(temp_ast2, 0)->type);
     temp_ast3 = ruyi_ast_get_child(temp_ast2, 1);
     assert(Ruyi_at_integer == temp_ast3->type);
     assert(10 == temp_ast3->data.int32_value);
@@ -1654,7 +1654,6 @@ void run_test_cases_parser() {
     test_parser_function_switch();
     test_parser_function_break_continue();
     test_parser_function_label();
-    
     test_parser_function_sub_block();
 }
 
