@@ -5,7 +5,7 @@
 
 # Declarations
 <global declarations> ::= <global declaration> *
-<global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration> | <statement ends>
+<global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration>
 <variable declaration> ::= <variable auto infer type init> | (KW_VAR <variable declaration tail>)
 <variable declaration tail> ::= IDENTITY <type>? (ASSIGN <expression>) ?
 <variable auto infer type init> ::= IDENTITY COLON_ASSIGN <expression>
@@ -27,16 +27,16 @@
 # Blocks
 <block> ::= LBRACE <block statements>? RBRACE
 <block statements> ::= <block statement> *
-<block statement> ::= <local variable declaration statement> | <statement>
+<block statement> ::= ( <local variable declaration statement> | <statement> ) <statement ends>
 <sub block statement> ::= LBRACE <block statements> RBRACE
-<local variable declaration statement> ::= <local variable declaration> <statement ends>
+<local variable declaration statement> ::= <local variable declaration>
 <local variable declaration> ::= <variable declaration> | <variable auto infer type init>
 <statement> ::= <labeled statement> | <if statement> | <while statement> | <expression statement>  | <for statement> | <switch statement> | <try statement> | <return statement> | <break statement> | <continue statement> | <sub block statement> 
 <if statement> ::= KW_IF <expression> | ( LPARAN <expression> RPARAN ) <block> <elseif statement>* <else statement>?
 <elseif statement> ::= KW_ELSEIF <expression> | ( LPARAN <expression> RPARAN ) <block>
 <else statement> ::= KW_ELSE <block>
 <while statement> ::= KW_WHILE <expression> | ( LPARAN <expression> RPARAN ) <block>
-<return statement> ::= KW_RETURN ((<expression> (COMMA <expression>) *) | (LPARAN <expression> (COMMA <expression>) *) RPARAN)? <statement ends>
+<return statement> ::= KW_RETURN ((<expression> (COMMA <expression>) *) | (LPARAN <expression> (COMMA <expression>) *) RPARAN)?
 <for statement> ::= KW_FOR (<for in> | <for three parts>) | ( LPARAN <for in> | <for three parts> RPARAN) <block>
 <for in> ::= IDENTITY (COMMA IDENTITY) * KW_IN <expression>
 <for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
@@ -52,7 +52,7 @@
 <continue statement> ::= KW_CONTINUE IDENTITY?
 <labeled statement> ::= IDENTITY COLON <statement>
 
-<expression statement> ::= <statement expression> <statement ends>
+<expression statement> ::= <statement expression>
 
 <statement expression> ::= <left hand side expression> | <instance creation expression>
 <left hand side expression> ::= <left hand side> <left hand side expression tail>

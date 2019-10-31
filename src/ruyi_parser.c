@@ -2372,7 +2372,7 @@ if_statement_on_error:
 
 static
 ruyi_error* return_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <return statement> ::= KW_RETURN ((<expression> (COMMA <expression>) *) | (LPARAN <expression> (COMMA <expression>) *) RPARAN)? <statement ends>
+    // <return statement> ::= KW_RETURN ((<expression> (COMMA <expression>) *) | (LPARAN <expression> (COMMA <expression>) *) RPARAN)?
     ruyi_error *err;
     ruyi_ast *expr_ast_list = NULL;
     ruyi_ast *expr_ast = NULL;
@@ -2416,7 +2416,6 @@ ruyi_error* return_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         err = ruyi_error_by_parser(reader, "miss ')'");
         goto return_statement_on_error;
     }
-    statement_ends(reader);
     ast = ruyi_ast_create(Ruyi_at_return_statement);
     if (1 == ruyi_ast_child_length(expr_ast_list)) {
         ruyi_ast_add_child(ast, ruyi_ast_get_child(expr_ast_list, 0));
@@ -2724,7 +2723,7 @@ ruyi_error* statement_expression(ruyi_lexer_reader *reader, ruyi_ast **out_ast) 
 
 static
 ruyi_error* expression_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <expression statement> ::= <statement expression> <statement ends>
+    // <expression statement> ::= <statement expression>
     ruyi_error *err;
     ruyi_ast *ast = NULL;
     if ((err = statement_expression(reader, &ast)) != NULL) {
@@ -2734,7 +2733,6 @@ ruyi_error* expression_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) 
         *out_ast = NULL;
         return NULL;
     }
-    statement_ends(reader);
     *out_ast = ast;
     return NULL;
 }
@@ -3354,21 +3352,20 @@ ruyi_error* statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
 
 static
 ruyi_error* local_variable_declaration_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <local variable declaration statement> ::= <local variable declaration> <statement ends>
+    // <local variable declaration statement> ::= <local variable declaration>
     ruyi_error *err;
     ruyi_ast *ast;
     if ((err = local_variable_declaration(reader, &ast)) != NULL) {
         *out_ast = NULL;
         return err;
     }
-    statement_ends(reader);
     *out_ast = ast;
     return NULL;
 }
 
 static
 ruyi_error* block_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <block statement> ::= <local variable declaration statement> | <statement>
+    // <block statement> ::= ( <local variable declaration statement> | <statement> ) <statement ends>
     ruyi_error *err;
     ruyi_ast *ast;
     if ((err = local_variable_declaration_statement(reader, &ast)) != NULL) {
@@ -3377,13 +3374,19 @@ ruyi_error* block_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     }
     if (ast != NULL) {
         *out_ast = ast;
+        statement_ends(reader);
         return NULL;
     }
     if ((err = statement(reader, &ast)) != NULL) {
         *out_ast = NULL;
         return err;
     }
-    *out_ast = ast;
+    if (ast != NULL) {
+        *out_ast = ast;
+        statement_ends(reader);
+        return NULL;
+    }
+    *out_ast = NULL;
     return NULL;
 }
 
@@ -3512,7 +3515,7 @@ function_declaration_on_error:
 
 static
 ruyi_error* global_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration> | <statement ends>
+    // <global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration>
     ruyi_ast *ast = NULL;
     ruyi_error* err;
     if ((err = variable_declaration(reader, &ast)) != NULL) {
