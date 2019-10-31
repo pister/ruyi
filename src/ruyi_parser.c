@@ -116,6 +116,9 @@ static
 ruyi_error* anonymous_function_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
 
 static
+ruyi_error* func_return_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast);
+
+static
 void statement_ends(ruyi_lexer_reader *reader) {
     // <statement ends> ::= SEMICOLON *
     for (;;) {
@@ -1086,8 +1089,7 @@ ruyi_error* parameter_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     } else {
         ast_type = ast_temp;
     }
-    ast = ruyi_ast_create(Ruyi_at_parameter_type);
-    ruyi_ast_add_child(ast, ast_type);
+    ast = ast_type;
     *out_ast = ast;
     return NULL;
 }
@@ -1101,7 +1103,7 @@ ruyi_error* parameter_type_list(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     if ((err = parameter_type(reader, &ast_parameter)) != NULL) {
         goto parameter_type_list_on_error;
     }
-    ast = ruyi_ast_create(Ruyi_at_formal_parameter_type_list);
+    ast = ruyi_ast_create(Ruyi_at_parameter_type_list);
     if (ast_parameter == NULL) {
         *out_ast = ast;
         return NULL;
@@ -1131,7 +1133,8 @@ parameter_type_list_on_error:
 
 static
 ruyi_error* func_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <func type> ::= KW_FUNC LPARAN <parameter type list> RPARAN <type>?
+    // <func type> ::= KW_FUNC LPARAN <parameter type list> RPARAN <func return type>?
+    // TODO
     ruyi_error *err;
     ruyi_ast *ast = NULL;
     ruyi_ast *ast_parameter_type_list = NULL;
@@ -1151,7 +1154,7 @@ ruyi_error* func_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         err = ruyi_error_by_parser(reader, "miss ')' at func type declare");
         goto func_type_on_error;
     }
-    if ((err = type(reader, &ast_return_type)) != NULL) {
+    if ((err = func_return_type(reader, &ast_return_type)) != NULL) {
         goto func_type_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_func_type);
@@ -2369,24 +2372,65 @@ if_statement_on_error:
 
 static
 ruyi_error* return_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <return statement> ::= KW_RETURN <expression>? <statement ends>
+    // <return statement> ::= KW_RETURN ((<expression> (COMMA <expression>) *) | (LPARAN <expression> (COMMA <expression>) *) RPARAN)? <statement ends>
     ruyi_error *err;
+    ruyi_ast *expr_ast_list = NULL;
     ruyi_ast *expr_ast = NULL;
     ruyi_ast *ast;
+    BOOL has_paran = FALSE;
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_RETURN, NULL)) {
         *out_ast = NULL;
         return NULL;
     }
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
+        has_paran = TRUE;
+    }
     if ((err = expression(reader, &expr_ast)) != NULL) {
-        return err;
+        goto return_statement_on_error;
+    }
+    if (expr_ast == NULL) {
+        if (!has_paran) {
+            *out_ast = ruyi_ast_create(Ruyi_at_return_statement);
+            return NULL;
+        } else {
+            err = ruyi_error_by_parser(reader, "miss expression after '('");
+            goto return_statement_on_error;
+        }
+    }
+    expr_ast_list = ruyi_ast_create(Ruyi_at_expr_list);
+    ruyi_ast_add_child(expr_ast_list, expr_ast);
+    for (;;) {
+        if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
+            break;
+        }
+        if ((err = expression(reader, &expr_ast)) != NULL) {
+            goto return_statement_on_error;
+        }
+        if (expr_ast == NULL) {
+            err = ruyi_error_by_parser(reader, "miss expression after ','");
+            goto return_statement_on_error;
+        }
+        ruyi_ast_add_child(expr_ast_list, expr_ast);
+    }
+    if (has_paran && !ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss ')'");
+        goto return_statement_on_error;
     }
     statement_ends(reader);
     ast = ruyi_ast_create(Ruyi_at_return_statement);
-    if (expr_ast != NULL) {
-        ruyi_ast_add_child(ast, expr_ast);
+    if (1 == ruyi_ast_child_length(expr_ast_list)) {
+        ruyi_ast_add_child(ast, ruyi_ast_get_child(expr_ast_list, 0));
+        ruyi_ast_destroy_without_child(expr_ast_list);
+    } else {
+        ruyi_ast_add_child(ast, expr_ast_list);
     }
     *out_ast = ast;
     return NULL;
+return_statement_on_error:
+    if (expr_ast_list) {
+        ruyi_ast_destroy(expr_ast_list);
+    }
+    return err;
 }
 
 static
@@ -2428,8 +2472,61 @@ while_statement_on_error:
 }
 
 static
+ruyi_error* func_return_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <func return type> ::= (<type> ( COMMA <type>) *) | (LPARAN <type> ( COMMA <type>) * RPARAN)
+    ruyi_error *err;
+    ruyi_ast *ast_return_type = NULL;
+    ruyi_ast *ast_temp = NULL;
+    BOOL has_paran = FALSE;
+    if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
+        has_paran = TRUE;
+    }
+    if ((err = type(reader, &ast_temp)) != NULL) {
+        goto func_return_type_on_error;
+    }
+    if (ast_temp != NULL) {
+        ast_return_type = ruyi_ast_create(Ruyi_at_type_list);
+        ruyi_ast_add_child(ast_return_type, ast_temp);
+        for (;;) {
+            if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_COMMA, NULL)) {
+                break;
+            }
+            if ((err = type(reader, &ast_temp)) != NULL) {
+                goto func_return_type_on_error;
+            }
+            if (ast_temp == NULL) {
+                err = ruyi_error_by_parser(reader, "miss type after ','");
+                goto func_return_type_on_error;
+            }
+            ruyi_ast_add_child(ast_return_type, ast_temp);
+        }
+    }
+    if (has_paran && !ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RPAREN, NULL)) {
+        err = ruyi_error_by_parser(reader, "miss ')'");
+        goto func_return_type_on_error;
+    }
+    if (ast_return_type == NULL) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if (1 == ruyi_ast_child_length(ast_return_type)) {
+        *out_ast = ruyi_ast_get_child(ast_return_type, 0);
+        ruyi_ast_destroy_without_child(ast_return_type);
+        return NULL;
+    }
+    *out_ast = ast_return_type;
+    return NULL;
+func_return_type_on_error:
+    if (ast_return_type) {
+        ruyi_ast_destroy(ast_return_type);
+    }
+    *out_ast = NULL;
+    return err;
+}
+
+static
 ruyi_error* anonymous_function_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <anonymous function declaration> ::= KW_FUNC LPARAN <formal parameter list>? RPARAN <type>? <function body>
+    // <anonymous function declaration> ::= KW_FUNC LPARAN <formal parameter list>? RPARAN <func return type>? <function body>
     ruyi_error *err;
     ruyi_ast *ast;
     ruyi_ast *ast_formal_params = NULL;
@@ -2450,7 +2547,7 @@ ruyi_error* anonymous_function_declaration(ruyi_lexer_reader *reader, ruyi_ast *
         err = ruyi_error_by_parser(reader, "miss ')' when define a function");
         goto anonymous_function_declaration_on_error;
     }
-    if ((err = type(reader, &ast_return_type)) != NULL) {
+    if ((err = func_return_type(reader, &ast_return_type)) != NULL) {
         goto anonymous_function_declaration_on_error;
     }
     if ((err = function_body(reader, &ast_body)) != NULL) {
@@ -2460,7 +2557,7 @@ ruyi_error* anonymous_function_declaration(ruyi_lexer_reader *reader, ruyi_ast *
         err = ruyi_error_by_parser(reader, "miss function body");
         goto anonymous_function_declaration_on_error;
     }
-    ast = ruyi_ast_create(Ruyi_at_function_declaration);
+    ast = ruyi_ast_create(Ruyi_at_anonymous_function_declaration);
     ruyi_ast_add_child(ast, ast_formal_params);
     ruyi_ast_add_child(ast, ast_return_type);
     ruyi_ast_add_child(ast, ast_body);
@@ -3352,7 +3449,7 @@ ruyi_error* function_body(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
 
 static
 ruyi_error* function_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <type>? <function body>
+    // <function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <func return type>? <function body>
     ruyi_error *err;
     ruyi_ast *ast;
     ruyi_ast *ast_name = NULL;
@@ -3379,7 +3476,7 @@ ruyi_error* function_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) 
         err = ruyi_error_by_parser(reader, "miss ')' when define a function");
         goto function_declaration_on_error;
     }
-    if ((err = type(reader, &ast_return_type)) != NULL) {
+    if ((err = func_return_type(reader, &ast_return_type)) != NULL) {
         goto function_declaration_on_error;
     }
     if ((err = function_body(reader, &ast_body)) != NULL) {

@@ -86,6 +86,7 @@ typedef enum {
     Ruyi_at_field_bracket_access_expression,
     
     Ruyi_at_function_declaration,
+    Ruyi_at_anonymous_function_declaration,
     Ruyi_at_formal_parameter_list,
     Ruyi_at_formal_parameter,
     Ruyi_at_var_args_type,
@@ -119,8 +120,9 @@ typedef enum {
     Ruyi_at_labeled_statement,
     Ruyi_at_sub_block_statement,
     
-    Ruyi_at_formal_parameter_type_list,
-    Ruyi_at_parameter_type,
+    Ruyi_at_parameter_type_list,
+    Ruyi_at_type_list,
+    Ruyi_at_expr_list,
 
 
 
@@ -160,5 +162,8 @@ UINT32 ruyi_ast_child_length(ruyi_ast *ast);
 ruyi_ast * ruyi_ast_get_child(ruyi_ast *ast, UINT32 index);
 
 void ruyi_ast_destroy(ruyi_ast *ast);
+
+void ruyi_ast_destroy_without_child(ruyi_ast *ast);
+
 
 #endif /* ruyi_ast_h */

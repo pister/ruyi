@@ -44,6 +44,30 @@ void ruyi_ast_destroy(ruyi_ast *ast) {
     ruyi_mem_free(ast);
 }
 
+void ruyi_ast_destroy_without_child(ruyi_ast *ast) {
+    ruyi_unicode_string * ustr;
+    if(ast == NULL) {
+        return;
+    }
+    switch (ast->adt_type) {
+        case Ruyi_adt_unicode_str:
+            ustr = (ruyi_unicode_string *)ast->data.ptr_value;
+            if (ustr) {
+                ruyi_unicode_string_destroy(ustr);
+                ast->data.ptr_value = NULL;
+            }
+            break;
+        default:
+            break;
+    }
+    if (ast->child_asts) {
+        ruyi_vector_destroy(ast->child_asts);
+        ast->child_asts = NULL;
+    }
+    // destory self
+    ruyi_mem_free(ast);
+}
+
 ruyi_ast * ruyi_ast_create(ruyi_ast_type type) {
     ruyi_ast *ast = ruyi_mem_alloc(sizeof(ruyi_ast));
     ast->type = type;

@@ -10,7 +10,7 @@
 <variable declaration tail> ::= IDENTITY <type>? (ASSIGN <expression>) ?
 <variable auto infer type init> ::= IDENTITY COLON_ASSIGN <expression>
 
-<function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <type>? <function body>
+<function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <func return type>? <function body>
 <class declaration> ::= KW_CLASS IDENTITY <class body>
 <interface declaration> ::= KW_INTERFACE IDENTITY <interface body>
 <constant declaration> ::= KW_CONST IDENTITY ASSIGN <constant initializer>
@@ -36,7 +36,7 @@
 <elseif statement> ::= KW_ELSEIF <expression> | ( LPARAN <expression> RPARAN ) <block>
 <else statement> ::= KW_ELSE <block>
 <while statement> ::= KW_WHILE <expression> | ( LPARAN <expression> RPARAN ) <block>
-<return statement> ::= KW_RETURN <expression>? <statement ends>
+<return statement> ::= KW_RETURN ((<expression> (COMMA <expression>) *) | (LPARAN <expression> (COMMA <expression>) *) RPARAN)? <statement ends>
 <for statement> ::= KW_FOR (<for in> | <for three parts>) | ( LPARAN <for in> | <for three parts> RPARAN) <block>
 <for in> ::= IDENTITY (COMMA IDENTITY) * KW_IN <expression>
 <for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
@@ -108,7 +108,7 @@
 <array access> ::= <array variable access> | <variable primary access>
 <array variable access> ::= <name> LBRACKET <expression> RBRACKET
 <variable primary access> ::= <primary no new collection> LBRACKET <expression> RBRACKET
-<anonymous function declaration> ::= KW_FUNC LPARAN <formal parameter list>? RPARAN <type>? <function body>
+<anonymous function declaration> ::= KW_FUNC LPARAN <formal parameter list>? RPARAN <func return type>? <function body>
 
 
 # Types
@@ -121,9 +121,10 @@
 <array type> ::= LBRACKET RBRACKET <type>
 <map type> ::= LBRACKET IDENTITY RBRACKET <type>
 <raw type> ::= <primitive type> | IDENTITY
-<func type> ::= KW_FUNC LPARAN <parameter type list> RPARAN <type>?
+<func type> ::= KW_FUNC LPARAN <parameter type list> RPARAN <func return type>?
 <parameter type list> ::= ( <parameter type> ( COMMA <parameter type>) * ) ?
 <parameter type> ::= DOT3? <type>
+<func return type> ::= (<type> ( COMMA <type>) *) | (LPARAN <type> ( COMMA <type>) * RPARAN)
 
 
 # Tokens
