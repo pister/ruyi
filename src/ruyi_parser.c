@@ -858,7 +858,7 @@ ruyi_error* name(ruyi_lexer_reader *reader, ruyi_ast **out_ast, ruyi_vector* out
     }
     if (out_tokens == NULL) {
         name = create_ast_by_consume_token_string(reader, Ruyi_at_name);
-        while (TRUE) {
+        for (;;) {
             if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_DOT, NULL)) {
                 break;
             }
@@ -874,7 +874,7 @@ ruyi_error* name(ruyi_lexer_reader *reader, ruyi_ast **out_ast, ruyi_vector* out
         out_tokens_temp = ruyi_vector_create();
         name = create_ast_string_by_token(reader, Ruyi_at_name, &token);
         ruyi_vector_add(out_tokens_temp, ruyi_value_ptr(token));
-        while (TRUE) {
+        for (;;) {
             if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_DOT) {
                 break;
             }
@@ -3543,29 +3543,148 @@ ruyi_error* global_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
 static
 ruyi_error* global_declarations(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     // <global declarations> ::= <global declaration> *
-    ruyi_ast *root;
-    ruyi_ast *global_declare_ast = NULL;
     ruyi_error* err;
-    root = ruyi_ast_create(Ruyi_at_root);
+    ruyi_ast *global_declarations;
+    ruyi_ast *global_declare_ast = NULL;
+    global_declarations = ruyi_ast_create(Ruyi_at_global_declarations);
     while (TRUE) {
         if ((err = global_declaration(reader, &global_declare_ast)) != NULL) {
             return err;
         }
         if (global_declare_ast != NULL) {
-            ruyi_ast_add_child(root, global_declare_ast);
+            ruyi_ast_add_child(global_declarations, global_declare_ast);
         } else {
             // End Of Next global_declaration
             break;
         }
     }
-    *out_ast = root;
+    *out_ast = global_declarations;
     return NULL;
 }
 
 static
+ruyi_error* package_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <package declaration> ::= KW_PACKAGE <name> <statement ends>
+    ruyi_error* err;
+    ruyi_ast *ast;
+    ruyi_ast *ast_name;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_PACKAGE, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if ((err = name(reader, &ast_name, NULL)) != NULL) {
+        return err;
+    }
+    if (ast_name == NULL) {
+        return ruyi_error_by_parser(reader, "miss name after 'package'");
+    }
+    statement_ends(reader);
+    ast = ruyi_ast_create(Ruyi_at_package_declaration);
+    ruyi_ast_add_child(ast, ast_name);
+    *out_ast = ast;
+    return NULL;
+}
+
+static
+ruyi_error* import_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    // <import declaration> ::= KW_IMPORT <name> (IDENTITY)? <statement ends>
+    ruyi_error* err;
+    ruyi_ast *ast;
+    ruyi_ast *ast_name = NULL;
+    ruyi_ast *ast_alias = NULL;
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_KW_IMPORT, NULL)) {
+        *out_ast = NULL;
+        return NULL;
+    }
+    if ((err = name(reader, &ast_name, NULL)) != NULL) {
+        goto import_declaration_on_error;
+    }
+    if (ast_name == NULL) {
+        err = ruyi_error_by_parser(reader, "miss name after 'import'");
+        goto import_declaration_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_import_declaration);
+    ruyi_ast_add_child(ast, ast_name);
+    if (ruyi_lexer_reader_peek_token_type(reader) == Ruyi_tt_IDENTITY) {
+        ast_alias = create_ast_by_consume_token_string(reader, Ruyi_at_name);
+        ruyi_ast_add_child(ast, ast_alias);
+    }
+    statement_ends(reader);
+    *out_ast = ast;
+    return NULL;
+import_declaration_on_error:
+    if (ast_name) {
+        ruyi_ast_destroy(ast_name);
+    }
+    if (ast_alias) {
+        ruyi_ast_destroy(ast_alias);
+    }
+    return err;
+}
+
+static
+ruyi_error* import_declarations(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
+    ruyi_error* err;
+    ruyi_ast *ast;
+    ruyi_ast *ast_import;
+    ast = ruyi_ast_create(Ruyi_at_import_declarations);
+    for (;;) {
+        if ((err = import_declaration(reader, &ast_import)) != NULL) {
+            goto import_declarations_on_error;
+        }
+        if (ast_import == NULL) {
+            break;
+        }
+        ruyi_ast_add_child(ast, ast_import);
+    }
+    if (0 == ruyi_ast_child_length(ast)) {
+        ruyi_ast_destroy(ast);
+        *out_ast = NULL;
+        return NULL;
+    }
+    *out_ast = ast;
+    return NULL;
+import_declarations_on_error:
+    if (ast) {
+        ruyi_ast_destroy(ast);
+    }
+    return err;
+}
+
+static
 ruyi_error* compilation_unit(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <root> ::= <global declarations>?
-    return global_declarations(reader, out_ast);
+    // <root> ::= <package declaration>? <import declarations>? <global declarations>?
+    ruyi_error* err;
+    ruyi_ast *ast;
+    ruyi_ast *ast_package = NULL;
+    ruyi_ast *ast_import = NULL;
+    ruyi_ast *ast_global = NULL;
+    if ((err = package_declaration(reader, &ast_package)) != NULL) {
+        goto compilation_unit_on_error;
+    }
+    if ((err = import_declarations(reader, &ast_import)) != NULL) {
+        goto compilation_unit_on_error;
+    }
+    if ((err = global_declarations(reader, &ast_global)) != NULL) {
+        goto compilation_unit_on_error;
+    }
+    ast = ruyi_ast_create(Ruyi_at_root);
+    ruyi_ast_add_child(ast, ast_package);
+    ruyi_ast_add_child(ast, ast_import);
+    ruyi_ast_add_child(ast, ast_global);
+    *out_ast = ast;
+    return NULL;
+compilation_unit_on_error:
+    if (ast_package) {
+        ruyi_ast_destroy(ast_package);
+    }
+    if (ast_import) {
+        ruyi_ast_destroy(ast_import);
+    }
+    if (ast_global) {
+        ruyi_ast_destroy(ast_global);
+    }
+    return err;
 }
 
 ruyi_error* ruyi_parse_ast(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {

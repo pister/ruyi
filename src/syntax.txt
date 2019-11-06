@@ -1,28 +1,29 @@
 # Ruyi Program Language Syntax
 
 # Programs
-<root> ::= <global declarations>?
+<root> ::= <package declaration>? <import declarations> <global declarations>?
 
 # Declarations
+<package declaration> ::= KW_PACKAGE <name> <statement ends>
+<import declarations> ::= <import declaration>*
+<import declaration> ::= KW_IMPORT <name> (IDENTITY)? <statement ends>
 <global declarations> ::= <global declaration> *
 <global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration>
 <variable declaration> ::= <variable auto infer type init> | (KW_VAR <variable declaration tail>)
 <variable declaration tail> ::= IDENTITY <type>? (ASSIGN <expression>) ?
 <variable auto infer type init> ::= IDENTITY COLON_ASSIGN <expression>
-
 <function declaration> ::= KW_FUNC IDENTITY LPARAN <formal parameter list>? RPARAN <func return type>? <function body>
 <class declaration> ::= KW_CLASS IDENTITY <class body>
 <interface declaration> ::= KW_INTERFACE IDENTITY <interface body>
 <constant declaration> ::= KW_CONST IDENTITY ASSIGN <constant initializer>
-<class body> ::= LBRACE <class body declarations>? RBRACE
-<class body declarations> ::= <class body declaration> | <class body declarations> <class body declaration>
-
+<class body> ::= LBRACE <class body declaration>* RBRACE
+<class body declaration> ::= <class field declaration> | <class function declaration>
+<class field declaration> ::= <variable declaration>
+# member func as well as construtor but has same name with class, and has not return value
+<class function declaration> ::= <function declaration>
 <formal parameter list> ::= ( <formal parameter> ( COMMA <formal parameter>) * ) ?
 <formal parameter> ::= IDENTITY DOT3? <type>
 <function body> ::= <block>
-
-
-
 
 # Blocks
 <block> ::= LBRACE <block statements>? RBRACE
@@ -42,23 +43,18 @@
 <for three parts> ::= <for init>? SEMICOLON <expression>? SEMICOLON <for update>?
 <for init> ::= (<variable auto infer type init> (COMMA  <variable auto infer type init>) * ) ?
 <for update> ::= (<statement expression> (COMMA <statement expression>) * ) ?
-
 <switch statement> ::= KW_SWITCH <expression> | ( LPARAN <expression> RPARAN ) <switch statement body>
 <switch statement body> ::= LBRACE <switch case statement>* <switch default statement>? RBRACE
 <switch case statement> ::= KW_CASE <constant expression> (COMMA <constant expression>) * COLON <block statements>
 <switch default statement> ::= KW_DEFAULT COLON <block statements>
-
 <break statement> ::= KW_BREAK IDENTITY?
 <continue statement> ::= KW_CONTINUE IDENTITY?
 <labeled statement> ::= IDENTITY COLON <statement>
-
 <expression statement> ::= <statement expression>
-
 <statement expression> ::= <left hand side expression> | <instance creation expression>
 <left hand side expression> ::= <left hand side> <left hand side expression tail>
 <left hand side expression tail> ::= (ASSIGN <expression>) | (COLON_ASSIGN <expression>) | INC | DEC | <function invocation tail> 
-<instance creation expression> ::= <map creation> | <array creation> | <instance creation> 
-
+<instance creation expression> ::= <map creation> | <array creation> | <instance creation>
 <empty statement> ::= <statement ends>
 
 #
@@ -83,16 +79,12 @@
 <multiplicative expression> ::= <unary expression> ((MUL | DIV | MOD) <unary expression>)*
 <unary expression> ::= ADD <unary expression> | SUB <unary expression> | <not plus minus expression>
 <not plus minus expression> ::= BIT_INVERSE <unary expression> | LOGIC_NOT <unary expression> | <postfix expression>
-
 <postfix expression> ::= ( <field access expression> | <name> ) (DEC | INC | <type cast>) ?
 <type cast> ::= DOT RPARAN <type> RPARAN
-
 <field access expression> ::= <primary> (DOT <dot expression tail> | LBRACKET <bracket expression tail>) *
 <dot expression tail> ::= IDENTITY (LPARAN <argument list>? RPARAN)?
 <bracket expression tail> ::= <expression> RBRACKET
-
 <field access expression> = (<field access expression> | <array access expression> ) <function invocation tail>?
-
 <field access expression> ::= <primary> (DOT IDENTITY)*
 <primary> ::= <array creation> | <map creation> | <anonymous function declaration> | <primary no new collection> 
 <primary no new collection> ::= <literal> <function invocation tail>? | KW_THIS | LPARAN <expression> RPARAN | <instance creation>
@@ -102,9 +94,7 @@
 <array creation with cap> ::= KW_ARRAY LPARAN <array type> COMMA <expression> (COMMA <expression>)? RPARAN
 <array creation with init> ::= <array type> LBRACKET (<expression> (COMMA <expression>)*)?  RBRACKET
 <map creation> ::= KW_MAP LPARAN <map type> RPARAN
-
 <function invocation tail> ::= LPARAN <argument list>? RPARAN
-
 <array access> ::= <array variable access> | <variable primary access>
 <array variable access> ::= <name> LBRACKET <expression> RBRACKET
 <variable primary access> ::= <primary no new collection> LBRACKET <expression> RBRACKET

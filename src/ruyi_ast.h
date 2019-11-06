@@ -15,6 +15,10 @@
 
 typedef enum {
     Ruyi_at_root,
+    Ruyi_at_package_declaration,
+    Ruyi_at_import_declarations,
+    Ruyi_at_import_declaration,
+    Ruyi_at_global_declarations,
     Ruyi_at_global_declaration,
     Ruyi_at_var_declaration,
     Ruyi_at_var_declaration_auto_type,
@@ -123,6 +127,7 @@ typedef enum {
     Ruyi_at_parameter_type_list,
     Ruyi_at_type_list,
     Ruyi_at_expr_list,
+ 
 
 
 
