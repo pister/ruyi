@@ -96,9 +96,9 @@ typedef enum {
 
     Ruyi_tt_KW_BOOL,        // bool
     Ruyi_tt_KW_INT,         // int
-    Ruyi_tt_KW_FLOAT,       // float
     Ruyi_tt_KW_RUNE,        // rune
     Ruyi_tt_KW_BYTE,        // byte
+    Ruyi_tt_KW_FLOAT,       // float
     Ruyi_tt_KW_DOUBLE,      // double
     Ruyi_tt_KW_LONG,        // long
     Ruyi_tt_KW_SHORT,       // short

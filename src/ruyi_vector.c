@@ -12,8 +12,8 @@
 #include <stdlib.h> // for qsort
 
 #define VECTOR_DEFAULT_INIT_CAP 10
-#define VECTOR_GROUP_RATE 1.5
-#define VECTOR_GROUP_VALUE 10
+#define VECTOR_GROWUP_RATE 1.5
+#define VECTOR_GROWUP_VALUE 10
 
 
 ruyi_vector* ruyi_vector_create(void) {
@@ -42,7 +42,7 @@ void ruyi_vector_destroy(ruyi_vector* vector) {
 }
 
 static void ruyi_vector_growup(ruyi_vector* vector) {
-    UINT32 new_cap = (UINT32)(vector->cap * VECTOR_GROUP_RATE) + VECTOR_GROUP_VALUE;
+    UINT32 new_cap = (UINT32)(vector->cap * VECTOR_GROWUP_RATE) + VECTOR_GROWUP_VALUE;
     ruyi_value *new_data = ruyi_mem_alloc(new_cap * sizeof(ruyi_value));
     if (vector->value_data) {
         memcpy(new_data, vector->value_data, vector->len * sizeof(ruyi_value));
