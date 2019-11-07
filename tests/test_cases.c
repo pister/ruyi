@@ -17,6 +17,8 @@
 #include "../src/ruyi_io.h"
 #include "../src/ruyi_lexer.h"
 #include "../src/ruyi_parser.h"
+#include "../src/ruyi_ir.h"
+
 
 
 static BOOL print_callback(ruyi_value v) {
@@ -1841,6 +1843,18 @@ void test_parser_function_func_type(void) {
     ruyi_ast_destroy(ast);
 }
 
+void test_cg_ir() {
+    Ruyi_ir_ins ins;
+    ruyi_ir_ins_detail detail;
+    assert(ruyi_ir_get_ins_code("iadd", &ins));
+    assert(Ruyi_ir_Iadd == ins);
+    assert(ruyi_ir_get_ins_detail(Ruyi_ir_Isub, &detail));
+    assert(0 == strcmp("isub", detail.name));
+    assert(detail.has_second == FALSE);
+    assert(detail.may_jump == FALSE);
+    assert(detail.operand == -1);
+}
+
 void run_test_cases_basic(void) {
     test_lists();
     test_vectors();
@@ -1873,8 +1887,13 @@ void run_test_cases_parser() {
     test_parser_function_func_type();
 }
 
+void run_test_cases_cg() {
+    test_cg_ir();
+}
+
 void run_test_cases(void) {
     run_test_cases_basic();
     run_test_cases_lexer();
     run_test_cases_parser();
+    run_test_cases_cg();
 }
