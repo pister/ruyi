@@ -89,7 +89,7 @@ BOOL ruyi_list_remove_last(ruyi_list* list, ruyi_value *ret_value);
  * return:
  * TRUE get success, FALSE if list is empty
  */
-BOOL ruyi_list_get_first(ruyi_list* list, ruyi_value *ret_value);
+BOOL ruyi_list_get_first(const ruyi_list* list, ruyi_value *ret_value);
 
 /**
  * Get the last item
@@ -99,7 +99,7 @@ BOOL ruyi_list_get_first(ruyi_list* list, ruyi_value *ret_value);
  * return:
  * TRUE get success, FALSE if list is empty
  */
-BOOL ruyi_list_get_last(ruyi_list* list, ruyi_value *ret_value);
+BOOL ruyi_list_get_last(const ruyi_list* list, ruyi_value *ret_value);
 
 /**
  * Get the list is empty
@@ -108,7 +108,7 @@ BOOL ruyi_list_get_last(ruyi_list* list, ruyi_value *ret_value);
  * return:
  * TRUE when empty, FALSE is not empty
  */
-BOOL ruyi_list_empty(ruyi_list* list);
+BOOL ruyi_list_empty(const ruyi_list* list);
 
 /**
  * Insert after the item
@@ -147,7 +147,7 @@ void ruyi_list_remove_item(ruyi_list* list, ruyi_list_item* item);
  * return:
  * the item pointer when found, NULL when not found
  */
-ruyi_list_item* ruyi_list_find_first(ruyi_list* list, ruyi_value value);
+ruyi_list_item* ruyi_list_find_first(const ruyi_list* list, ruyi_value value);
 
 /**
  * Find the last item which value is equals input value
@@ -157,6 +157,6 @@ ruyi_list_item* ruyi_list_find_first(ruyi_list* list, ruyi_value value);
  * return:
  * the item pointer when found, NULL when not found
  */
-ruyi_list_item* ruyi_list_find_last(ruyi_list* list, ruyi_value value);
+ruyi_list_item* ruyi_list_find_last(const ruyi_list* list, ruyi_value value);
 
 #endif /* ruyi_list_h */

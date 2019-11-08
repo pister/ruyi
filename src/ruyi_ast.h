@@ -127,9 +127,6 @@ typedef enum {
     Ruyi_at_parameter_type_list,
     Ruyi_at_type_list,
     Ruyi_at_expr_list,
- 
-
-
 
 } ruyi_ast_type;
 
@@ -162,9 +159,9 @@ ruyi_ast * ruyi_ast_create_with_unicode(ruyi_ast_type type, ruyi_unicode_string 
 
 void ruyi_ast_add_child(ruyi_ast *ast, ruyi_ast *child);
 
-UINT32 ruyi_ast_child_length(ruyi_ast *ast);
+UINT32 ruyi_ast_child_length(const ruyi_ast *ast);
 
-ruyi_ast * ruyi_ast_get_child(ruyi_ast *ast, UINT32 index);
+ruyi_ast * ruyi_ast_get_child(const ruyi_ast *ast, UINT32 index);
 
 void ruyi_ast_destroy(ruyi_ast *ast);
 

@@ -99,7 +99,7 @@ BOOL ruyi_list_remove_last(ruyi_list* list, ruyi_value *ret_value) {
     return TRUE;
 }
 
-BOOL ruyi_list_get_first(ruyi_list* list, ruyi_value *ret_value) {
+BOOL ruyi_list_get_first(const ruyi_list* list, ruyi_value *ret_value) {
     assert(list);
     assert(ret_value);
     ruyi_list_item *curr_first = list->first;
@@ -110,7 +110,7 @@ BOOL ruyi_list_get_first(ruyi_list* list, ruyi_value *ret_value) {
     return TRUE;
 }
 
-BOOL ruyi_list_get_last(ruyi_list* list, ruyi_value *ret_value) {
+BOOL ruyi_list_get_last(const ruyi_list* list, ruyi_value *ret_value) {
     assert(list);
     assert(ret_value);
     ruyi_list_item *curr_last = list->last;
@@ -121,7 +121,7 @@ BOOL ruyi_list_get_last(ruyi_list* list, ruyi_value *ret_value) {
     return TRUE;
 }
 
-BOOL ruyi_list_empty(ruyi_list* list) {
+BOOL ruyi_list_empty(const ruyi_list* list) {
     assert(list);
     return NULL == list->first;
 }
@@ -181,7 +181,7 @@ void ruyi_list_remove_item(ruyi_list* list, ruyi_list_item* item) {
     ruyi_mem_free(item);
 }
 
-ruyi_list_item* ruyi_list_find_first(ruyi_list* list, ruyi_value value) {
+ruyi_list_item* ruyi_list_find_first(const ruyi_list* list, ruyi_value value) {
     assert(list);
     ruyi_list_item* item = list->first;
     while (item) {
@@ -193,7 +193,7 @@ ruyi_list_item* ruyi_list_find_first(ruyi_list* list, ruyi_value value) {
     return NULL;
 }
 
-ruyi_list_item* ruyi_list_find_last(ruyi_list* list, ruyi_value value) {
+ruyi_list_item* ruyi_list_find_last(const ruyi_list* list, ruyi_value value) {
     assert(list);
     ruyi_list_item* item = list->last;
     while (item) {

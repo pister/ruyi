@@ -21,9 +21,9 @@ typedef struct {
 } ruyi_hashtable;
 
 typedef struct {
-    struct ruyi_hash_entry *entry;
+    const struct ruyi_hash_entry *entry;
     UINT32 index;
-    ruyi_hashtable *hashtable;
+    const ruyi_hashtable *hashtable;
 } ruyi_hashtable_iterator;
 
 /**
@@ -43,7 +43,7 @@ ruyi_hashtable * ruyi_hashtable_create(void);
  * NOTICE: this will NOT free the item when it is an pointer,
  * so you may free these pointers before ruyi_hashtable_destory as youself knows detail.
  */
-void ruyi_hashtable_destory(ruyi_hashtable *hashtable);
+void ruyi_hashtable_destroy(ruyi_hashtable *hashtable);
 
 /**
  * Get the hashtable items' count
@@ -52,7 +52,7 @@ void ruyi_hashtable_destory(ruyi_hashtable *hashtable);
  * return:
  * the hashtable length
  */
-UINT32 ruyi_hashtable_length(ruyi_hashtable *hashtable);
+UINT32 ruyi_hashtable_length(const ruyi_hashtable *hashtable);
 
 /**
  * Put the key-value to the hashtable, if key exists, it will replace old value
@@ -73,7 +73,7 @@ void ruyi_hashtable_put(ruyi_hashtable *hashtable, ruyi_value key, ruyi_value va
  * return:
  * TRUE - indicate the key has found, FALSE indicate not found.
  */
-BOOL ruyi_hashtable_get(ruyi_hashtable *hashtable, ruyi_value key, ruyi_value *ret_value);
+BOOL ruyi_hashtable_get(const ruyi_hashtable *hashtable, ruyi_value key, ruyi_value *ret_value);
 
 /**
  * Delete the entry by key
@@ -98,7 +98,7 @@ void ruyi_hashtable_clear(ruyi_hashtable *hashtable);
  * hashtable - the target hashtable
  * ret_iterator - the return iterator
  */
-void ruyi_hashtable_iterator_get(ruyi_hashtable *hashtable, ruyi_hashtable_iterator *ret_iterator);
+void ruyi_hashtable_iterator_get(const ruyi_hashtable *hashtable, ruyi_hashtable_iterator *ret_iterator);
 
 /**
  * Get the current iterate value and turn to next, if it returns FALSE, it indicates iterator is finished.

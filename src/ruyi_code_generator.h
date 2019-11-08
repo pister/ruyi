@@ -12,32 +12,78 @@
 #include "ruyi_symtab.h"
 #include "ruyi_ast.h"
 #include "ruyi_ir.h"
+#include "ruyi_vector.h"
+#include "ruyi_hashtable.h"
+#include "ruyi_error.h"
+
+struct ruyi_cg_ir_writer_;
 
 typedef struct {
     ruyi_unicode_string *name;
+    INT32 index;
     Ruyi_ir_type return_type;
     UINT16 operand;
     UINT16 locals;
     UINT16 arguments;
     UINT64 *codes;
+    UINT32 codes_length;
+    UINT32 codes_capacity;
     INT32 seq;
+    struct ruyi_cg_ir_writer_ *ir_writer;
 } ruyi_cg_function_writer;
 
-typedef struct {
-    
+typedef struct ruyi_cg_ir_writer_ {
+    ruyi_symtab *symtab;
+    ruyi_vector *function_writers;
+    ruyi_hashtable *named_func_index;
+    ruyi_cg_function_writer *current_function_writer;
 } ruyi_cg_ir_writer;
 
 typedef struct {
-    ruyi_symtab *symtab;
-    ruyi_cg_ir_writer *ir_writer;
-} ruyi_code_generator;
+    Ruyi_ir_type    type;
+    UINT16          value_size;
+    BYTE*           value;
+} ruyi_cg_file_const_pool;
 
-ruyi_code_generator *ruyi_cg_create(void);
+typedef struct {
+    Ruyi_ir_type    type;
+    UINT32          var_size;
+} ruyi_cg_file_global_var;
 
-void ruyi_cg_destroy(ruyi_code_generator *cg);
+typedef struct {
+    Ruyi_ir_type    return_type;
+    UINT16          name_size;
+    BYTE            *name;
+    UINT16          oparand;
+    UINT16          local_size;
+    UINT16          argument_size;
+    UINT32          codes_count;
+    UINT64          *codes;
+} ruyi_cg_file_function;
 
-void ruyi_cg_write(ruyi_code_generator *cg, Ruyi_ir_ins ins_code, INT32 index);
 
-INT32 ruyi_cg_write_jump(ruyi_code_generator *cg, Ruyi_ir_ins ins_code, INT32 offset);
+typedef struct {
+    UINT64                  magic;
+    UINT32                  version;
+    UINT16                  package_size;
+    BYTE                    *package;
+    UINT16                  name_size;
+    BYTE                    *name;
+    UINT16                  cp_count;
+    ruyi_cg_file_const_pool **cp;
+    UINT16                  gv_count;
+    ruyi_cg_file_global_var **gv;
+    UINT16                  func_count;
+    ruyi_cg_file_function   **func;
+    UINT16                  init_func_name_size;
+    BYTE                    *init_func_name;
+    UINT16                  entry_func_name_size;
+    BYTE                    *entry_func_name;
+} ruyi_cg_file;
+
+ruyi_error* ruyi_cg_generate(const ruyi_ast *ast, ruyi_cg_file **out_ir_file);
+
+void ruyi_cg_file_destroy(ruyi_cg_file *file);
+
 
 #endif /* ruyi_code_generator_h */

@@ -47,7 +47,7 @@ ruyi_hashtable * ruyi_hashtable_create(void) {
     return ruyi_hashtable_create_with_init_cap(HASHTABLE_DEFAULT_INIT_CAP);
 }
 
-void ruyi_hashtable_destory(ruyi_hashtable *hashtable) {
+void ruyi_hashtable_destroy(ruyi_hashtable *hashtable) {
     assert(hashtable);
     UINT32 i;
     struct ruyi_hash_entry *next_entry;
@@ -119,7 +119,7 @@ void ruyi_hashtable_put(ruyi_hashtable *hashtable, ruyi_value key, ruyi_value va
     add_entry(hashtable, hash, key, value, index);
 }
 
-BOOL ruyi_hashtable_get(ruyi_hashtable *hashtable, ruyi_value key, ruyi_value *ret_value) {
+BOOL ruyi_hashtable_get(const ruyi_hashtable *hashtable, ruyi_value key, ruyi_value *ret_value) {
     assert(hashtable);
     struct ruyi_hash_entry **tab = hashtable->table;
     UINT32 hash = ruyi_value_hashcode(key);
@@ -178,12 +178,12 @@ void ruyi_hashtable_clear(ruyi_hashtable *hashtable) {
     hashtable->length = 0;
 }
 
-UINT32 ruyi_hashtable_length(ruyi_hashtable *hashtable) {
+UINT32 ruyi_hashtable_length(const ruyi_hashtable *hashtable) {
     assert(hashtable);
     return hashtable->length;
 }
 
-void ruyi_hashtable_iterator_get(ruyi_hashtable *hashtable, ruyi_hashtable_iterator *ret_iterator) {
+void ruyi_hashtable_iterator_get(const ruyi_hashtable *hashtable, ruyi_hashtable_iterator *ret_iterator) {
     assert(hashtable);
     assert(ret_iterator);
     ret_iterator->hashtable = hashtable;
@@ -196,7 +196,7 @@ void ruyi_hashtable_iterator_get(ruyi_hashtable *hashtable, ruyi_hashtable_itera
 }
 
 BOOL ruyi_hashtable_iterator_next(ruyi_hashtable_iterator *iterator, ruyi_value *ret_key, ruyi_value *ret_value) {
-    struct ruyi_hash_entry *entry;
+    const struct ruyi_hash_entry *entry;
     while (TRUE) {
         if (iterator->entry) {
             entry = iterator->entry;

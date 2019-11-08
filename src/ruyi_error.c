@@ -29,6 +29,21 @@ ruyi_error * ruyi_error_make(ruyi_error_type type, const char *message, struct _
     return ruyi_error_make_by_pos(type, message, ruyi_token_pos_make(token));
 }
 
+ruyi_error * ruyi_error_misc(const char *message) {
+    UINT32 len;
+    ruyi_error * err = (ruyi_error *)ruyi_mem_alloc(sizeof(ruyi_error));
+    err->column = 0;
+    err->line = 0;
+    err->type = Ruyi_et_Misc;
+    err->width = 0;
+    if (message) {
+        len = (UINT32)(strlen(message)) + 1;
+        err->message = ruyi_mem_alloc(len);
+        memcpy(err->message, message, len);
+    }
+    return err;
+}
+
 ruyi_error * ruyi_error_by_parser(struct _ruyi_lexer_reader * reader, const char *message) {
     UINT32 len;
     ruyi_token_snapshot * ts = &reader->token_snapshot;

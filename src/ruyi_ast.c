@@ -98,7 +98,7 @@ void ruyi_ast_add_child(ruyi_ast *ast, ruyi_ast *child) {
     ruyi_vector_add(ast->child_asts, ruyi_value_ptr(child));
 }
 
-ruyi_ast * ruyi_ast_get_child(ruyi_ast *ast, UINT32 index) {
+ruyi_ast * ruyi_ast_get_child(const ruyi_ast *ast, UINT32 index) {
     ruyi_value child_ptr;
     assert(ast);
     if (!ast->child_asts) {
@@ -111,7 +111,7 @@ ruyi_ast * ruyi_ast_get_child(ruyi_ast *ast, UINT32 index) {
 }
 
 
-UINT32 ruyi_ast_child_length(ruyi_ast *ast) {
+UINT32 ruyi_ast_child_length(const ruyi_ast *ast) {
     assert(ast);
     if (ast->child_asts == NULL) {
         return 0;

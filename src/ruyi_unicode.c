@@ -289,9 +289,12 @@ void ruyi_unicode_string_append_wide_char(ruyi_unicode_string *unicode_str, WIDE
     ruyi_unicode_string_append(unicode_str, &c, 1);
 }
 
-void ruyi_unicode_string_append(ruyi_unicode_string *unicode_str, WIDE_CHAR *data, UINT32 len) {
+void ruyi_unicode_string_append(ruyi_unicode_string *unicode_str, const WIDE_CHAR *data, UINT32 len) {
     assert(unicode_str);
     UINT32 remain = unicode_str->capacity - unicode_str->length;
+    if (!data) {
+        return;
+    }
     while (remain < len) {
         ruyi_unicode_string_growup(unicode_str);
         remain = unicode_str->capacity - unicode_str->length;
@@ -306,6 +309,9 @@ void ruyi_unicode_string_append_utf8(ruyi_unicode_string *unicode_str, const cha
     UINT32 read_length = 0;
     UINT32 bytes_length = 0;
     UINT32 transform_bytes_length;
+    if (!src) {
+        return;
+    }
     if (len == 0) {
         len = (UINT32)strlen(src);
     }
@@ -315,6 +321,23 @@ void ruyi_unicode_string_append_utf8(ruyi_unicode_string *unicode_str, const cha
         bytes_length += transform_bytes_length;
     }
 }
+
+void ruyi_unicode_string_append_unicode(ruyi_unicode_string *unicode_str, const ruyi_unicode_string * src) {
+    UINT32 remain = unicode_str->capacity - unicode_str->length;
+    UINT32 len;
+    if (!src) {
+        return;
+    }
+    len = src->length;
+    assert(unicode_str);
+    while (remain < len) {
+        ruyi_unicode_string_growup(unicode_str);
+        remain = unicode_str->capacity - unicode_str->length;
+    }
+    memcpy(unicode_str->data + unicode_str->length, src->data, len * sizeof(WIDE_CHAR));
+    unicode_str->length += len;
+}
+
 
 ruyi_unicode_string * ruyi_unicode_string_init_from_utf8(const char* src, UINT32 len) {
     ruyi_unicode_string * unicode_str;
@@ -326,7 +349,7 @@ ruyi_unicode_string * ruyi_unicode_string_init_from_utf8(const char* src, UINT32
     return unicode_str;
 }
 
-ruyi_unicode_string * ruyi_unicode_string_init(WIDE_CHAR *data, UINT32 len) {
+ruyi_unicode_string * ruyi_unicode_string_init(const WIDE_CHAR *data, UINT32 len) {
     ruyi_unicode_string * unicode_str;
     unicode_str = ruyi_unicode_string_init_with_capacity(len + 1);
     ruyi_unicode_string_append(unicode_str, data, len);

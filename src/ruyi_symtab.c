@@ -40,10 +40,10 @@ void ruyi_symtab_destroy(ruyi_symtab *symtab) {
         return;
     }
     if (symtab->constants) {
-        ruyi_hashtable_destory(symtab->constants);
+        ruyi_hashtable_destroy(symtab->constants);
     }
     if (symtab->functions) {
-        ruyi_hashtable_destory(symtab->functions);
+        ruyi_hashtable_destroy(symtab->functions);
     }
     if (symtab->function_scope) {
         ruyi_symtab_function_scope_destroy(symtab->function_scope);

@@ -80,7 +80,9 @@ static void init_ins_tables() {
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Invokesp, "invokesp", TRUE, TRUE, 0); // operand count dependency on arguments
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Invokenative, "invokenative", TRUE, TRUE, 0); // operand count dependency on arguments
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Ret, "ret", FALSE, FALSE, 0);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Retval, "retval", FALSE, FALSE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iret, "iret", FALSE, FALSE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fret, "fret", FALSE, FALSE, -1);
+
 }
 
 BOOL ruyi_ir_get_ins_detail(Ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out) {
@@ -118,4 +120,20 @@ BOOL ruyi_ir_get_ins_code(const char *name, Ruyi_ir_ins *ins_code_out) {
     }
     *ins_code_out = (Ruyi_ir_ins)value.data.int32_value;
     return TRUE;
+}
+
+UINT64 ruyi_ir_make_code(Ruyi_ir_ins ins, UINT32 val) {
+    UINT64 code = (UINT64)ins;
+    code = code << 32;
+    code = code | (0x00000000ffffffff & (UINT64)(val));
+    return code;
+}
+
+void ruyi_ir_parse_code(UINT64 code, Ruyi_ir_ins *ins_out, UINT32 *val_out) {
+    if (ins_out) {
+        *ins_out = (UINT32)(code >> 32);
+    }
+    if (val_out) {
+        *val_out = (UINT32)(0x00000000ffffffff & code);
+    }
 }

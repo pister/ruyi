@@ -113,7 +113,7 @@ static UINT32 hash_for_bytes(const BYTE* byte_ptr) {
 }
 
 
-static UINT32 hash_for_unicode(ruyi_unicode_string* ustr) {
+static UINT32 hash_for_unicode(const ruyi_unicode_string* ustr) {
     UINT32 i;
     UINT32 hash = 0;
     WIDE_CHAR c;
@@ -125,7 +125,7 @@ static UINT32 hash_for_unicode(ruyi_unicode_string* ustr) {
     return hash;
 }
 
-static int unicode_str_cmp(ruyi_unicode_string* w1, ruyi_unicode_string* w2) {
+static int unicode_str_cmp(const ruyi_unicode_string* w1, const ruyi_unicode_string* w2) {
     WIDE_CHAR v1, v2;
     UINT32 pos;
     UINT32 len1 = ruyi_unicode_string_length(w1);

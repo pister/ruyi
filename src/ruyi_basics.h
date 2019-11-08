@@ -90,4 +90,7 @@ typedef int BOOL;
 typedef INT32 WIDE_CHAR;
 #endif
 
+#define RUYI_OFFSET_OF(base, field) \
+(INT32)(&((base*)0)->field)
+
 #endif /* ruyi_types_h */

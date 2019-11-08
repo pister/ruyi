@@ -52,7 +52,7 @@ void ruyi_vector_add(ruyi_vector* vector, ruyi_value value);
  * vector - the target vector
  * from_vector - all values to be add
  */
-void ruyi_vector_add_all(ruyi_vector* vector, ruyi_vector* from_vector);
+void ruyi_vector_add_all(ruyi_vector* vector, const ruyi_vector* from_vector);
 
 /**
  * Get the value at the index of vector
@@ -63,7 +63,7 @@ void ruyi_vector_add_all(ruyi_vector* vector, ruyi_vector* from_vector);
  * return:
  * FALSE indicates out of range of vector, TRUE indicates get value success.
  */
-BOOL ruyi_vector_get(ruyi_vector* vector, UINT32 index, ruyi_value *ret_value);
+BOOL ruyi_vector_get(const ruyi_vector* vector, UINT32 index, ruyi_value *ret_value);
 
 /**
  * Set the value at the index of vector
@@ -83,7 +83,7 @@ BOOL ruyi_vector_set(ruyi_vector* vector, UINT32 index, ruyi_value value);
  * return:
  * the vector length
  */
-UINT32 ruyi_vector_length(ruyi_vector* vector);
+UINT32 ruyi_vector_length(const ruyi_vector* vector);
 
 /**
  * Get the first value index
@@ -93,7 +93,7 @@ UINT32 ruyi_vector_length(ruyi_vector* vector);
  * return:
  * 0 - base index will be return, -1 indicate not found
  */
-INT32 ruyi_vector_find_first(ruyi_vector* vector, ruyi_value value);
+INT32 ruyi_vector_find_first(const ruyi_vector* vector, ruyi_value value);
 
 /**
  * Get the last value index
@@ -103,7 +103,7 @@ INT32 ruyi_vector_find_first(ruyi_vector* vector, ruyi_value value);
  * return:
  * 0 - base index will be return, -1 indicate not found
  */
-INT32 ruyi_vector_find_last(ruyi_vector* vector, ruyi_value value);
+INT32 ruyi_vector_find_last(const ruyi_vector* vector, ruyi_value value);
 
 /**
  * Remove the value at the last of vector

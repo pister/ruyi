@@ -14,15 +14,24 @@
 
 #define RUYI_IR_INS_NAME_LENGTH 16
 
+
 typedef enum {
-    Ruyi_ir_type_Byte,
-    Ruyi_ir_type_Int16,
-    Ruyi_ir_type_Rune,
-    Ruyi_ir_type_Int32,
-    Ruyi_ir_type_Int64,
-    Ruyi_ir_type_Float,
-    Ruyi_ir_type_Double,
+    Ruyi_ir_type_Void,      // 0
+    Ruyi_ir_type_Byte,      // 8bit
+    Ruyi_ir_type_Int16,     // 16bit
+    Ruyi_ir_type_Rune,      // 32bit
+    Ruyi_ir_type_Int32,     // 32bit
+    Ruyi_ir_type_Int64,     // 64bit
+    Ruyi_ir_type_Float,     // 32bit
+    Ruyi_ir_type_Double,    // 64bit
+    Ruyi_ir_type_Object,    // 64bit
+    Ruyi_ir_type_Array,     // 64bit
+    Ruyi_ir_type_Map,       // 64bit
+    Ruyi_ir_type_Function,  // 64bit
 } Ruyi_ir_type;
+
+// Ixxxx 64bit
+// Fxxxx 64bit
 
 typedef enum {
     Ruyi_ir_Dup = 1,
@@ -75,23 +84,26 @@ typedef enum {
     Ruyi_ir_LeaLocal,
     Ruyi_ir_Getav,
     Ruyi_ir_Setav,
-    
     Ruyi_ir_Invokesp = 150,
     Ruyi_ir_Invokenative,
     Ruyi_ir_Ret,
-    Ruyi_ir_Retval,
+    Ruyi_ir_Iret,
+    Ruyi_ir_Fret,
 } Ruyi_ir_ins;
 
 typedef struct {
-    char name[RUYI_IR_INS_NAME_LENGTH];
-    BOOL has_second; // flag it has or has not second argument, for example: with index or with offset etc.
-    BOOL may_jump;
-    INT16 operand;
+    char    name[RUYI_IR_INS_NAME_LENGTH];
+    BOOL    has_second; // flag it has or has not second argument, for example: with index or with offset etc.
+    BOOL    may_jump;
+    INT16   operand;
 } ruyi_ir_ins_detail;
 
 BOOL ruyi_ir_get_ins_detail(Ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out);
 
 BOOL ruyi_ir_get_ins_code(const char *name, Ruyi_ir_ins *ins_code_out);
 
+UINT64 ruyi_ir_make_code(Ruyi_ir_ins ins, UINT32 val);
+
+void ruyi_ir_parse_code(UINT64 code, Ruyi_ir_ins *ins_out, UINT32 *val_out);
 
 #endif /* ruyi_ir_h */

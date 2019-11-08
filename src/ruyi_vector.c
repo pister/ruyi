@@ -60,7 +60,7 @@ void ruyi_vector_add(ruyi_vector* vector, ruyi_value value) {
     vector->value_data[vector->len++] = value;
 }
 
-void ruyi_vector_add_all(ruyi_vector* vector, ruyi_vector* from_vector) {
+void ruyi_vector_add_all(ruyi_vector* vector, const ruyi_vector* from_vector) {
     assert(vector);
     assert(from_vector);
     INT32 i;
@@ -70,7 +70,7 @@ void ruyi_vector_add_all(ruyi_vector* vector, ruyi_vector* from_vector) {
     }
 }
 
-BOOL ruyi_vector_get(ruyi_vector* vector, UINT32 index, ruyi_value *ret_value) {
+BOOL ruyi_vector_get(const ruyi_vector* vector, UINT32 index, ruyi_value *ret_value) {
     assert(vector);
     if (index >= vector->len) {
         return FALSE;
@@ -88,12 +88,12 @@ BOOL ruyi_vector_set(ruyi_vector* vector, UINT32 index, ruyi_value value) {
     return TRUE;
 }
 
-UINT32 ruyi_vector_length(ruyi_vector* vector) {
+UINT32 ruyi_vector_length(const ruyi_vector* vector) {
     assert(vector);
     return vector->len;
 }
 
-INT32 ruyi_vector_find_first(ruyi_vector* vector, ruyi_value value) {
+INT32 ruyi_vector_find_first(const ruyi_vector* vector, ruyi_value value) {
     assert(vector);
     INT32 i;
     INT32 len = vector->len;
@@ -105,7 +105,7 @@ INT32 ruyi_vector_find_first(ruyi_vector* vector, ruyi_value value) {
     return -1;
 }
 
-INT32 ruyi_vector_find_last(ruyi_vector* vector, ruyi_value value) {
+INT32 ruyi_vector_find_last(const ruyi_vector* vector, ruyi_value value) {
     assert(vector);
     INT32 i;
     for (i = (INT32)(vector->len) - 1; i >= 0; i--) {

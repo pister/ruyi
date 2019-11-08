@@ -62,6 +62,6 @@ UINT32 ruyi_value_hashcode(ruyi_value value);
 
 UINT32 ruyi_value_get_unicode_str(ruyi_value value, WIDE_CHAR* out_buf, UINT32 buf_length);
 
-typedef int (*ruyi_value_comparator)(ruyi_value *v1, ruyi_value *v2);
+typedef int (*ruyi_value_comparator)(const ruyi_value *v1, const ruyi_value *v2);
 
 #endif /* ruyi_value_h */

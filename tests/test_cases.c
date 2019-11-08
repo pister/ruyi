@@ -18,6 +18,7 @@
 #include "../src/ruyi_lexer.h"
 #include "../src/ruyi_parser.h"
 #include "../src/ruyi_ir.h"
+#include "../src/ruyi_code_generator.h"
 
 
 
@@ -117,7 +118,7 @@ static void assert_vector_values(ruyi_vector* vector, const INT64 *values, UINT3
     assert(i == value_length);
 }
 
-int int64_comp(ruyi_value *v1, ruyi_value *v2) {
+int int64_comp(const ruyi_value *v1, const ruyi_value *v2) {
     return (int)(v1->data.int64_value - v2->data.int64_value);
 }
 
@@ -174,7 +175,7 @@ static void test_hashtable_it(ruyi_hashtable_iterator *it, ruyi_value *keys, ruy
         n++;
     }
     assert(n == length);
-    ruyi_hashtable_destory(hashtable);
+    ruyi_hashtable_destroy(hashtable);
 }
 
 static void test_hashtable(void) {
@@ -250,7 +251,7 @@ static void test_hashtable(void) {
     keys[1] = ruyi_value_str("name6"); values[1] = ruyi_value_int64(666);
 
     test_hashtable_it(&it, keys, values, 2);
-    ruyi_hashtable_destory(hashtable);
+    ruyi_hashtable_destroy(hashtable);
 }
 
 static void test_hashtable_unicode_str(void) {
@@ -276,7 +277,7 @@ static void test_hashtable_unicode_str(void) {
     assert(result);
     assert(222 == value.data.int64_value);
 
-    ruyi_hashtable_destory(hashtable);
+    ruyi_hashtable_destroy(hashtable);
 }
 
 
@@ -1855,6 +1856,30 @@ void test_cg_ir() {
     assert(detail.operand == -1);
 }
 
+void test_cg_package_import() {
+    const char* src = "package bb.cc; import a1.cc\n import a2; \n c := 10";
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_cg_file *ir_file;
+    err = ruyi_cg_generate(ast, &ir_file);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    
+    ruyi_ast_destroy(ast);
+}
+
 void run_test_cases_basic(void) {
     test_lists();
     test_vectors();
@@ -1889,6 +1914,7 @@ void run_test_cases_parser() {
 
 void run_test_cases_cg() {
     test_cg_ir();
+    test_cg_package_import();
 }
 
 void run_test_cases(void) {
