@@ -14,8 +14,6 @@
 #include "ruyi_unicode.h"
 
 
-
-
 typedef struct {
     ruyi_vector *block_scope_stack;
 } ruyi_function_scope;
@@ -24,12 +22,14 @@ ruyi_function_scope* ruyi_symtab_function_scope_create(void);
 void ruyi_symtab_function_scope_destroy(ruyi_function_scope *function_scope);
 
 // symbol table
-// variables table (scope): global variables and local variables.
+// global_variables table (scope): global variables
+// function_scope:
 // function table (global): name -> function.
 // constants (global): iteral: integer, float, strings.
 // class (global)
 // interface (global)
 typedef struct {
+    ruyi_hashtable *global_variables;
     ruyi_function_scope *function_scope;
     ruyi_hashtable *functions;
     ruyi_hashtable *constants;
@@ -43,8 +43,9 @@ void ruyi_symtab_enter_scope(ruyi_symtab *symtab);
 
 void ruyi_symtab_leave_scope(ruyi_symtab *symtab);
 
-void ruyi_symtab_enter_func(ruyi_symtab *symtab, ruyi_unicode_string* name);
+void ruyi_symtab_enter_func(ruyi_symtab *symtab, const ruyi_unicode_string* name);
 
+BOOL ruyi_symtab_add_global_var(ruyi_symtab *symtab, const ruyi_unicode_string* name, UINT32 *out_index);
 
 
 #endif /* ruyi_symtab_h */

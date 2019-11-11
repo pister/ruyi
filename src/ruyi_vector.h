@@ -37,6 +37,16 @@ ruyi_vector* ruyi_vector_create_with_cap(UINT32 init_cap);
  */
 void ruyi_vector_destroy(ruyi_vector* vector);
 
+typedef void (*ruyi_vector_ptr_item_callback) (void * ptr);
+
+void ruyi_vector_ptr_item_foreach(const ruyi_vector* vector, ruyi_vector_ptr_item_callback fn);
+
+#define RUYI_VECTOR_DESTROY_WITH_PTR_ITEMS(vector, destroy_fn) \
+    do { \
+        ruyi_vector_ptr_item_foreach(vector, (ruyi_vector_ptr_item_callback)destroy_fn); \
+        ruyi_vector_destroy(vector); \
+    } while (0);
+
 /**
  * Add the value at the last of vector
  * params:

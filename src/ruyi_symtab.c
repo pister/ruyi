@@ -29,6 +29,7 @@ void ruyi_symtab_function_scope_destroy(ruyi_function_scope *function_scope) {
 
 ruyi_symtab* ruyi_symtab_create(void) {
     ruyi_symtab *symtab = (ruyi_symtab *)ruyi_mem_alloc(sizeof(ruyi_symtab));
+    symtab->global_variables = ruyi_hashtable_create();
     symtab->function_scope = ruyi_symtab_function_scope_create();
     symtab->functions = ruyi_hashtable_create();
     symtab->constants = ruyi_hashtable_create();
@@ -47,6 +48,9 @@ void ruyi_symtab_destroy(ruyi_symtab *symtab) {
     }
     if (symtab->function_scope) {
         ruyi_symtab_function_scope_destroy(symtab->function_scope);
+    }
+    if (symtab->global_variables) {
+        ruyi_hashtable_destroy(symtab->global_variables);
     }
     ruyi_mem_free(symtab);
 }

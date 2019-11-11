@@ -61,10 +61,11 @@ void ruyi_vector_add(ruyi_vector* vector, ruyi_value value) {
 }
 
 void ruyi_vector_add_all(ruyi_vector* vector, const ruyi_vector* from_vector) {
+    INT32 i;
+    INT32 len;
     assert(vector);
     assert(from_vector);
-    INT32 i;
-    INT32 len = from_vector->len;
+    len = from_vector->len;
     for (i = 0; i < len; i++) {
         ruyi_vector_add(vector, from_vector->value_data[i]);
     }
@@ -94,9 +95,10 @@ UINT32 ruyi_vector_length(const ruyi_vector* vector) {
 }
 
 INT32 ruyi_vector_find_first(const ruyi_vector* vector, ruyi_value value) {
-    assert(vector);
     INT32 i;
-    INT32 len = vector->len;
+    INT32 len;
+    assert(vector);
+    len = vector->len;
     for (i = 0; i < len; i++) {
         if (ruyi_value_equals(vector->value_data[i], value)) {
             return i;
@@ -106,8 +108,8 @@ INT32 ruyi_vector_find_first(const ruyi_vector* vector, ruyi_value value) {
 }
 
 INT32 ruyi_vector_find_last(const ruyi_vector* vector, ruyi_value value) {
-    assert(vector);
     INT32 i;
+    assert(vector);
     for (i = (INT32)(vector->len) - 1; i >= 0; i--) {
         if (ruyi_value_equals(vector->value_data[i], value)) {
             return i;
@@ -131,4 +133,18 @@ BOOL ruyi_vector_remove_last(ruyi_vector* vector, ruyi_value* ret_last_value) {
 void ruyi_vector_sort(ruyi_vector* vector, ruyi_value_comparator comparator) {
     assert(vector);
     qsort(vector->value_data, vector->len, sizeof(ruyi_value), (int (*)(const void *, const void *))comparator);
+}
+
+void ruyi_vector_ptr_item_foreach(const ruyi_vector* vector, ruyi_vector_ptr_item_callback fn) {
+    INT32 i;
+    INT32 len;
+    assert(vector);
+    if (!fn) {
+        return;
+    }
+    len = vector->len;
+    for (i = 0; i < len; i++) {
+        fn(vector->value_data[i].data.ptr);
+    }
+
 }

@@ -1856,8 +1856,9 @@ void test_cg_ir() {
     assert(detail.operand == -1);
 }
 
-void test_cg_package_import() {
+void test_cg_package_import_global_vars() {
     const char* src = "package bb.cc; import a1.cc\n import a2; \n c := 10";
+    const char* package_name = "bb.cc";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_error *err = NULL;
@@ -1876,6 +1877,7 @@ void test_cg_package_import() {
         ruyi_error_destroy(err);
         return;
     }
+    assert(0 == memcmp(package_name, ir_file->package, ir_file->package_size));
     
     ruyi_ast_destroy(ast);
 }
@@ -1914,7 +1916,7 @@ void run_test_cases_parser() {
 
 void run_test_cases_cg() {
     test_cg_ir();
-    test_cg_package_import();
+    test_cg_package_import_global_vars();
 }
 
 void run_test_cases(void) {

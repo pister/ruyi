@@ -16,6 +16,24 @@
 #include "ruyi_hashtable.h"
 #include "ruyi_error.h"
 
+
+typedef enum {
+    Ruyi_cpt_class,
+    Ruyi_cpt_field_ref,
+    Ruyi_cpt_method_ref,
+    Ruyi_cpt_interface_method_ref,
+    Ruyi_cpt_utf8,
+    Ruyi_cpt_string,
+    Ruyi_cpt_int32,
+    Ruyi_cpt_float32,
+    Ruyi_cpt_int64,
+    Ruyi_cpt_float64,
+    Ruyi_cpt_name_and_type,
+    Ruyi_cpt_method_handle,
+    Ruyi_cpt_method_type,
+    Ruyi_cpt_invoke_dynamic,
+} Ruyi_cp_type;
+
 struct ruyi_cg_ir_writer_;
 
 typedef struct {
@@ -40,7 +58,7 @@ typedef struct ruyi_cg_ir_writer_ {
 } ruyi_cg_ir_writer;
 
 typedef struct {
-    Ruyi_ir_type    type;
+    Ruyi_cp_type    type;
     UINT16          value_size;
     BYTE*           value;
 } ruyi_cg_file_const_pool;

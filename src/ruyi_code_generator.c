@@ -10,6 +10,8 @@
 #include "ruyi_mem.h"
 #include "ruyi_error.h"
 #include "ruyi_ast.h"
+#include "ruyi_vector.h"
+#include "ruyi_symtab.h"
 #include <string.h> // for memcpy
 
 #define CG_FUNC_WRITE_CAP_INIT 16
@@ -259,9 +261,7 @@ void ruyi_cg_file_destroy(ruyi_cg_file *file) {
     ruyi_mem_free(file);
 }
 
-
-
-static ruyi_error* gen_package(const ruyi_ast *ast, ruyi_cg_file *file) {
+static ruyi_error* gen_package(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *file) {
     ruyi_error *err;
     ruyi_ast *ast_name, *ast_sub_name;
     UINT32 i, len;
@@ -290,7 +290,8 @@ static ruyi_error* gen_package(const ruyi_ast *ast, ruyi_cg_file *file) {
     /*
      name: part0 child[part1, part2, part3, ...]
      */
-    for ((void)(i = 0), len = ruyi_ast_child_length(ast_name); i < len; i++) {
+    len = ruyi_ast_child_length(ast_name);
+    for (i = 0; i < len; i++) {
         ast_sub_name = ruyi_ast_get_child(ast_name, i);
         if (Ruyi_at_name_part != ast_sub_name->type) {
             err = ruyi_error_misc("child of package declaration ast must be name");
@@ -313,22 +314,93 @@ gen_package_on_error:
     return err;
 }
 
-static ruyi_error* gen_import(const ruyi_ast *ast, ruyi_cg_file *file) {
+static ruyi_error* gen_import(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *file) {
+    // TODO
+    return NULL;
+}
+
+static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_vars) {
+    ruyi_error *err;
+    ruyi_cg_file_global_var *gv;
+    ruyi_unicode_string *name;
+    assert(ast);
+    assert(Ruyi_at_var_declaration == ast->type);
+    name = (ruyi_unicode_string*)ast->data.ptr_value;
     
     return NULL;
 }
 
-static ruyi_error* gen_global(const ruyi_ast *ast, ruyi_cg_file *file) {
+static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_functions) {
+    // TODO
     
     return NULL;
+}
+
+static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *file) {
+    ruyi_error *err = NULL;
+    UINT32 len, i;
+    ruyi_ast *global_ast;
+    ruyi_vector *global_vars = NULL;    // the item's type is 'ruyi_cg_file_global_var'
+    ruyi_vector *global_functions = NULL;
+    ruyi_vector *global_classes = NULL;
+    if (!ast) {
+        return NULL;
+    }
+    global_vars = ruyi_vector_create();
+    global_functions = ruyi_vector_create();
+    global_classes = ruyi_vector_create();
+    len = ruyi_ast_child_length(ast);
+    do {
+        for (i = 0; i < len; i++) {
+            global_ast = ruyi_ast_get_child(ast, i);
+            if (!global_ast) {
+                err = ruyi_error_misc("global define can not be empty");
+                goto gen_global_on_finally;
+            }
+            switch (global_ast->type) {
+                case Ruyi_at_var_declaration:
+                    if ((err = gen_global_var_define(symtab, global_ast, global_vars)) != NULL) {
+                        goto gen_global_on_finally;
+                    }
+                    break;
+                case Ruyi_at_function_declaration:
+                    if ((err = gen_global_func_define(symtab, global_ast, global_vars)) != NULL) {
+                        goto gen_global_on_finally;
+                    }
+                    break;
+                // TODO class, constant etc ...
+                default:
+                    break;
+            }
+        }
+    } while(0);
+    // TODO fill back to ir_file
+gen_global_on_finally:
+    if (global_vars) {
+        RUYI_VECTOR_DESTROY_WITH_PTR_ITEMS(global_vars, ruyi_mem_free);
+    }
+    // TODO destroy vars, funcs, classes, constants etc...
+    if (global_functions) {
+        ruyi_vector_destroy(global_functions);
+        // TODO
+        
+    }
+    if (global_classes) {
+        ruyi_vector_destroy(global_classes);
+        
+        // TODO
+    }
+    return err;
 }
 
 ruyi_error* ruyi_cg_generate(const ruyi_ast *ast, ruyi_cg_file **out_ir_file) {
     ruyi_error *err;
     ruyi_cg_file *file = NULL;
     ruyi_unicode_string *name;
+    ruyi_symtab *symtab = NULL;
     ruyi_ast *ast_package, *ast_import, *ast_global;
     assert(ast);
+    // TODO here use 'test1' name for test !
     name = ruyi_unicode_string_init_from_utf8("test1", 0);
     file = create_ruyi_cg_file(name);
     ruyi_unicode_string_destroy(name);
@@ -336,16 +408,17 @@ ruyi_error* ruyi_cg_generate(const ruyi_ast *ast, ruyi_cg_file **out_ir_file) {
         err = ruyi_error_misc("need root ast");
         goto ruyi_cg_generate_on_error;
     }
+    symtab = ruyi_symtab_create();
     ast_package = ruyi_ast_get_child(ast, 0);
     ast_import = ruyi_ast_get_child(ast, 1);
     ast_global = ruyi_ast_get_child(ast, 2);
-    if ((err = gen_package(ast_package, file)) != NULL) {
+    if ((err = gen_package(symtab, ast_package, file)) != NULL) {
         goto ruyi_cg_generate_on_error;
     }
-    if ((err = gen_import(ast_import, file)) != NULL) {
+    if ((err = gen_import(symtab, ast_import, file)) != NULL) {
         goto ruyi_cg_generate_on_error;
     }
-    if ((err = gen_global(ast_global, file)) != NULL) {
+    if ((err = gen_global(symtab, ast_global, file)) != NULL) {
         goto ruyi_cg_generate_on_error;
     }
     *out_ir_file = file;
@@ -353,6 +426,9 @@ ruyi_error* ruyi_cg_generate(const ruyi_ast *ast, ruyi_cg_file **out_ir_file) {
 ruyi_cg_generate_on_error:
     if (file) {
         ruyi_cg_file_destroy(file);
+    }
+    if (symtab) {
+        ruyi_symtab_destroy(symtab);
     }
     *out_ir_file = NULL;
     return err;
