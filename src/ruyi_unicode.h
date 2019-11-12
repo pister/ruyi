@@ -83,7 +83,9 @@ void ruyi_unicode_string_set(ruyi_unicode_string *unicode_str, UINT32 index, WID
 
 void ruyi_unicode_string_destroy(ruyi_unicode_string* s);
 
-ruyi_bytes_string* ruyi_unicode_string_decode_utf8(const ruyi_unicode_string *unicode_str);
+ruyi_bytes_string* ruyi_unicode_string_encode_utf8(const ruyi_unicode_string *unicode_str);
+
+UINT32 ruyi_unicode_string_encode_utf8_n(const ruyi_unicode_string *unicode_str, char *out_bytes, UINT32 max_out_bytes_count);
 
 void ruyi_unicode_bytes_string_destroy(ruyi_bytes_string* s);
 

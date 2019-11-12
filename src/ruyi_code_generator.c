@@ -20,6 +20,14 @@
 
 #define PACKAGE_SEPARATE '.'
 
+#define NAME_BUF_LENGTH 128
+
+static ruyi_error* make_unicode_name_error(const char* fmt, const ruyi_unicode_string *name) {
+    char temp_name[NAME_BUF_LENGTH] = {0};
+    ruyi_unicode_string_encode_utf8_n(name, temp_name, NAME_BUF_LENGTH-1);
+    return ruyi_error_misc(fmt, temp_name);
+}
+
 static void function_writer_destroy(ruyi_cg_function_writer *function_writer) {
     if (!function_writer) {
         return;
@@ -50,7 +58,7 @@ static void function_writer_append_code(ruyi_cg_function_writer *writer, UINT64 
     writer->codes_length++;
 }
 
-static ruyi_error* function_writer_add_code(ruyi_cg_function_writer *writer, Ruyi_ir_ins ins, INT32 index, INT32 *seq_out) {
+static ruyi_error* function_writer_add_code(ruyi_cg_function_writer *writer, ruyi_ir_ins ins, INT32 index, INT32 *seq_out) {
     ruyi_ir_ins_detail detail;
     UINT64 code;
     assert(writer);
@@ -80,21 +88,21 @@ static ruyi_cg_ir_writer *ir_writer_create(void) {
     return ir_writer;
 }
 
-static ruyi_error* ir_writer_write(ruyi_cg_ir_writer *writer, Ruyi_ir_ins ins, INT32 index, INT32 *seq_out) {
+static ruyi_error* ir_writer_write(ruyi_cg_ir_writer *writer, ruyi_ir_ins ins, INT32 index, INT32 *seq_out) {
     assert(writer);
     assert(writer->current_function_writer);
     return function_writer_add_code(writer->current_function_writer, ins, index, seq_out);
 }
 
 
-static ruyi_error* ir_writer_write_jump(ruyi_cg_ir_writer *writer, Ruyi_ir_ins ins, INT32 offset, INT32 *seq_out) {
+static ruyi_error* ir_writer_write_jump(ruyi_cg_ir_writer *writer, ruyi_ir_ins ins, INT32 offset, INT32 *seq_out) {
     assert(writer);
     assert(writer->current_function_writer);
     return function_writer_add_code(writer->current_function_writer, ins, writer->current_function_writer->seq + offset, seq_out);
 }
 
 static void ir_writer_set_second_value(ruyi_cg_ir_writer *writer, INT32 seq, UINT32 value) {
-    Ruyi_ir_ins ins;
+    ruyi_ir_ins ins;
     assert(writer);
     assert(writer->current_function_writer);
     ruyi_ir_parse_code(writer->current_function_writer->codes[seq], &ins, NULL);
@@ -168,7 +176,7 @@ static void set_field_name_data(ruyi_cg_file *file, INT32 length_field_offset, I
     BYTE* ptr = (BYTE*)((void*)file);
     UINT16 *length_ptr = (UINT16*)(ptr + length_field_offset);
     BYTE **name_ptr = (BYTE**)(ptr + name_field_offset);
-    src_str = ruyi_unicode_string_decode_utf8(name);
+    src_str = ruyi_unicode_string_encode_utf8(name);
     *name_ptr = (BYTE*)ruyi_mem_alloc(src_str->length * sizeof(BYTE));
     *length_ptr = src_str->length;
     memcpy(*name_ptr, src_str->str, src_str->length * sizeof(BYTE));
@@ -206,9 +214,25 @@ static void cp_destroy(ruyi_cg_file_const_pool *cp) {
     ruyi_mem_free(cp);
 }
 
+static ruyi_cg_file_global_var* gv_create(const ruyi_symtab_global_var *symtab_var) {
+    ruyi_bytes_string *temp_name;
+    ruyi_cg_file_global_var *gv = (ruyi_cg_file_global_var*)ruyi_mem_alloc(sizeof(ruyi_cg_file_global_var));
+    gv->index = symtab_var->index;
+    gv->type = symtab_var->type;
+    gv->var_size = symtab_var->var_size;
+    temp_name = ruyi_unicode_string_encode_utf8(symtab_var->name);
+    gv->name = (BYTE *)ruyi_mem_alloc(temp_name->length);
+    memcpy(gv->name, temp_name->str, temp_name->length);
+    ruyi_unicode_bytes_string_destroy(temp_name);
+    return gv;
+}
+
 static void gv_destroy(ruyi_cg_file_global_var *gv) {
     if (!gv) {
         return;
+    }
+    if (gv->name) {
+        ruyi_mem_free(gv->name);
     }
     ruyi_mem_free(gv);
 }
@@ -226,42 +250,45 @@ static void func_destroy(ruyi_cg_file_function *func) {
     ruyi_mem_free(func);
 }
 
-void ruyi_cg_file_destroy(ruyi_cg_file *file) {
+void ruyi_cg_file_destroy(ruyi_cg_file *ir_file) {
     UINT16 i;
-    if (!file) {
+    if (!ir_file) {
         return;
     }
-    if (file->package) {
-        ruyi_mem_free(file->package);
+    if (ir_file->package) {
+        ruyi_mem_free(ir_file->package);
     }
-    if (file->name) {
-        ruyi_mem_free(file->name);
+    if (ir_file->name) {
+        ruyi_mem_free(ir_file->name);
     }
-    if (file->cp && file->cp_count > 0) {
-        for (i = 0; i < file->cp_count; i++) {
-            cp_destroy(file->cp[i]);
+    if (ir_file->cp && ir_file->cp_count > 0) {
+        for (i = 0; i < ir_file->cp_count; i++) {
+            cp_destroy(ir_file->cp[i]);
         }
+        ruyi_mem_free(ir_file->cp);
     }
-    if (file->gv && file->gv_count > 0) {
-        for (i = 0; i < file->gv_count; i++) {
-            gv_destroy(file->gv[i]);
+    if (ir_file->gv && ir_file->gv_count > 0) {
+        for (i = 0; i < ir_file->gv_count; i++) {
+            gv_destroy(ir_file->gv[i]);
         }
+        ruyi_mem_free(ir_file->gv);
     }
-    if (file->func && file->func_count > 0) {
-        for (i = 0; i < file->func_count; i++) {
-            func_destroy(file->func[i]);
+    if (ir_file->func && ir_file->func_count > 0) {
+        for (i = 0; i < ir_file->func_count; i++) {
+            func_destroy(ir_file->func[i]);
         }
+        ruyi_mem_free(ir_file->func);
     }
-    if (file->init_func_name) {
-        ruyi_mem_free(file->init_func_name);
+    if (ir_file->init_func_name) {
+        ruyi_mem_free(ir_file->init_func_name);
     }
-    if (file->entry_func_name) {
-        ruyi_mem_free(file->entry_func_name);
+    if (ir_file->entry_func_name) {
+        ruyi_mem_free(ir_file->entry_func_name);
     }
-    ruyi_mem_free(file);
+    ruyi_mem_free(ir_file);
 }
 
-static ruyi_error* gen_package(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *file) {
+static ruyi_error* gen_package(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *ir_file) {
     ruyi_error *err;
     ruyi_ast *ast_name, *ast_sub_name;
     UINT32 i, len;
@@ -304,7 +331,7 @@ static ruyi_error* gen_package(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg
         ruyi_unicode_string_append_wide_char(package_name, PACKAGE_SEPARATE);
         ruyi_unicode_string_append_unicode(package_name, (ruyi_unicode_string*)ast_sub_name->data.ptr_value);
     }
-    set_field_name_data(file, RUYI_OFFSET_OF(ruyi_cg_file, package_size), RUYI_OFFSET_OF(ruyi_cg_file, package), package_name);
+    set_field_name_data(ir_file, RUYI_OFFSET_OF(ruyi_cg_file, package_size), RUYI_OFFSET_OF(ruyi_cg_file, package), package_name);
     ruyi_unicode_string_destroy(package_name);
     return NULL;
 gen_package_on_error:
@@ -314,35 +341,172 @@ gen_package_on_error:
     return err;
 }
 
-static ruyi_error* gen_import(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *file) {
+static ruyi_error* gen_import(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *ir_file) {
     // TODO
     return NULL;
 }
 
+static ruyi_error* get_expr_type(const ruyi_ast *expr_ast, ruyi_ast_type *out_type) {
+    switch (expr_ast->type) {
+        case Ruyi_at_integer:
+            *out_type = Ruyi_at_type_int;
+            break;
+            
+        default:
+            break;
+    }
+    return NULL;
+}
+
+static BOOL type_can_assign(ruyi_ast_type dest, ruyi_ast_type src) {
+    // TODO
+    return TRUE;
+}
+
+static BOOL ast_type_to_ir_type(ruyi_ast_type type, ruyi_ir_type *out_type, UINT32 *out_ir_size) {
+    switch (type) {
+        case Ruyi_at_type_bool:
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Int32;
+            }
+            if (out_ir_size) {
+                *out_ir_size = 4;
+            }
+            break;
+        case Ruyi_at_type_byte:
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Byte;
+            }
+            if (out_ir_size) {
+                *out_ir_size = 1;
+            }
+            break;
+        case Ruyi_at_type_short:
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Int16;
+            }
+            if (out_ir_size) {
+                *out_ir_size = 2;
+            }
+            break;
+        case Ruyi_at_type_int:
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Int32;
+            }
+            if (out_ir_size) {
+                *out_ir_size = 4;
+            }
+            break;
+        case Ruyi_at_type_long:
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Int64;
+            }
+            if (out_ir_size) {
+                *out_ir_size = 8;
+            }
+            break;
+        case Ruyi_at_type_rune:
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Rune;
+            }
+            if (out_ir_size) {
+                *out_ir_size = 4;
+            }
+            break;
+        case Ruyi_at_type_float:
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Float;
+            }
+            if (out_ir_size) {
+                *out_ir_size = 4;
+            }
+            break;
+        case Ruyi_at_type_double:
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Double;
+            }
+            if (out_ir_size) {
+                *out_ir_size = 8;
+            }
+            break;
+        // TODO class instance type, array type, map type etc...
+        default:
+            return FALSE;
+    }
+    return TRUE;
+}
+
 static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_vars) {
     ruyi_error *err;
-    ruyi_cg_file_global_var *gv;
-    ruyi_unicode_string *name;
+    ruyi_ast *ast_init_expr;
+    ruyi_symtab_global_var var;
+    BOOL has_init_expr = FALSE;
+    UINT32 index;
+    ruyi_ir_type var_type;
+    ruyi_ir_type expr_type;
+    ruyi_ast_type var_ast_type;
+    ruyi_ast_type expr_ast_type;
+    UINT32 var_size;
     assert(ast);
     assert(Ruyi_at_var_declaration == ast->type);
-    name = (ruyi_unicode_string*)ast->data.ptr_value;
+    var.name = (ruyi_unicode_string*)ast->data.ptr_value;
+    if (ruyi_ast_child_length(ast) >= 2) {
+        has_init_expr = TRUE;
+    }
+    var_ast_type = ruyi_ast_get_child(ast, 0)->type;
+    if (Ruyi_at_var_declaration_auto_type == var_ast_type) {
+        if (!has_init_expr) {
+            err = make_unicode_name_error("miss initialize expression for auto-type when define global var: %s", var.name);
+            goto gen_global_var_define_on_error;
+        }
+        ast_init_expr = ruyi_ast_get_child(ast, 1);
+        get_expr_type(ast_init_expr, &expr_ast_type);
+        if (!ast_type_to_ir_type(expr_ast_type, &expr_type, &var_size)) {
+            err = make_unicode_name_error("can not deal the type when define global var: %s", var.name);
+            goto gen_global_var_define_on_error;
+        }
+        var.type = expr_type;
+    } else {
+        if (has_init_expr) {
+            get_expr_type(ast_init_expr, &expr_ast_type);
+            if (!type_can_assign(expr_ast_type, var_ast_type)) {
+                err = make_unicode_name_error("var can not be assigned by diference type when define global var: %s", var.name);
+                goto gen_global_var_define_on_error;
+            }
+            // TODO need to generate auto-type-cast ir at init_expr assign init-function.
+        }
+        if (!ast_type_to_ir_type(var_ast_type, &var_type, &var_size)) {
+            err = make_unicode_name_error("can not deal the type when define global var: %s", var.name);
+            goto gen_global_var_define_on_error;
+        }
+        var.type = var_type;
+    }
+    var.var_size = var_size;
+    if (( err = ruyi_symtab_add_global_var(symtab, &var, &index)) != NULL) {
+        goto gen_global_var_define_on_error;
+    }
     
+    ruyi_vector_add(global_vars, ruyi_value_ptr(gv_create(&var)));
     return NULL;
+gen_global_var_define_on_error:
+    return err;
 }
 
 static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_functions) {
     // TODO
     
+    
     return NULL;
 }
 
-static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *file) {
+static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *ir_file) {
     ruyi_error *err = NULL;
     UINT32 len, i;
     ruyi_ast *global_ast;
     ruyi_vector *global_vars = NULL;    // the item's type is 'ruyi_cg_file_global_var'
     ruyi_vector *global_functions = NULL;
     ruyi_vector *global_classes = NULL;
+    ruyi_value temp_value;
     if (!ast) {
         return NULL;
     }
@@ -355,17 +519,17 @@ static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_
             global_ast = ruyi_ast_get_child(ast, i);
             if (!global_ast) {
                 err = ruyi_error_misc("global define can not be empty");
-                goto gen_global_on_finally;
+                goto gen_global_on_error;
             }
             switch (global_ast->type) {
                 case Ruyi_at_var_declaration:
                     if ((err = gen_global_var_define(symtab, global_ast, global_vars)) != NULL) {
-                        goto gen_global_on_finally;
+                        goto gen_global_on_error;
                     }
                     break;
                 case Ruyi_at_function_declaration:
                     if ((err = gen_global_func_define(symtab, global_ast, global_vars)) != NULL) {
-                        goto gen_global_on_finally;
+                        goto gen_global_on_error;
                     }
                     break;
                 // TODO class, constant etc ...
@@ -374,8 +538,26 @@ static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_
             }
         }
     } while(0);
+    ir_file->gv_count = ruyi_vector_length(global_vars);
+    if (ir_file->gv_count > 0) {
+        ir_file->gv = (ruyi_cg_file_global_var**)ruyi_mem_alloc(ir_file->gv_count * sizeof(ruyi_cg_file_global_var*));
+        len = ruyi_vector_length(global_vars);
+        for (i = 0; i < len; i++) {
+            ruyi_vector_get(global_vars, i, &temp_value);
+            ir_file->gv[i] = (ruyi_cg_file_global_var*)temp_value.data.ptr;
+        }
+    } else {
+        ir_file = NULL;
+    }
+    if (global_vars) {
+        // item in this vector will use in ir_file->gv, so it just only free vector itself.
+        ruyi_vector_destroy(global_vars);
+    }
+    
     // TODO fill back to ir_file
-gen_global_on_finally:
+   
+    return NULL;
+gen_global_on_error:
     if (global_vars) {
         RUYI_VECTOR_DESTROY_WITH_PTR_ITEMS(global_vars, ruyi_mem_free);
     }

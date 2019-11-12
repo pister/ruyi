@@ -28,7 +28,7 @@ typedef enum {
     Ruyi_ir_type_Array,     // 64bit
     Ruyi_ir_type_Map,       // 64bit
     Ruyi_ir_type_Function,  // 64bit
-} Ruyi_ir_type;
+} ruyi_ir_type;
 
 // Ixxxx 64bit
 // Fxxxx 64bit
@@ -89,7 +89,7 @@ typedef enum {
     Ruyi_ir_Ret,
     Ruyi_ir_Iret,
     Ruyi_ir_Fret,
-} Ruyi_ir_ins;
+} ruyi_ir_ins;
 
 typedef struct {
     char    name[RUYI_IR_INS_NAME_LENGTH];
@@ -98,12 +98,12 @@ typedef struct {
     INT16   operand;
 } ruyi_ir_ins_detail;
 
-BOOL ruyi_ir_get_ins_detail(Ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out);
+BOOL ruyi_ir_get_ins_detail(ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out);
 
-BOOL ruyi_ir_get_ins_code(const char *name, Ruyi_ir_ins *ins_code_out);
+BOOL ruyi_ir_get_ins_code(const char *name, ruyi_ir_ins *ins_code_out);
 
-UINT64 ruyi_ir_make_code(Ruyi_ir_ins ins, UINT32 val);
+UINT64 ruyi_ir_make_code(ruyi_ir_ins ins, UINT32 val);
 
-void ruyi_ir_parse_code(UINT64 code, Ruyi_ir_ins *ins_out, UINT32 *val_out);
+void ruyi_ir_parse_code(UINT64 code, ruyi_ir_ins *ins_out, UINT32 *val_out);
 
 #endif /* ruyi_ir_h */

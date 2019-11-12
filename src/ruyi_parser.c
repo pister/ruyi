@@ -3542,7 +3542,7 @@ ruyi_error* global_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
 
 static
 ruyi_error* global_declarations(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <global declarations> ::= <global declaration> *
+    // <global declarations> ::= (<global declaration> <statement ends>)*
     ruyi_error* err;
     ruyi_ast *global_declarations;
     ruyi_ast *global_declare_ast = NULL;
@@ -3551,12 +3551,11 @@ ruyi_error* global_declarations(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         if ((err = global_declaration(reader, &global_declare_ast)) != NULL) {
             return err;
         }
-        if (global_declare_ast != NULL) {
-            ruyi_ast_add_child(global_declarations, global_declare_ast);
-        } else {
-            // End Of Next global_declaration
+        if (global_declare_ast == NULL) {
             break;
         }
+        statement_ends(reader);
+        ruyi_ast_add_child(global_declarations, global_declare_ast);
     }
     *out_ast = global_declarations;
     return NULL;

@@ -14,7 +14,7 @@
 static ruyi_hashtable *g_ins_table = NULL;
 static ruyi_hashtable *g_ins_name_table = NULL;
 
-static void put_ins_detail(ruyi_hashtable *ins_table, ruyi_hashtable *ins_name_table, Ruyi_ir_ins ins, const char* name, BOOL has_second, BOOL may_jump, INT16 operand) {
+static void put_ins_detail(ruyi_hashtable *ins_table, ruyi_hashtable *ins_name_table, ruyi_ir_ins ins, const char* name, BOOL has_second, BOOL may_jump, INT16 operand) {
     assert(strlen(name) < RUYI_IR_INS_NAME_LENGTH - 1);
     ruyi_ir_ins_detail *temp = ruyi_mem_alloc(sizeof(ruyi_ir_ins_detail));
     strncpy(temp->name, name, RUYI_IR_INS_NAME_LENGTH);
@@ -85,7 +85,7 @@ static void init_ins_tables() {
 
 }
 
-BOOL ruyi_ir_get_ins_detail(Ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out) {
+BOOL ruyi_ir_get_ins_detail(ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out) {
     ruyi_value value;
     ruyi_ir_ins_detail *found_value;
     if (!g_ins_table) {
@@ -107,7 +107,7 @@ BOOL ruyi_ir_get_ins_detail(Ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out)
     return TRUE;
 }
 
-BOOL ruyi_ir_get_ins_code(const char *name, Ruyi_ir_ins *ins_code_out) {
+BOOL ruyi_ir_get_ins_code(const char *name, ruyi_ir_ins *ins_code_out) {
     ruyi_value value;
     if (!g_ins_table) {
         init_ins_tables();
@@ -118,18 +118,18 @@ BOOL ruyi_ir_get_ins_code(const char *name, Ruyi_ir_ins *ins_code_out) {
     if (!ruyi_hashtable_get(g_ins_name_table, ruyi_value_str(name), &value)) {
         return FALSE;
     }
-    *ins_code_out = (Ruyi_ir_ins)value.data.int32_value;
+    *ins_code_out = (ruyi_ir_ins)value.data.int32_value;
     return TRUE;
 }
 
-UINT64 ruyi_ir_make_code(Ruyi_ir_ins ins, UINT32 val) {
+UINT64 ruyi_ir_make_code(ruyi_ir_ins ins, UINT32 val) {
     UINT64 code = (UINT64)ins;
     code = code << 32;
     code = code | (0x00000000ffffffff & (UINT64)(val));
     return code;
 }
 
-void ruyi_ir_parse_code(UINT64 code, Ruyi_ir_ins *ins_out, UINT32 *val_out) {
+void ruyi_ir_parse_code(UINT64 code, ruyi_ir_ins *ins_out, UINT32 *val_out) {
     if (ins_out) {
         *ins_out = (UINT32)(code >> 32);
     }

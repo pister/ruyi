@@ -422,7 +422,7 @@ void ruyi_unicode_bytes_string_append(ruyi_bytes_string* s, const char *buf, UIN
     s->str[s->length] = '\0';
 }
 
-ruyi_bytes_string* ruyi_unicode_string_decode_utf8(const ruyi_unicode_string *unicode_str) {
+ruyi_bytes_string* ruyi_unicode_string_encode_utf8(const ruyi_unicode_string *unicode_str) {
     ruyi_bytes_string* str;
     char buf[1024];
     UINT32 wide_char_transformed = 0;
@@ -441,6 +441,10 @@ ruyi_bytes_string* ruyi_unicode_string_decode_utf8(const ruyi_unicode_string *un
         src_pos += wide_char_transformed;
     }
     return str;
+}
+
+UINT32 ruyi_unicode_string_encode_utf8_n(const ruyi_unicode_string *unicode_str, char *out_bytes, UINT32 max_out_bytes_count) {
+    return ruyi_unicode_encode_utf8(unicode_str->data, unicode_str->length, NULL, (BYTE*)out_bytes, max_out_bytes_count);
 }
 
 void ruyi_unicode_bytes_string_destroy(ruyi_bytes_string* s) {

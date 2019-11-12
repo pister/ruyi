@@ -41,7 +41,9 @@ ruyi_error * ruyi_error_make(ruyi_error_type type, const char *message, struct _
 
 ruyi_error * ruyi_error_make_by_pos(ruyi_error_type type, const char *message, ruyi_token_pos pos);
 
-ruyi_error * ruyi_error_misc(const char *message);
+ruyi_error * ruyi_error_misc(const char *format, ...);
+
+ruyi_error * ruyi_error_syntax(const char *format, ...);
 
 void ruyi_error_destroy(ruyi_error * err);
 

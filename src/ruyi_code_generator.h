@@ -39,7 +39,7 @@ struct ruyi_cg_ir_writer_;
 typedef struct {
     ruyi_unicode_string *name;
     INT32 index;
-    Ruyi_ir_type return_type;
+    ruyi_ir_type return_type;
     UINT16 operand;
     UINT16 locals;
     UINT16 arguments;
@@ -59,17 +59,22 @@ typedef struct ruyi_cg_ir_writer_ {
 
 typedef struct {
     Ruyi_cp_type    type;
+    UINT16          index;
     UINT16          value_size;
     BYTE*           value;
 } ruyi_cg_file_const_pool;
 
 typedef struct {
-    Ruyi_ir_type    type;
+    ruyi_ir_type    type;
     UINT32          var_size;
+    UINT16          index;
+    UINT16          name_size;
+    BYTE*           name;
 } ruyi_cg_file_global_var;
 
 typedef struct {
-    Ruyi_ir_type    return_type;
+    ruyi_ir_type    return_type;
+    UINT16          index;
     UINT16          name_size;
     BYTE            *name;
     UINT16          oparand;
@@ -101,7 +106,7 @@ typedef struct {
 
 ruyi_error* ruyi_cg_generate(const ruyi_ast *ast, ruyi_cg_file **out_ir_file);
 
-void ruyi_cg_file_destroy(ruyi_cg_file *file);
+void ruyi_cg_file_destroy(ruyi_cg_file *ir_file);
 
 
 #endif /* ruyi_code_generator_h */

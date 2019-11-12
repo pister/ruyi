@@ -7,7 +7,7 @@
 <package declaration> ::= KW_PACKAGE <name> <statement ends>
 <import declarations> ::= <import declaration>*
 <import declaration> ::= KW_IMPORT <name> (IDENTITY)? <statement ends>
-<global declarations> ::= <global declaration> *
+<global declarations> ::= (<global declaration> <statement ends>) *
 <global declaration> ::= <variable declaration> | <function declaration> | <class declaration> | <interface declaration> | <constant declaration>
 <variable declaration> ::= <variable auto infer type init> | (KW_VAR <variable declaration tail>)
 <variable declaration tail> ::= IDENTITY <type>? (ASSIGN <expression>) ?

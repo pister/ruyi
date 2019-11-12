@@ -47,6 +47,7 @@ void ruyi_vector_ptr_item_foreach(const ruyi_vector* vector, ruyi_vector_ptr_ite
         ruyi_vector_destroy(vector); \
     } while (0);
 
+
 /**
  * Add the value at the last of vector
  * params:
