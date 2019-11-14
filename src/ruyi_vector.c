@@ -21,8 +21,7 @@ ruyi_vector* ruyi_vector_create(void) {
 }
 
 ruyi_vector* ruyi_vector_create_with_cap(UINT32 init_cap) {
-    ruyi_vector *vector;
-    vector = (ruyi_vector *)ruyi_mem_alloc(sizeof(ruyi_vector));
+    ruyi_vector * vector = (ruyi_vector *)ruyi_mem_alloc(sizeof(ruyi_vector));
     vector->cap = init_cap;
     vector->len = 0;
     if (init_cap == 0) {

@@ -11,7 +11,7 @@
 
 
 ruyi_list* ruyi_list_create(void) {
-    ruyi_list * list = ruyi_mem_alloc(sizeof(ruyi_list));
+    ruyi_list * list = (ruyi_list *)ruyi_mem_alloc(sizeof(ruyi_list));
     list->first = NULL;
     list->last = NULL;
     return list;

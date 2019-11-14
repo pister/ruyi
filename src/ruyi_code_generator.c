@@ -211,6 +211,7 @@ static void cp_destroy(ruyi_cg_file_const_pool *cp) {
     if (!cp) {
         return;
     }
+    // TODO free value ?
     ruyi_mem_free(cp);
 }
 
@@ -441,7 +442,6 @@ static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *as
     ruyi_ast *ast_init_expr;
     ruyi_symtab_global_var var;
     BOOL has_init_expr = FALSE;
-    UINT32 index;
     ruyi_ir_type var_type;
     ruyi_ir_type expr_type;
     ruyi_ast_type var_ast_type;
@@ -482,10 +482,9 @@ static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *as
         var.type = var_type;
     }
     var.var_size = var_size;
-    if (( err = ruyi_symtab_add_global_var(symtab, &var, &index)) != NULL) {
+    if (( err = ruyi_symtab_add_global_var(symtab, &var, &var.index)) != NULL) {
         goto gen_global_var_define_on_error;
     }
-    
     ruyi_vector_add(global_vars, ruyi_value_ptr(gv_create(&var)));
     return NULL;
 gen_global_var_define_on_error:

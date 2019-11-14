@@ -82,7 +82,7 @@ BOOL index_hashtable_get_by_name(const ruyi_symtab_index_hashtable *table, const
     ruyi_value item_value;
     const ruyi_symtab_global_var* var;
     assert(out_var);
-    if (!ruyi_hashtable_get(table->name2index, ruyi_value_unicode_str(name), &index_value)) {
+    if (!ruyi_hashtable_get(table->name2index, ruyi_value_unicode_str((ruyi_unicode_string*)name), &index_value)) {
         return FALSE;
     }
     if (!ruyi_vector_get(table->index2var, index_value.data.uint32_value, &item_value)) {

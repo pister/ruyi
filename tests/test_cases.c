@@ -1866,6 +1866,8 @@ void test_cg_ir() {
 void test_cg_package_import_global_vars() {
     const char* src = "package bb.cc; import a1.cc\n import a2; \n c2 := 10; var c3 long = 16;";
     const char* package_name = "bb.cc";
+    UINT32 i, len;
+    ruyi_cg_file_global_var *gv;
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_error *err = NULL;
@@ -1885,8 +1887,10 @@ void test_cg_package_import_global_vars() {
         return;
     }
     ruyi_ast_destroy(ast);
-    
     assert(0 == memcmp(package_name, ir_file->package, ir_file->package_size));
+    assert(2 == ir_file->gv_count);
+    gv = ir_file->gv[0];
+    assert(0 == gv->index);
 
     ruyi_cg_file_destroy(ir_file);
 }
