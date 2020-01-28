@@ -1157,7 +1157,7 @@ ruyi_error* func_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     if ((err = func_return_type(reader, &ast_return_type)) != NULL) {
         goto func_type_on_error;
     }
-    ast = ruyi_ast_create(Ruyi_at_func_type);
+    ast = ruyi_ast_create(Ruyi_at_type_func);
     ruyi_ast_add_child(ast, ast_parameter_type_list);
     ruyi_ast_add_child(ast, ast_return_type);
     *out_ast = ast;
@@ -1249,7 +1249,7 @@ ruyi_error* array_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     if (type_ast == NULL) {
         return ruyi_error_by_parser(reader, "miss type after ']'");
     }
-    ast = ruyi_ast_create(Ruyi_at_array_type);
+    ast = ruyi_ast_create(Ruyi_at_type_array);
     ruyi_ast_add_child(ast, type_ast);
     *out_ast = ast;
     return NULL;
@@ -1286,7 +1286,7 @@ ruyi_error* map_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         err = ruyi_error_by_parser(reader, "miss type after ']'");
         goto map_type_on_error;
     }
-    ast = ruyi_ast_create(Ruyi_at_map_type);
+    ast = ruyi_ast_create(Ruyi_at_type_map);
     ruyi_ast_add_child(ast, key_ast);
     ruyi_ast_add_child(ast, value_ast);
     *out_ast = ast;
@@ -2508,11 +2508,6 @@ ruyi_error* func_return_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         *out_ast = NULL;
         return NULL;
     }
-    if (1 == ruyi_ast_child_length(ast_return_type)) {
-        *out_ast = ruyi_ast_get_child(ast_return_type, 0);
-        ruyi_ast_destroy_without_child(ast_return_type);
-        return NULL;
-    }
     *out_ast = ast_return_type;
     return NULL;
 func_return_type_on_error:
@@ -3577,7 +3572,7 @@ ruyi_error* package_declaration(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     if (ast_name == NULL) {
         return ruyi_error_by_parser(reader, "miss name after 'package'");
     }
-    statement_ends(reader);
+    statement_ends(reader);    
     ast = ruyi_ast_create(Ruyi_at_package_declaration);
     ruyi_ast_add_child(ast, ast_name);
     *out_ast = ast;
@@ -3650,14 +3645,18 @@ import_declarations_on_error:
     return err;
 }
 
+
+
 static
 ruyi_error* compilation_unit(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
-    // <root> ::= <package declaration>? <import declarations>? <global declarations>?
+    // <root> ::= <package declaration>? <import declarations>? <global declarations>? END
     ruyi_error* err;
     ruyi_ast *ast;
     ruyi_ast *ast_package = NULL;
     ruyi_ast *ast_import = NULL;
     ruyi_ast *ast_global = NULL;
+    ruyi_token_type end_token = 0;
+    char name_buf[128];
     if ((err = package_declaration(reader, &ast_package)) != NULL) {
         goto compilation_unit_on_error;
     }
@@ -3665,6 +3664,10 @@ ruyi_error* compilation_unit(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         goto compilation_unit_on_error;
     }
     if ((err = global_declarations(reader, &ast_global)) != NULL) {
+        goto compilation_unit_on_error;
+    }
+    if (Ruyi_tt_END != (end_token = ruyi_lexer_reader_peek_token_type(reader))) {
+        err = ruyi_error_by_parser(reader, "unexpected token: %s", ruyi_lexer_keywords_get_bytes_str(end_token, name_buf, 128));
         goto compilation_unit_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_root);

@@ -60,6 +60,7 @@ ruyi_keyword g_ruyi_keywords[] = {
     {Ruyi_tt_KW_MAP,    "map"},
     {Ruyi_tt_KW_IN,     "in"},
     {Ruyi_tt_KW_INSTANCEOF, "instanceof"},
+    {Ruyi_tt_END,     "<EOF>"},
 };
 
 
@@ -79,7 +80,7 @@ ruyi_token_type ruyi_lexer_keywords_get_type(ruyi_unicode_string * token_value) 
     return Ruyi_tt_IDENTITY;
 }
 
-ruyi_unicode_string* ruyi_lexer_keywords_get_str(ruyi_token_type type) {
+const ruyi_unicode_string* ruyi_lexer_keywords_get_str(ruyi_token_type type) {
     static ruyi_hashtable* keywords;
     UINT32 i;
     ruyi_value ret_str;
@@ -93,6 +94,23 @@ ruyi_unicode_string* ruyi_lexer_keywords_get_str(ruyi_token_type type) {
         return ret_str.data.unicode_str;
     }
     return NULL;
+}
+
+const char * ruyi_lexer_keywords_get_bytes_str(ruyi_token_type type, char *buf, UINT32 buf_length) {
+    ruyi_bytes_string *bytes_string;
+    UINT32 len;
+    const ruyi_unicode_string *ustr_name = ruyi_lexer_keywords_get_str(type);
+    if (ustr_name == NULL) {
+        return NULL;
+    }
+    bytes_string = ruyi_unicode_string_encode_utf8(ustr_name);
+    if (bytes_string == NULL) {
+        return NULL;
+    }
+    len = bytes_string->length < buf_length ? bytes_string->length : buf_length;
+    strncpy(buf, bytes_string->str, len);
+    ruyi_unicode_bytes_string_destroy(bytes_string);
+    return buf;
 }
 
 typedef struct {
@@ -122,7 +140,7 @@ static void ruyi_lexer_error_message(const char* msg, ruyi_pos_char first) {
     printf("lexer error: %s at line: %d, column: %d\n", msg, first.line, first.column);
 }
 
-static void ruyi_lexer_copy_last_n_chars(WIDE_CHAR *dest, UINT32 dest_size, ruyi_unicode_string* src) {
+static void ruyi_lexer_copy_last_n_chars(WIDE_CHAR *dest, UINT32 dest_size, const ruyi_unicode_string* src) {
     UINT32 size = ruyi_unicode_string_length(src);
     UINT32 copy_pos, copy_len;
     if (size < dest_size - 1) {
@@ -137,7 +155,7 @@ static void ruyi_lexer_copy_last_n_chars(WIDE_CHAR *dest, UINT32 dest_size, ruyi
 }
 
 static void ruyi_lexer_set_snapshot(ruyi_token_snapshot *token_snapshot, ruyi_token *token) {
-    ruyi_unicode_string* keyword;
+    const ruyi_unicode_string* keyword;
     if (token == NULL) {
         token_snapshot->column = 0;
         token_snapshot->line = 0;

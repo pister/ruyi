@@ -91,7 +91,7 @@ ruyi_value ruyi_value_str(const char *str) {
     return v;
 }
 
-ruyi_value ruyi_value_unicode_str(ruyi_unicode_string *unicode_str) {
+ruyi_value ruyi_value_unicode_str(const ruyi_unicode_string *unicode_str) {
     ruyi_value v;
     v.type = Ruyi_value_type_unicode_str;
     // fill 0 for the other bits on 32-bit env

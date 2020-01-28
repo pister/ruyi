@@ -11,6 +11,7 @@
 #include "ruyi_hashtable.h"
 #include "ruyi_vector.h"
 #include "ruyi_error.h"
+#include <string.h> // for memset
 
 #define NAME_BUF_LENGTH 128
 
@@ -41,7 +42,7 @@ void index_hashtable_destroy(ruyi_symtab_index_hashtable *table) {
             ruyi_vector_get(table->index2var, i, &value);
             var = (ruyi_symtab_global_var *)value.data.ptr;
             assert(var);
-            ruyi_unicode_string_destroy(var->name);
+            ruyi_unicode_string_destroy((ruyi_unicode_string*)var->name);
             ruyi_mem_free(var);
         }
         ruyi_vector_destroy(table->index2var);
@@ -154,3 +155,209 @@ ruyi_error* ruyi_symtab_add_global_var(ruyi_symtab *symtab, const ruyi_symtab_gl
     return index_hashtable_add(symtab->global_variables, var, out_index);
 }
 
+ruyi_symtab_function_define* ruyi_symtab_function_create(const ruyi_unicode_string *name) {
+    ruyi_symtab_function_define *func = (ruyi_symtab_function_define*)ruyi_mem_alloc(sizeof(ruyi_symtab_function_define));
+    func->name = name;
+    if (name) {
+        func->anonymous = FALSE;
+    } else {
+        func->anonymous = TRUE;
+    }
+    func->return_types = NULL;
+    func->args_types = NULL;
+    func->codes = ruyi_vector_create();
+    func->index = 0;
+    return func;
+}
+
+void ruyi_symtab_function_destroy(ruyi_symtab_function_define* func) {
+    UINT32 i, len;
+    ruyi_value temp;
+    ruyi_symtab_type type;
+    ruyi_unicode_string *name;
+    if (!func) {
+        return;
+    }
+    if (func->return_types) {
+        len = ruyi_vector_length(func->return_types);
+        for (i = 0; i < len; i += 2) {
+            ruyi_vector_get(func->return_types, i, &temp);
+            type.ir_type = temp.data.int32_value;
+            ruyi_vector_get(func->return_types, i+1, &temp);
+            type.detail.uniptr = temp.data.ptr;
+            ruyi_symtab_type_destroy(type);
+        }
+        ruyi_vector_destroy(func->return_types);
+    }
+    if (func->args_types) {
+        len = ruyi_vector_length(func->args_types);
+        for (i = 0; i < len; i += 3) {
+            ruyi_vector_get(func->args_types, i, &temp);
+            name = (ruyi_unicode_string *)temp.data.unicode_str;
+            ruyi_unicode_string_destroy(name);
+
+            ruyi_vector_get(func->args_types, i+1, &temp);
+            type.ir_type = temp.data.int32_value;
+            ruyi_vector_get(func->args_types, i+2, &temp);
+            type.detail.uniptr = temp.data.ptr;
+            ruyi_symtab_type_destroy(type);
+        }
+        ruyi_vector_destroy(func->args_types);
+    }
+    if (func->codes) {
+        ruyi_vector_destroy(func->codes);
+    }
+    ruyi_mem_free(func);
+}
+
+void ruyi_symtab_function_add_arg(ruyi_symtab_function_define* func, const ruyi_unicode_string *name, ruyi_symtab_type type) {
+    assert(func);
+    if (func->args_types == NULL) {
+        func->args_types = ruyi_vector_create();
+    }
+    // name
+    ruyi_vector_add(func->args_types, ruyi_value_unicode_str(name));
+    // ir_type
+    ruyi_vector_add(func->args_types, ruyi_value_int32(type.ir_type));
+    // detail
+    ruyi_vector_add(func->args_types, ruyi_value_ptr(type.detail.uniptr));
+}
+
+
+void ruyi_symtab_function_add_return_type(ruyi_symtab_function_define* func, ruyi_symtab_type return_type) {
+    assert(func);
+    if (func->return_types == NULL) {
+        func->return_types = ruyi_vector_create();
+    }
+    // ir_type
+    ruyi_vector_add(func->return_types, ruyi_value_int32(return_type.ir_type));
+    // detail
+    ruyi_vector_add(func->return_types, ruyi_value_ptr(return_type.detail.uniptr));
+}
+
+ruyi_symtab_type ruyi_symtab_type_create(ruyi_ir_type ir_type, void *detail) {
+    ruyi_symtab_type type;
+    type.ir_type = ir_type;
+    type.detail.uniptr = detail;
+    return type;
+}
+
+void ruyi_symtab_type_destroy(ruyi_symtab_type type) {
+    switch (type.ir_type) {
+        case Ruyi_ir_type_Object:
+            ruyi_symtab_type_object_destroy(type.detail.object);
+            break;
+        case Ruyi_ir_type_Array:
+            ruyi_symtab_type_array_destroy(type.detail.array);
+            break;
+        case Ruyi_ir_type_Tuple:
+            ruyi_symtab_type_tuple_destroy(type.detail.tuple);
+            break;
+        case Ruyi_ir_type_Map:
+            ruyi_symtab_type_map_destroy(type.detail.map);
+            break;
+        case Ruyi_ir_type_Function:
+            ruyi_symtab_type_func_destroy(type.detail.func);
+            break;
+        default:
+            // do nothing for uniptr
+            break;
+    }
+}
+
+ruyi_symtab_type_object* ruyi_symtab_type_object_create(const ruyi_unicode_string *name) {
+    ruyi_symtab_type_object * object;
+    assert(name);
+    object = (ruyi_symtab_type_object*) ruyi_mem_alloc(sizeof(ruyi_symtab_type_object));
+    object->type = Ruyi_ir_type_Object;
+    object->name = ruyi_unicode_string_copy_from(name);
+    return object;
+}
+
+void ruyi_symtab_type_object_destroy(ruyi_symtab_type_object *object) {
+    assert(object);
+    if (object->name) {
+        ruyi_unicode_string_destroy(object->name);
+        object->name = NULL;
+    }
+    ruyi_mem_free(object);
+}
+
+ruyi_symtab_type_array* ruyi_symtab_type_array_create(UINT16 dims, ruyi_symtab_type type) {
+    ruyi_symtab_type_array * array = (ruyi_symtab_type_array*)ruyi_mem_alloc(sizeof(ruyi_symtab_type_array));
+    array->dims = dims;
+    array->type = type;
+    return array;
+}
+
+void ruyi_symtab_type_array_destroy(ruyi_symtab_type_array *array) {
+    assert(array);
+    ruyi_symtab_type_destroy(array->type);
+    ruyi_mem_free(array);
+}
+
+ruyi_symtab_type_tuple* ruyi_symtab_type_tuple_create(UINT32 count) {
+    ruyi_symtab_type_tuple * tuple = (ruyi_symtab_type_tuple*) ruyi_mem_alloc(sizeof(ruyi_symtab_type_tuple));
+    tuple->count = count;
+    tuple->types = (ruyi_symtab_type*)ruyi_mem_alloc(tuple->count * sizeof(ruyi_symtab_type));
+    memset(tuple->types, 0, tuple->count * sizeof(ruyi_symtab_type));
+    return tuple;
+}
+
+void ruyi_symtab_type_tuple_set(ruyi_symtab_type_tuple *tuple, UINT32 pos, ruyi_symtab_type type) {
+    assert(tuple);
+    assert(pos < tuple->count);
+    tuple->types[pos] = type;
+}
+
+void ruyi_symtab_type_tuple_destroy(ruyi_symtab_type_tuple *tuple) {
+    int i;
+    if (!tuple) {
+        return;
+    }
+    if (tuple->types) {
+        for (i = 0; i < tuple->count; i++) {
+            if (tuple->types[i].ir_type) {
+                ruyi_symtab_type_destroy(tuple->types[i]);
+            }
+        }
+        ruyi_mem_free(tuple->types);
+    }
+    ruyi_mem_free(tuple);
+}
+
+ruyi_symtab_type_map* ruyi_symtab_type_map_create(ruyi_symtab_type key_type, ruyi_symtab_type value_type) {
+    ruyi_symtab_type_map * map = (ruyi_symtab_type_map*) sizeof(ruyi_symtab_type_map);
+    map->key = key_type; // deep copy?
+    map->value = key_type; // deep copy?
+    return map;
+}
+
+void ruyi_symtab_type_map_destroy(ruyi_symtab_type_map *map) {
+    if (!map) {
+        return;
+    }
+    ruyi_symtab_type_destroy(map->key);
+    ruyi_symtab_type_destroy(map->value);
+    ruyi_mem_free(map);
+}
+
+ruyi_symtab_type_func* ruyi_symtab_type_func_create(ruyi_symtab_type_tuple *return_types, ruyi_symtab_type_tuple *parameter_types) {
+    ruyi_symtab_type_func * func = (ruyi_symtab_type_func*) ruyi_mem_alloc(sizeof(ruyi_symtab_type_func));
+    func->parameter_types = parameter_types;
+    func->return_types = return_types;
+    return func;
+}
+
+void ruyi_symtab_type_func_destroy(ruyi_symtab_type_func *func) {
+    if (!func) {
+        return;
+    }
+    if (func->parameter_types) {
+        ruyi_symtab_type_tuple_destroy(func->parameter_types);
+    }
+    if (func->return_types) {
+        ruyi_symtab_type_tuple_destroy(func->return_types);
+    }
+    ruyi_mem_free(func);
+}

@@ -878,7 +878,9 @@ void test_parser_function_return() {
     // return type
     temp_ast2 = ruyi_ast_get_child(func_ast, 2);
     assert(temp_ast2 != NULL);
-    assert(Ruyi_at_type_long == temp_ast2->type);
+    assert(Ruyi_at_type_list == temp_ast2->type);
+    assert(1 == ruyi_ast_child_length(temp_ast2));
+    assert(Ruyi_at_type_long == ruyi_ast_get_child(temp_ast2, 0)->type);
     
     // body
     temp_ast2 = ruyi_ast_get_child(func_ast, 3);
@@ -984,7 +986,10 @@ void test_parser_function_if() {
     // return type
     temp_ast2 = ruyi_ast_get_child(func_ast, 2);
     assert(temp_ast2 != NULL);
-    assert(Ruyi_at_type_long == temp_ast2->type);
+    assert(Ruyi_at_type_list == temp_ast2->type);
+    assert(1 == ruyi_ast_child_length(temp_ast2));
+    assert(Ruyi_at_type_long == ruyi_ast_get_child(temp_ast2, 0)->type);
+
     
     // body
     temp_ast = ruyi_ast_get_child(func_ast, 3);
@@ -1152,7 +1157,9 @@ void test_parser_function_while() {
     // return type
     temp_ast2 = ruyi_ast_get_child(func_ast, 2);
     assert(temp_ast2 != NULL);
-    assert(Ruyi_at_type_int == temp_ast2->type);
+    assert(Ruyi_at_type_list == temp_ast2->type);
+    assert(1 == ruyi_ast_child_length(temp_ast2));
+    assert(Ruyi_at_type_int == ruyi_ast_get_child(temp_ast2, 0)->type);
     
     // body
     temp_ast = ruyi_ast_get_child(func_ast, 3);
@@ -1740,6 +1747,7 @@ void test_parser_function_func_type(void) {
     ruyi_ast *func_ast;
     ruyi_unicode_string* name = NULL;
     ruyi_ast *temp_ast = NULL;
+    ruyi_ast *temp_ast20 = NULL;
     ruyi_ast *temp_ast2 = NULL;
     ruyi_ast *temp_ast3 = NULL;
     ruyi_ast *temp_ast4 = NULL;
@@ -1772,17 +1780,21 @@ void test_parser_function_func_type(void) {
     // func(int) (int,long)
     temp_ast = ruyi_ast_get_child(func_ast, 2);
     assert(temp_ast != NULL);
-    assert(Ruyi_at_func_type == temp_ast->type);
+    assert(Ruyi_at_type_list == temp_ast->type);
+    assert(1 == ruyi_ast_child_length(temp_ast));
+    assert(Ruyi_at_type_func == ruyi_ast_get_child(temp_ast, 0)->type);
+    // func(int) (int, long)
+    temp_ast20 = ruyi_ast_get_child(temp_ast, 0);
     // func(int)
-    temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
+    temp_ast2 = ruyi_ast_get_child(temp_ast20, 0);
     assert(Ruyi_at_parameter_type_list == temp_ast2->type);
     assert(1 == ruyi_ast_child_length(temp_ast2));
     temp_ast3 = ruyi_ast_get_child(temp_ast2, 0);
     assert(Ruyi_at_type_int == temp_ast3->type);
     // (int,long)
-    temp_ast2 = ruyi_ast_get_child(temp_ast, 1);
+    temp_ast2 = ruyi_ast_get_child(temp_ast20, 1);
     assert(Ruyi_at_type_list == temp_ast2->type);
-    assert(2 == ruyi_ast_child_length(temp_ast2));
+    assert(2 == ruyi_ast_child_length(temp_ast20));
     assert(Ruyi_at_type_int == ruyi_ast_get_child(temp_ast2, 0)->type);
     assert(Ruyi_at_type_long == ruyi_ast_get_child(temp_ast2, 1)->type);
     
@@ -1864,9 +1876,9 @@ void test_cg_ir() {
 }
 
 void test_cg_package_import_global_vars() {
-    const char* src = "package bb.cc; import a1.cc\n import a2; \n c2 := 10; var c3 long = 16;";
+    // TODO bug# 可以存在多个packages声明
+    const char* src = "package bb.cc; import a1.cc\n import a2; \n c2 := 10; var c33 long = 16;";
     const char* package_name = "bb.cc";
-    UINT32 i, len;
     ruyi_cg_file_global_var *gv;
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -1889,9 +1901,53 @@ void test_cg_package_import_global_vars() {
     ruyi_ast_destroy(ast);
     assert(0 == memcmp(package_name, ir_file->package, ir_file->package_size));
     assert(2 == ir_file->gv_count);
+    
     gv = ir_file->gv[0];
     assert(0 == gv->index);
+    assert(2 == gv->name_size);
+    assert(0 == memcmp("c2", gv->name, gv->name_size));
+    assert(Ruyi_ir_type_Int32 == gv->type);
+    assert(4 == gv->var_size);
+    
+    gv = ir_file->gv[1];
+    assert(1 == gv->index);
+    assert(3 == gv->name_size);
+    assert(0 == memcmp("c33", gv->name, gv->name_size));
+    assert(Ruyi_ir_type_Int64 == gv->type);
+    assert(8 == gv->var_size);
+    
+    ruyi_cg_file_destroy(ir_file);
+}
 
+void test_cg_funcs() {
+    const char* src = "package bb.cc; import a2; \n c2 := 10; func f1(a int) int { return a*2; } \n"
+                        "func f2(arg1 int, arg2 long) (long, int) { c := arg2; return arg1 + c, 20; }";
+    ruyi_cg_file_function *func;
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_cg_file *ir_file;
+    err = ruyi_cg_generate(ast, &ir_file);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_ast_destroy(ast);
+    assert(5 == ir_file->package_size);
+    assert(0 == memcmp("bb.cc", ir_file->package, ir_file->package_size));
+    
+    
+  
+    
     ruyi_cg_file_destroy(ir_file);
 }
 
@@ -1930,6 +1986,7 @@ void run_test_cases_parser() {
 void run_test_cases_cg() {
     test_cg_ir();
     test_cg_package_import_global_vars();
+    test_cg_funcs();
 }
 
 void run_test_cases(void) {

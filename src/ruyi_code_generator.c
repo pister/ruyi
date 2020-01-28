@@ -222,6 +222,7 @@ static ruyi_cg_file_global_var* gv_create(const ruyi_symtab_global_var *symtab_v
     gv->type = symtab_var->type;
     gv->var_size = symtab_var->var_size;
     temp_name = ruyi_unicode_string_encode_utf8(symtab_var->name);
+    gv->name_size = temp_name->length;
     gv->name = (BYTE *)ruyi_mem_alloc(temp_name->length);
     memcpy(gv->name, temp_name->str, temp_name->length);
     ruyi_unicode_bytes_string_destroy(temp_name);
@@ -465,6 +466,7 @@ static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *as
             err = make_unicode_name_error("can not deal the type when define global var: %s", var.name);
             goto gen_global_var_define_on_error;
         }
+        // TODO need to generate init code and auto-type-cast ir at <init> func: for ast_init_expr.
         var.type = expr_type;
     } else {
         if (has_init_expr) {
@@ -473,7 +475,7 @@ static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *as
                 err = make_unicode_name_error("var can not be assigned by diference type when define global var: %s", var.name);
                 goto gen_global_var_define_on_error;
             }
-            // TODO need to generate auto-type-cast ir at init_expr assign init-function.
+            // TODO need to generate init code and auto-type-cast ir at <init> func: for ast_init_expr.
         }
         if (!ast_type_to_ir_type(var_ast_type, &var_type, &var_size)) {
             err = make_unicode_name_error("can not deal the type when define global var: %s", var.name);
@@ -491,11 +493,132 @@ gen_global_var_define_on_error:
     return err;
 }
 
+static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type);
+
+static ruyi_error* handle_type_array(ruyi_ast *ast_type, ruyi_symtab_type *out_type) {
+    ruyi_error *err;
+    ruyi_symtab_type raw_type;
+    UINT16 dims = 0;
+    ruyi_ast *temp_type = ast_type;
+    assert(out_type);
+    while (Ruyi_at_type_array == temp_type->type) {
+        dims++;
+        if (0 == ruyi_ast_child_length(temp_type)) {
+            break;
+        }
+        temp_type = ruyi_ast_get_child(temp_type, 0);
+    }
+    if ((err = handle_type(temp_type, &raw_type)) != NULL) {
+        return err;
+    }
+    out_type->ir_type = Ruyi_ir_type_Array;
+    out_type->detail.array = ruyi_symtab_type_array_create(dims, raw_type);
+    return NULL;
+}
+
+static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type) {
+    ruyi_error *err;
+    ruyi_symtab_type_array *array;
+    ruyi_symtab_type_array *func;
+    ruyi_symtab_type_array *map;
+    ruyi_symtab_type temp;
+    assert(ast_type);
+    assert(out_type);
+    /*
+     Ruyi_at_type_array,
+     Ruyi_at_type_map,
+     Ruyi_at_type_func,
+     */
+    switch (ast_type->type) {
+        case Ruyi_at_type_byte:
+            out_type->ir_type = Ruyi_ir_type_Byte;
+            break;
+        case Ruyi_at_type_bool:
+            out_type->ir_type = Ruyi_ir_type_Byte;
+            break;
+        case Ruyi_at_type_short:
+            out_type->ir_type = Ruyi_ir_type_Int16;
+            break;
+        case Ruyi_at_type_int:
+            out_type->ir_type = Ruyi_ir_type_Int32;
+            break;
+        case Ruyi_at_type_rune:
+            out_type->ir_type = Ruyi_ir_type_Rune;
+            break;
+        case Ruyi_at_type_long:
+            out_type->ir_type = Ruyi_ir_type_Int64;
+            break;
+        case Ruyi_at_type_float:
+            out_type->ir_type = Ruyi_ir_type_Float;
+            break;
+        case Ruyi_at_type_double:
+            out_type->ir_type = Ruyi_ir_type_Double;
+            break;
+        case Ruyi_at_type_array:
+            err = handle_type_array(ast_type, out_type);
+            if (err != NULL) {
+                return err;
+            }
+            break;
+            // TODO not finish
+        default:
+            return ruyi_error_syntax("unknown type support.");
+    }
+    
+    return NULL;
+}
+
 static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_functions) {
-    // TODO
+    ruyi_error *err;
+    ruyi_ast *ast_name = NULL;
+    ruyi_ast *ast_formal_params;
+    ruyi_ast *ast_return_type;
+    ruyi_ast *ast_body;
+    ruyi_ast *temp;
+    ruyi_symtab_type return_type;
+    ruyi_symtab_function_define *func = NULL;
+    
+    UINT32 i, len;
+    assert(ast);
+    if (Ruyi_at_function_declaration == ast->type) {
+        ast_name = ruyi_ast_get_child(ast, 0);
+        ast_formal_params = ruyi_ast_get_child(ast, 1);
+        ast_return_type = ruyi_ast_get_child(ast, 2);
+        ast_body = ruyi_ast_get_child(ast, 3);
+    } else if (Ruyi_at_anonymous_function_declaration == ast->type) {
+        ast_formal_params = ruyi_ast_get_child(ast, 0);
+        ast_return_type = ruyi_ast_get_child(ast, 1);
+        ast_body = ruyi_ast_get_child(ast, 2);
+    } else {
+        err = ruyi_error_misc("the ast is not a function define.");
+        goto gen_global_func_define_on_error;
+    }
+    if (ast_name) {
+        func = ruyi_symtab_function_create((ruyi_unicode_string*)ast_name->data.ptr_value);
+    } else {
+        func = ruyi_symtab_function_create(NULL);
+    }
+    if (ast_return_type == NULL) {
+        // leave return type is null
+    } else {
+        len = ruyi_ast_child_length(ast_return_type);
+        for (i = 0; i < len; i++) {
+            temp = ruyi_ast_get_child(ast_return_type, i);
+            if ((err = handle_type(temp, &return_type)) != NULL) {
+                goto gen_global_func_define_on_error;
+            }
+            ruyi_symtab_function_add_return_type(func, return_type);
+        }
+    
+    }
     
     
     return NULL;
+gen_global_func_define_on_error:
+    if (func) {
+        ruyi_symtab_function_destroy(func);
+    }
+    return err;
 }
 
 static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *ir_file) {
@@ -527,7 +650,7 @@ static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_
                     }
                     break;
                 case Ruyi_at_function_declaration:
-                    if ((err = gen_global_func_define(symtab, global_ast, global_vars)) != NULL) {
+                    if ((err = gen_global_func_define(symtab, global_ast, global_functions)) != NULL) {
                         goto gen_global_on_error;
                     }
                     break;
