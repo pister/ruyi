@@ -215,17 +215,27 @@ static void cp_destroy(ruyi_cg_file_const_pool *cp) {
     ruyi_mem_free(cp);
 }
 
+static UINT32 copy_unicode_to_bytes(const ruyi_unicode_string * s, BYTE **dest, UINT16 *dest_len) {
+    ruyi_bytes_string *temp;
+    if (s == NULL) {
+        return 0;
+    }
+    temp = ruyi_unicode_string_encode_utf8(s);
+    if (dest_len) {
+        *dest_len = (UINT16)temp->length;
+    }
+    *dest = (BYTE *)ruyi_mem_alloc(temp->length);
+    memcpy(*dest, temp->str, temp->length);
+    ruyi_unicode_bytes_string_destroy(temp);
+    return temp->length;
+}
+
 static ruyi_cg_file_global_var* gv_create(const ruyi_symtab_global_var *symtab_var) {
-    ruyi_bytes_string *temp_name;
     ruyi_cg_file_global_var *gv = (ruyi_cg_file_global_var*)ruyi_mem_alloc(sizeof(ruyi_cg_file_global_var));
     gv->index = symtab_var->index;
     gv->type = symtab_var->type;
     gv->var_size = symtab_var->var_size;
-    temp_name = ruyi_unicode_string_encode_utf8(symtab_var->name);
-    gv->name_size = temp_name->length;
-    gv->name = (BYTE *)ruyi_mem_alloc(temp_name->length);
-    memcpy(gv->name, temp_name->str, temp_name->length);
-    ruyi_unicode_bytes_string_destroy(temp_name);
+    copy_unicode_to_bytes(symtab_var->name, &gv->name, &gv->name_size);
     return gv;
 }
 
@@ -237,6 +247,57 @@ static void gv_destroy(ruyi_cg_file_global_var *gv) {
         ruyi_mem_free(gv->name);
     }
     ruyi_mem_free(gv);
+}
+
+static ruyi_cg_file_function* func_create(const ruyi_symtab_function_define *symtab_func) {
+    UINT32 i, len;
+    ruyi_value temp_value;
+    ruyi_ir_type ir_type;
+    ruyi_cg_file_function *func = (ruyi_cg_file_function*)ruyi_mem_alloc(sizeof(ruyi_cg_file_function));
+    func->index = symtab_func->index;
+    copy_unicode_to_bytes(symtab_func->name, &func->name, &func->name_size);
+    // return types
+    len = ruyi_vector_length(symtab_func->return_types);
+    // why the size div by 2 ?
+    // see ruyi_symtab_function_add_return_type(...)
+    func->return_size = (UINT16)len/2;
+    if (func->return_size > 0) {
+        func->return_types = (ruyi_ir_type*)ruyi_mem_alloc(sizeof(ruyi_ir_type*) * func->return_size);
+        for (i = 0; i < len; i += 2) {
+            // ir_type
+            ruyi_vector_get(symtab_func->return_types, i, &temp_value);
+            ir_type = temp_value.data.int32_value;
+            func->return_types[i/2] = ir_type;
+            // ignore detail
+            // ruyi_vector_get(symtab_func->return_types, i + 1, &temp_value);
+        }
+    } else {
+        func->return_types = NULL;
+    }
+    
+    // arguments
+    len = ruyi_vector_length(symtab_func->args_types);
+    // why the size div by 3 ?
+    // see ruyi_symtab_function_add_arg(...)
+    func->argument_size = len/3;
+    if (func->argument_size > 0) {
+        func->argument_types = (ruyi_ir_type*)ruyi_mem_alloc(sizeof(ruyi_ir_type*) * func->argument_size);
+        for (i = 0; i < len; i += 3) {
+            // ignore name
+            // ruyi_vector_get(symtab_func->args_types, i, &temp_value);
+
+            // type
+            ruyi_vector_get(symtab_func->args_types, i + 1, &temp_value);
+            ir_type = temp_value.data.int32_value;
+            func->argument_types[i/3] = ir_type;
+
+            // ignore detail
+            // ruyi_vector_get(symtab_func->args_types, i + 2, &temp_value);
+        }
+    }
+    
+    // TODO
+    return func;
 }
 
 static void func_destroy(ruyi_cg_file_function *func) {
@@ -488,6 +549,7 @@ static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *as
         goto gen_global_var_define_on_error;
     }
     ruyi_vector_add(global_vars, ruyi_value_ptr(gv_create(&var)));
+    // TODO free var ???
     return NULL;
 gen_global_var_define_on_error:
     return err;
@@ -571,11 +633,12 @@ static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type) {
 static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_functions) {
     ruyi_error *err;
     ruyi_ast *ast_name = NULL;
+    ruyi_ast *ast_type = NULL;
     ruyi_ast *ast_formal_params;
     ruyi_ast *ast_return_type;
     ruyi_ast *ast_body;
     ruyi_ast *temp;
-    ruyi_symtab_type return_type;
+    ruyi_symtab_type the_type;
     ruyi_symtab_function_define *func = NULL;
     
     UINT32 i, len;
@@ -593,26 +656,52 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
         err = ruyi_error_misc("the ast is not a function define.");
         goto gen_global_func_define_on_error;
     }
+    if (ruyi_ast_child_length(ast_formal_params) > RUYI_MAX_UINT16) {
+        err = ruyi_error_misc("too many function formal params count.");
+        goto gen_global_func_define_on_error;
+    }
     if (ast_name) {
         func = ruyi_symtab_function_create((ruyi_unicode_string*)ast_name->data.ptr_value);
     } else {
         func = ruyi_symtab_function_create(NULL);
     }
+    // return types
     if (ast_return_type == NULL) {
         // leave return type is null
     } else {
         len = ruyi_ast_child_length(ast_return_type);
+        if (len > RUYI_MAX_UINT16) {
+            err = ruyi_error_misc("too many function return values.");
+            goto gen_global_func_define_on_error;
+        }
         for (i = 0; i < len; i++) {
             temp = ruyi_ast_get_child(ast_return_type, i);
-            if ((err = handle_type(temp, &return_type)) != NULL) {
+            if ((err = handle_type(temp, &the_type)) != NULL) {
                 goto gen_global_func_define_on_error;
             }
-            ruyi_symtab_function_add_return_type(func, return_type);
+            ruyi_symtab_function_add_return_type(func, the_type);
         }
-    
     }
+    // arguments
+    len = ruyi_ast_child_length(ast_formal_params);
+    if (len > RUYI_MAX_UINT16) {
+        err = ruyi_error_misc("too many function formal parameters.");
+        goto gen_global_func_define_on_error;
+    }
+    for (i = 0; i < len; i++) {
+        temp = ruyi_ast_get_child(ast_formal_params, i);
+        ast_name = ruyi_ast_get_child(temp, 0);
+        ast_type = ruyi_ast_get_child(temp, 1);
+        if ((err = handle_type(ast_type, &the_type)) != NULL) {
+            goto gen_global_func_define_on_error;
+        }
+        ruyi_symtab_function_add_arg(func, (ruyi_unicode_string*)ast_name->data.ptr_value, the_type);
+    }
+    // body
     
+    ruyi_vector_add(global_functions, ruyi_value_ptr(func_create(func)));
     
+    // TODO free func ???
     return NULL;
 gen_global_func_define_on_error:
     if (func) {
@@ -660,6 +749,7 @@ static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_
             }
         }
     } while(0);
+    // global vars
     ir_file->gv_count = ruyi_vector_length(global_vars);
     if (ir_file->gv_count > 0) {
         ir_file->gv = (ruyi_cg_file_global_var**)ruyi_mem_alloc(ir_file->gv_count * sizeof(ruyi_cg_file_global_var*));
@@ -669,12 +759,31 @@ static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_
             ir_file->gv[i] = (ruyi_cg_file_global_var*)temp_value.data.ptr;
         }
     } else {
-        ir_file = NULL;
+        ir_file->gv = NULL;
     }
     if (global_vars) {
         // item in this vector will use in ir_file->gv, so it just only free vector itself.
         ruyi_vector_destroy(global_vars);
     }
+    
+    // functions
+    ir_file->func_count = ruyi_vector_length(global_functions);
+    if (ir_file->func_count > 0) {
+        ir_file->func = (ruyi_cg_file_function**)ruyi_mem_alloc(ir_file->func_count * sizeof(ruyi_cg_file_function*));
+        len = ruyi_vector_length(global_functions);
+        for (i = 0; i < len; i++) {
+            ruyi_vector_get(global_functions, i, &temp_value);
+            ir_file->func[i] = (ruyi_cg_file_function*)temp_value.data.ptr;
+        }
+    } else {
+        ir_file->func = NULL;
+    }
+    if (global_functions) {
+        // item in this vector will use in ir_file->func, so it just only free vector itself.
+        ruyi_vector_destroy(global_functions);
+    }
+    
+   
     
     // TODO fill back to ir_file
    

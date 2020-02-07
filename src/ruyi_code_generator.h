@@ -73,13 +73,15 @@ typedef struct {
 } ruyi_cg_file_global_var;
 
 typedef struct {
-    ruyi_ir_type    return_type;
     UINT16          index;
     UINT16          name_size;
     BYTE            *name;
+    UINT16          return_size;
+    ruyi_ir_type    *return_types;
+    UINT16          argument_size;
+    ruyi_ir_type    *argument_types;
     UINT16          oparand;
     UINT16          local_size;
-    UINT16          argument_size;
     UINT32          codes_count;
     UINT64          *codes;
 } ruyi_cg_file_function;

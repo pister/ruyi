@@ -185,6 +185,9 @@ BOOL ruyi_lexer_reader_consume_token_if_match(ruyi_lexer_reader *reader, ruyi_to
 ruyi_token_type ruyi_lexer_keywords_get_type(ruyi_unicode_string * token_value);
 
 // keywords
-ruyi_unicode_string* ruyi_lexer_keywords_get_str(ruyi_token_type type);
+const ruyi_unicode_string* ruyi_lexer_keywords_get_str(ruyi_token_type type);
+
+
+const char * ruyi_lexer_keywords_get_bytes_str(ruyi_token_type type, char *buf, UINT32 buf_length);
 
 #endif /* ruyi_lexer_h */

@@ -93,4 +93,16 @@ typedef INT32 WIDE_CHAR;
 #define RUYI_OFFSET_OF(base, field) \
 (INT32)(&((base*)0)->field)
 
+
+#define RUYI_MAX_UINT32 ((1 << 32) - 1)
+#define RUYI_MAX_INT32 ((1 << 31) - 1)
+
+#define RUYI_MAX_UINT64 ((1 << 64) - 1)
+#define RUYI_MAX_INT64 ((1 << 63) - 1)
+
+#define RUYI_MAX_UINT16 ((1 << 16) - 1)
+#define RUYI_MAX_INT16 ((1 << 15) - 1)
+
+
+
 #endif /* ruyi_types_h */

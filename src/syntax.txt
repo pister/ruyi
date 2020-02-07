@@ -1,7 +1,7 @@
 # Ruyi Program Language Syntax
 
 # Programs
-<root> ::= <package declaration>? <import declarations> <global declarations>?
+<root> ::= <package declaration>? <import declarations> <global declarations>? END
 
 # Declarations
 <package declaration> ::= KW_PACKAGE <name> <statement ends>

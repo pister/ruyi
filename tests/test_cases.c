@@ -1920,7 +1920,7 @@ void test_cg_package_import_global_vars() {
 }
 
 void test_cg_funcs() {
-    const char* src = "package bb.cc; import a2; \n c2 := 10; func f1(a int) int { return a*2; } \n"
+    const char* src = "package bb.cc; import a2; \n c2 := 10; func f1(a1 int, a2 long) int { return a1*2 + a2; } \n"
                         "func f2(arg1 int, arg2 long) (long, int) { c := arg2; return arg1 + c, 20; }";
     ruyi_cg_file_function *func;
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
@@ -1944,9 +1944,21 @@ void test_cg_funcs() {
     ruyi_ast_destroy(ast);
     assert(5 == ir_file->package_size);
     assert(0 == memcmp("bb.cc", ir_file->package, ir_file->package_size));
-    
-    
-  
+
+    assert(2 == ir_file->func_count);
+    // 1st function
+    func = ir_file->func[0];
+    // name
+    assert(2 == func->name_size);
+    assert(0 == strcmp("f1", (const char*)func->name));
+    // return type
+    assert(1 == func->return_size);
+    assert(Ruyi_ir_type_Int32 == func->return_types[0]);
+    // argments
+    assert(2 == func->argument_size);
+    assert(Ruyi_ir_type_Int32 == func->argument_types[0]);
+    assert(Ruyi_ir_type_Int64 == func->argument_types[1]);
+    // TODO
     
     ruyi_cg_file_destroy(ir_file);
 }

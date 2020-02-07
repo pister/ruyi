@@ -221,6 +221,7 @@ void ruyi_symtab_function_add_arg(ruyi_symtab_function_define* func, const ruyi_
     ruyi_vector_add(func->args_types, ruyi_value_int32(type.ir_type));
     // detail
     ruyi_vector_add(func->args_types, ruyi_value_ptr(type.detail.uniptr));
+    // TODO to create name ==> index mapping ?
 }
 
 
