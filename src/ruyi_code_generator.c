@@ -630,6 +630,39 @@ static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type) {
     return NULL;
 }
 
+static ruyi_error* gen_stmt(ruyi_ast *ast_stmt, ruyi_vector *codes) {
+    ruyi_ast *ast0;
+    switch (ast_stmt->type) {
+        case Ruyi_at_return_statement:
+            // return list or single ast
+            ast0 = ruyi_ast_get_child(ast_stmt, 0);
+            // TODO finish
+            break;
+            
+        default:
+            break;
+    }
+    return NULL;
+}
+
+static ruyi_error* gen_func_body(ruyi_ast *ast_body, ruyi_vector *codes) {
+    ruyi_error* err;
+    UINT32 len, i;
+    ruyi_ast *ast_stmt;
+    assert(ast_body);
+    assert(Ruyi_at_block_statements == ast_body->type);
+    len = ruyi_ast_child_length(ast_body);
+    for (i = 0; i < len; i++) {
+        ast_stmt = ruyi_ast_get_child(ast_body, i);
+        if ((err = gen_stmt(ast_stmt, codes)) != NULL) {
+            goto gen_func_body_error;
+        }
+    }
+    return NULL;
+gen_func_body_error:
+    return err;
+}
+
 static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_functions) {
     ruyi_error *err;
     ruyi_ast *ast_name = NULL;
@@ -640,7 +673,7 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
     ruyi_ast *temp;
     ruyi_symtab_type the_type;
     ruyi_symtab_function_define *func = NULL;
-    
+    ruyi_vector *codes = NULL;
     UINT32 i, len;
     assert(ast);
     if (Ruyi_at_function_declaration == ast->type) {
@@ -698,6 +731,8 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
         ruyi_symtab_function_add_arg(func, (ruyi_unicode_string*)ast_name->data.ptr_value, the_type);
     }
     // body
+    codes = ruyi_vector_create();
+    gen_func_body(ast_body, codes);
     
     ruyi_vector_add(global_functions, ruyi_value_ptr(func_create(func)));
     
@@ -706,6 +741,9 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
 gen_global_func_define_on_error:
     if (func) {
         ruyi_symtab_function_destroy(func);
+    }
+    if (codes) {
+        ruyi_vector_destroy(codes);
     }
     return err;
 }
