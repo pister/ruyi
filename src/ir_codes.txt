@@ -1,0 +1,3 @@
+1, stack based codes
+
+2, the element's size on stack is 8bit
