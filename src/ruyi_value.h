@@ -13,6 +13,8 @@
 #include "ruyi_unicode.h"
 
 typedef enum {
+    Ruyi_value_type_float64,
+    Ruyi_value_type_float32,
     Ruyi_value_type_uint64,
     Ruyi_value_type_int64,
     Ruyi_value_type_uint32,
@@ -29,6 +31,8 @@ typedef enum {
 typedef struct {
     ruyi_value_type type;
     union {
+        FLOAT64 float64_value;
+        FLOAT32 float32_value;
         UINT64 uint64_value;
         INT64 int64_value;
         void * ptr;
@@ -43,6 +47,8 @@ typedef struct {
     } data;
 } ruyi_value;
 
+ruyi_value ruyi_value_float64(FLOAT64 value);
+ruyi_value ruyi_value_float32(FLOAT32 value);
 ruyi_value ruyi_value_uint64(UINT64 value);
 ruyi_value ruyi_value_int64(INT64 value);
 ruyi_value ruyi_value_uint32(UINT32 value);

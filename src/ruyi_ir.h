@@ -17,16 +17,17 @@
 
 typedef enum {
     // basic types
-    Ruyi_ir_type_Void = 0,      // v-0
+    Ruyi_ir_type_Void = 0,  // v-0
     Ruyi_ir_type_Byte,      // b-8bit
     Ruyi_ir_type_Int16,     // s-16bit
     Ruyi_ir_type_Rune,      // r-32bit
     Ruyi_ir_type_Int32,     // i-32bit
     Ruyi_ir_type_Int64,     // l-64bit
-    Ruyi_ir_type_Float,     // f-32bit
-    Ruyi_ir_type_Double,    // d-64bit
+    Ruyi_ir_type_Float32,   // f-32bit
+    Ruyi_ir_type_Float64,   // d-64bit
     // reference types 64bit
     Ruyi_ir_type_Object,    // Oname;
+    Ruyi_ir_type_String,    // S
     Ruyi_ir_type_Array,     // Atype
     Ruyi_ir_type_Tuple,     // Ttype*
     Ruyi_ir_type_Map,       // Mtypetype
@@ -88,7 +89,7 @@ typedef enum {
     Ruyi_ir_Invokenative,
     Ruyi_ir_Ret,
     //Ruyi_ir_Iret,
-    //Ruyi_ir_Fret,
+    Ruyi_ir_Fret,
 } ruyi_ir_ins;
 
 typedef struct {

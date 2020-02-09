@@ -1885,6 +1885,28 @@ void test_parser_function_func_type(void) {
     ruyi_ast_destroy(ast);
 }
 
+void test_ruyi_function_scope() {
+    ruyi_error *err;
+    ruyi_function_scope *scope = ruyi_symtab_function_scope_create();
+    ruyi_unicode_string *name = ruyi_unicode_string_init_from_utf8("name1", 0);
+    ruyi_symtab_variable input_var;
+    ruyi_symtab_variable output_var;
+    UINT32 index_create;
+    input_var.type.ir_type = Ruyi_ir_type_Int64;
+    input_var.name = name;
+    err = ruyi_symtab_function_scope_add_var(scope, &input_var, &index_create);
+    assert(err == NULL);
+    BOOL found = ruyi_symtab_function_scope_get(scope, name, &output_var);
+    assert(found);
+    assert(index_create == output_var.index);
+    ruyi_symtab_function_scope_destroy(scope);
+    ruyi_unicode_string_destroy(name);
+}
+
+void test_symtab_tools() {
+    test_ruyi_function_scope();
+}
+
 void test_cg_ir() {
     ruyi_ir_ins ins;
     ruyi_ir_ins_detail detail;
@@ -2020,6 +2042,7 @@ void run_test_cases_parser() {
 }
 
 void run_test_cases_cg() {
+    test_symtab_tools();
     test_cg_ir();
     test_cg_package_import_global_vars();
     test_cg_funcs();

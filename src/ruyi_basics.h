@@ -29,6 +29,14 @@ typedef unsigned long long UINT64;
 #endif
 */
 
+#ifndef FLOAT64
+typedef double FLOAT64;
+#endif
+
+#ifndef FLOAT32
+typedef float FLOAT32;
+#endif
+
 #ifndef UINT64
 typedef uint64_t UINT64;
 #endif

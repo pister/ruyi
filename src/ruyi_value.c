@@ -12,6 +12,13 @@
 
 #define MAX_HASH_LENGTH_FOR_PTR 128
 
+ruyi_value ruyi_value_float64(FLOAT64 value) {
+    ruyi_value v;
+    v.type = Ruyi_value_type_float64;
+    v.data.uint64_value = value;
+    return v;
+}
+
 ruyi_value ruyi_value_uint64(UINT64 value) {
     ruyi_value v;
     v.type = Ruyi_value_type_uint64;
@@ -146,6 +153,17 @@ static int unicode_str_cmp(const ruyi_unicode_string* w1, const ruyi_unicode_str
     return 0;
 }
 
+static
+UINT32 double_hash_value(FLOAT64 value) {
+    if (value > 0xFFFF) {
+        return (UINT32)value;
+    }
+    if (value < 1E-8) {
+        return (UINT32)(value * 1E16);
+    }
+    return (UINT32)(value * 1E8);
+}
+
 UINT32 ruyi_value_hashcode(ruyi_value value) {
     switch (value.type) {
         case Ruyi_value_type_uint64:
@@ -164,6 +182,10 @@ UINT32 ruyi_value_hashcode(ruyi_value value) {
             return (UINT32)value.data.uint8_value;
         case Ruyi_value_type_int8:
             return (UINT32)value.data.int8_value;
+        case Ruyi_value_type_float64:
+            return double_hash_value(value.data.float64_value);
+        case Ruyi_value_type_float32:
+            return double_hash_value(value.data.float32_value);
         case Ruyi_value_type_str:
             if (!value.data.str) {
                 return 0;
@@ -184,6 +206,8 @@ UINT32 ruyi_value_hashcode(ruyi_value value) {
     }
     return 0;
 }
+
+#define VERY_SMALL_FLOAT_VALUE 0.00000001
 
 BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2) {
     if (v1.type != v2.type) {
@@ -206,6 +230,12 @@ BOOL ruyi_value_equals(ruyi_value v1, ruyi_value v2) {
             return v1.data.uint8_value == v2.data.uint8_value;
         case Ruyi_value_type_int8:
             return v1.data.int8_value == v2.data.int8_value;
+        case Ruyi_value_type_float64:
+            return ((v1.data.float64_value - v2.data.float64_value) < VERY_SMALL_FLOAT_VALUE)
+            || ((v2.data.float64_value - v1.data.float64_value) < VERY_SMALL_FLOAT_VALUE);
+        case Ruyi_value_type_float32:
+            return ((v1.data.float32_value - v2.data.float32_value) < VERY_SMALL_FLOAT_VALUE)
+            || ((v2.data.float32_value - v1.data.float32_value) < VERY_SMALL_FLOAT_VALUE);
         case Ruyi_value_type_str:
             if (strcmp(v1.data.str, v2.data.str) == 0) {
                 return TRUE;
