@@ -9,6 +9,7 @@
 #ifndef ruyi_symtab_h
 #define ruyi_symtab_h
 
+#include "ruyi_list.h"
 #include "ruyi_vector.h"
 #include "ruyi_hashtable.h"
 #include "ruyi_unicode.h"
@@ -17,11 +18,21 @@
 
 
 typedef struct {
-    ruyi_vector *block_scope_stack;
+    ruyi_list *block_scope_stack;   // item type: ruyi_symtab_index_hashtable
 } ruyi_function_scope;
 
 ruyi_function_scope* ruyi_symtab_function_scope_create(void);
+
 void ruyi_symtab_function_scope_destroy(ruyi_function_scope *function_scope);
+
+void ruyi_symtab_function_scope_enter(ruyi_function_scope* scope);
+
+void ruyi_symtab_function_scope_leave(ruyi_function_scope* scope);
+
+UINT32 ruyi_symtab_function_scope_get_or_create(ruyi_function_scope* scope, const ruyi_unicode_string *name);
+
+BOOL ruyi_symtab_function_scope_get(ruyi_function_scope* scope, const ruyi_unicode_string *name, UINT32 *out_index);
+
 
 /*
  Ruyi_ir_type_Object,    // Oname;
@@ -93,13 +104,27 @@ typedef struct {
     ruyi_symtab_type    type;
 } ruyi_symtab_name_and_type;
 
+// symbol table:
+// global_variables: ==> global variables table (scope):
+// functions: ==> name -> function.
+// constants: ==> iteral: integer, float, strings.
+// class (global): todo
+// interface (global): todo
+typedef struct {
+    ruyi_symtab_index_hashtable *global_variables;
+    ruyi_hashtable *functions;
+    ruyi_hashtable *constants;
+} ruyi_symtab;
+
 typedef struct {
     UINT32              index;
     BOOL                anonymous;
     const ruyi_unicode_string *name;
-    ruyi_vector*        args_types; /* type of ruyi_symtab_name_and_type: (ruyi_unicode_string, ruyi_ir_type, void*) */
-    ruyi_vector*        return_types; /* type of ruyi_symtab_type: (ruyi_ir_type, void*) */
-    ruyi_vector*        codes;
+    ruyi_symtab         *symtab;        // reference of global ruyi_symtab
+    ruyi_function_scope *func_symtab_scope;
+    ruyi_vector         *args_types; /* type of ruyi_symtab_name_and_type: (ruyi_unicode_string*, ruyi_ir_type, void*) */
+    ruyi_vector         *return_types; /* type of ruyi_symtab_type: (ruyi_ir_type, void*) */
+    ruyi_vector         *codes;
     // attributes:
     // UINT16          operand;
     // UINT16          local_size;
@@ -107,19 +132,7 @@ typedef struct {
 } ruyi_symtab_function_define;
 
 
-// symbol table
-// global_variables table (scope): global variables
-// function_scope:
-// function table (global): name -> function.
-// constants (global): iteral: integer, float, strings.
-// class (global)
-// interface (global)
-typedef struct {
-    ruyi_symtab_index_hashtable *global_variables;
-    ruyi_function_scope *function_scope;
-    ruyi_hashtable *functions;
-    ruyi_hashtable *constants;
-} ruyi_symtab;
+// ================================================================
 
 ruyi_symtab* ruyi_symtab_create(void);
 
@@ -133,13 +146,31 @@ void ruyi_symtab_enter_func(ruyi_symtab *symtab, const ruyi_unicode_string* name
 
 ruyi_error* ruyi_symtab_add_global_var(ruyi_symtab *symtab, const ruyi_symtab_global_var *var, UINT32 *out_index);
 
-ruyi_symtab_function_define* ruyi_symtab_function_create(const ruyi_unicode_string *name);
+// ================================================================
+
+ruyi_symtab_function_define* ruyi_symtab_function_create(ruyi_symtab *symtab, const ruyi_unicode_string *name);
 
 void ruyi_symtab_function_destroy(ruyi_symtab_function_define* func);
 
 void ruyi_symtab_function_add_arg(ruyi_symtab_function_define* func, const ruyi_unicode_string *name, ruyi_symtab_type type);
 
 void ruyi_symtab_function_add_return_type(ruyi_symtab_function_define* func, ruyi_symtab_type return_type);
+
+// ================================================================
+
+ruyi_symtab_index_hashtable* ruyi_symtab_index_hashtable_create(void);
+
+void ruyi_symtab_index_hashtable_destroy(ruyi_symtab_index_hashtable *hash);
+
+UINT32 ruyi_symtab_index_hashtable_get_or_create(ruyi_symtab_index_hashtable *hash, const ruyi_unicode_string *name);
+
+BOOL ruyi_symtab_index_hashtable_get_by_name(const ruyi_symtab_index_hashtable *hash, const ruyi_unicode_string *name, UINT32 *out_index);
+
+// just return the reference of the data, please DO NOT free the data,
+// or you can use ruyi_unicode_string_copy_from(...) to copy the name data
+const ruyi_unicode_string* ruyi_symtab_index_hashtable_get_by_index(const ruyi_symtab_index_hashtable *hash, UINT32 index);
+
+// ================================================================
 
 ruyi_symtab_type ruyi_symtab_type_create(ruyi_ir_type ir_type, void *detail);
 

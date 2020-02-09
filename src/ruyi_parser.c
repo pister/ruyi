@@ -2417,12 +2417,7 @@ ruyi_error* return_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         goto return_statement_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_return_statement);
-    if (1 == ruyi_ast_child_length(expr_ast_list)) {
-        ruyi_ast_add_child(ast, ruyi_ast_get_child(expr_ast_list, 0));
-        ruyi_ast_destroy_without_child(expr_ast_list);
-    } else {
-        ruyi_ast_add_child(ast, expr_ast_list);
-    }
+    ruyi_ast_add_child(ast, expr_ast_list);
     *out_ast = ast;
     return NULL;
 return_statement_on_error:

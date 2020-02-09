@@ -630,22 +630,187 @@ static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type) {
     return NULL;
 }
 
-static ruyi_error* gen_stmt(ruyi_ast *ast_stmt, ruyi_vector *codes) {
-    ruyi_ast *ast0;
+typedef struct {
+    UINT64 *data;
+    UINT32 len;
+    UINT32 cap;
+} ruyi_ins_codes;
+
+typedef struct {
+    ruyi_symtab_function_define *func;
+    ruyi_ins_codes              *codes;
+} ruyi_cg_body_context;
+
+static
+ruyi_ins_codes* ruyi_ins_codes_create() {
+    UINT32 init_cap = 32;
+    ruyi_ins_codes *codes = (ruyi_ins_codes*)ruyi_mem_alloc(sizeof(ruyi_ins_codes));
+    codes->cap = init_cap;
+    codes->len = 0;
+    codes->data = (UINT64*)ruyi_mem_alloc(sizeof(UINT64) * codes->cap);
+    return codes;
+}
+
+static
+void ruyi_ins_codes_destroy(ruyi_ins_codes *codes) {
+    if (!codes) {
+        return;
+    }
+    if (codes->data) {
+        ruyi_mem_free(codes->data);
+        codes->data = NULL;
+    }
+    ruyi_mem_free(codes);
+}
+
+static
+UINT32 ruyi_ins_codes_add(ruyi_ins_codes *codes, ruyi_ir_ins ins, UINT32 val) {
+    UINT32 pos;
+    while (codes->len >= codes->cap) {
+        UINT32 new_cap = (UINT32)(codes->cap * 1.5 + 1);
+        UINT64 *new_data = (UINT64*)ruyi_mem_alloc(sizeof(UINT64) * new_cap);
+        memcpy(new_data, codes->data, sizeof(UINT64) * codes->cap);
+        ruyi_mem_free(codes->data);
+        codes->data = new_data;
+        codes->cap = new_cap;
+    }
+    pos = codes->len;
+    codes->data[codes->len++] = ruyi_ir_make_code(ins, val);
+    return pos;
+}
+
+
+static ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type);
+
+
+static ruyi_error* gen_return_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_ir_type *out_type) {
+    ruyi_error *err;
+    ruyi_ast *return_expr_list_ast;
+    UINT32 len = 0;
+    UINT32 i;
+    if (ruyi_ast_child_length(ast_stmt) > 0) {
+        return_expr_list_ast = ruyi_ast_get_child(ast_stmt, 0);
+        len = ruyi_ast_child_length(return_expr_list_ast);
+        for (i = 0; i < len; i++) {
+            if ((err = gen_stmt(context, ruyi_ast_get_child(return_expr_list_ast, i), out_type, NULL)) != NULL ) {
+                return err;
+            }
+        }
+    }
+    ruyi_ins_codes_add(context->codes, Ruyi_ir_Ret, len);
+    return NULL;
+}
+
+static ruyi_error* gen_binary_expr_with_cast(ruyi_ir_type left_type, ruyi_ir_type right_type, const ruyi_ast *op, ruyi_ins_codes *codes,
+                                             const ruyi_ast_type* ops, const ruyi_ir_ins *int64_ins, const ruyi_ir_ins *double_ins, UINT32 len) {
+    int i;
+    switch (left_type) {
+        case Ruyi_ir_type_Int64:
+            if (Ruyi_ir_type_Int64 == right_type) {
+                for (i = 0; i < len; i++) {
+                    if (ops[i] == op->type) {
+                        ruyi_ins_codes_add(codes, int64_ins[i], 0);
+                        break;
+                    }
+                }
+            } else if (Ruyi_ir_type_Double == right_type){
+                ruyi_ins_codes_add(codes, Ruyi_ir_I2f_1, 0);
+                for (i = 0; i < len; i++) {
+                    if (ops[i] == op->type) {
+                        ruyi_ins_codes_add(codes, double_ins[i], 0);
+                        break;
+                    }
+                }
+            } else {
+                return ruyi_error_misc("unsupport cast type to int64");
+            }
+            break;
+        case Ruyi_ir_type_Double:
+            if (Ruyi_ir_type_Int64 == right_type){
+                ruyi_ins_codes_add(codes, Ruyi_ir_I2f, 0);
+            }
+            for (i = 0; i < len; i++) {
+                if (ops[i] == op->type) {
+                    ruyi_ins_codes_add(codes, double_ins[i], 0);
+                    break;
+                }
+            }
+            break;
+        default:
+            return ruyi_error_misc("unknown left type: %d", left_type);
+    }
+    return NULL;
+}
+
+static ruyi_error* gen_additive_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type) {
+    ruyi_error *err;
+    UINT32 len = ruyi_ast_child_length(ast_stmt);
+    ruyi_ast *left;
+    ruyi_ast *right;
+    ruyi_ast *op;
+    ruyi_ir_type left_type, right_type;
+    const ruyi_ast_type ops[2] = {Ruyi_at_op_add, Ruyi_at_op_sub};
+    const ruyi_ir_ins int64_ins[2] = {Ruyi_ir_Iadd, Ruyi_ir_Isub};
+    const ruyi_ir_ins double_ins[2] = {Ruyi_ir_Fadd, Ruyi_ir_Fsub};
+    assert(3 == len);
+    left = ruyi_ast_get_child(ast_stmt, 0);
+    op = ruyi_ast_get_child(ast_stmt, 1);
+    right = ruyi_ast_get_child(ast_stmt, 2);
+    if ((err = gen_stmt(context, left, &left_type, NULL)) != NULL) {
+        return err;
+    }
+    if ((err = gen_stmt(context, right, &right_type, &left_type)) != NULL) {
+        return err;
+    }
+    return gen_binary_expr_with_cast(left_type, right_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
+}
+
+static ruyi_error* gen_multiplicative_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type) {
+    ruyi_error *err;
+    UINT32 len = ruyi_ast_child_length(ast_stmt);
+    ruyi_ast *left;
+    ruyi_ast *right;
+    ruyi_ast *op;
+    ruyi_ir_type left_type, right_type;
+    const ruyi_ast_type ops[3] = {Ruyi_at_op_mul, Ruyi_at_op_div, Ruyi_at_op_mod};
+    const ruyi_ir_ins int64_ins[3] = {Ruyi_ir_Imul, Ruyi_ir_Idiv, Ruyi_ir_Imod};
+    const ruyi_ir_ins double_ins[3] = {Ruyi_ir_Fadd, Ruyi_ir_Fsub, 0};
+    assert(3 == len);
+    left = ruyi_ast_get_child(ast_stmt, 0);
+    op = ruyi_ast_get_child(ast_stmt, 1);
+    right = ruyi_ast_get_child(ast_stmt, 2);
+    if ((err = gen_stmt(context, left, &left_type, NULL)) != NULL) {
+        return err;
+    }
+    if ((err = gen_stmt(context, right, &right_type, &left_type)) != NULL) {
+        return err;
+    }
+    return gen_binary_expr_with_cast(left_type, right_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
+}
+
+static ruyi_error* gen_load_from_variable_name(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type) {
+    // TODO
+    return NULL;
+}
+
+static ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type) {
     switch (ast_stmt->type) {
         case Ruyi_at_return_statement:
-            // return list or single ast
-            ast0 = ruyi_ast_get_child(ast_stmt, 0);
-            // TODO finish
-            break;
-            
+            return gen_return_stmt(context, ast_stmt, out_type);
+        case Ruyi_at_additive_expression:
+            return gen_additive_expression(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_multiplicative_expression:
+            return gen_multiplicative_expression(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_name:
+            // load from variable name
+            return gen_load_from_variable_name(context, ast_stmt, out_type, expect_type);
         default:
             break;
     }
     return NULL;
 }
 
-static ruyi_error* gen_func_body(ruyi_ast *ast_body, ruyi_vector *codes) {
+static ruyi_error* gen_func_body(ruyi_cg_body_context *context, ruyi_ast *ast_body) {
     ruyi_error* err;
     UINT32 len, i;
     ruyi_ast *ast_stmt;
@@ -654,7 +819,7 @@ static ruyi_error* gen_func_body(ruyi_ast *ast_body, ruyi_vector *codes) {
     len = ruyi_ast_child_length(ast_body);
     for (i = 0; i < len; i++) {
         ast_stmt = ruyi_ast_get_child(ast_body, i);
-        if ((err = gen_stmt(ast_stmt, codes)) != NULL) {
+        if ((err = gen_stmt(context, ast_stmt, NULL, NULL)) != NULL) {
             goto gen_func_body_error;
         }
     }
@@ -673,9 +838,10 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
     ruyi_ast *temp;
     ruyi_symtab_type the_type;
     ruyi_symtab_function_define *func = NULL;
-    ruyi_vector *codes = NULL;
+    ruyi_ins_codes *codes = NULL;
     UINT32 i, len;
     assert(ast);
+    // TODO symtab
     if (Ruyi_at_function_declaration == ast->type) {
         ast_name = ruyi_ast_get_child(ast, 0);
         ast_formal_params = ruyi_ast_get_child(ast, 1);
@@ -694,9 +860,9 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
         goto gen_global_func_define_on_error;
     }
     if (ast_name) {
-        func = ruyi_symtab_function_create((ruyi_unicode_string*)ast_name->data.ptr_value);
+        func = ruyi_symtab_function_create(symtab, (ruyi_unicode_string*)ast_name->data.ptr_value);
     } else {
-        func = ruyi_symtab_function_create(NULL);
+        func = ruyi_symtab_function_create(symtab, NULL);
     }
     // return types
     if (ast_return_type == NULL) {
@@ -731,8 +897,11 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
         ruyi_symtab_function_add_arg(func, (ruyi_unicode_string*)ast_name->data.ptr_value, the_type);
     }
     // body
-    codes = ruyi_vector_create();
-    gen_func_body(ast_body, codes);
+    codes = ruyi_ins_codes_create();
+    ruyi_cg_body_context context;
+    context.codes = codes;
+    context.func = func;
+    gen_func_body(&context, ast_body);
     
     ruyi_vector_add(global_functions, ruyi_value_ptr(func_create(func)));
     
@@ -743,7 +912,7 @@ gen_global_func_define_on_error:
         ruyi_symtab_function_destroy(func);
     }
     if (codes) {
-        ruyi_vector_destroy(codes);
+        ruyi_ins_codes_destroy(codes);
     }
     return err;
 }

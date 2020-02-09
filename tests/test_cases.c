@@ -893,6 +893,9 @@ void test_parser_function_return() {
     
     // return expression: a*10 + b
     temp_ast2 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_expr_list == temp_ast2->type);
+    assert(1 == ruyi_ast_child_length(temp_ast2));
+    temp_ast2 = ruyi_ast_get_child(temp_ast2, 0);
     assert(Ruyi_at_additive_expression == temp_ast2->type);
     assert(3 == ruyi_ast_child_length(temp_ast2));
     
@@ -936,6 +939,7 @@ void test_parser_function_if() {
     ruyi_ast *temp_ast = NULL;
     ruyi_ast *temp_ast2 = NULL;
     ruyi_ast *temp_ast3 = NULL;
+    ruyi_ast *temp_ast4 = NULL;
     ruyi_ast *ast_declarations;
     
     err = ruyi_parse_ast(reader, &ast);
@@ -1027,8 +1031,11 @@ void test_parser_function_if() {
     temp_ast2 = ruyi_ast_get_child(temp_ast2, 0);
     assert(1 == ruyi_ast_child_length(temp_ast2));
     temp_ast3 = ruyi_ast_get_child(temp_ast2, 0);
+    assert(Ruyi_at_expr_list == temp_ast3->type);
+    assert(1 == ruyi_ast_child_length(temp_ast3));
+    temp_ast3 = ruyi_ast_get_child(temp_ast3, 0);
     assert(Ruyi_at_integer == temp_ast3->type);
-    assert(100 == ruyi_ast_get_child(temp_ast2, 0)->data.int32_value);
+    assert(100 == temp_ast3->data.int32_value);
 
     // elseif (a > 50) { return 50; }
     temp_ast2 = ruyi_ast_get_child(temp_ast, 2);
@@ -1052,6 +1059,11 @@ void test_parser_function_if() {
     temp_ast3 = ruyi_ast_get_child(temp_ast3, 0);
     assert(Ruyi_at_return_statement == temp_ast3->type);
     assert(1 == ruyi_ast_child_length(temp_ast3));
+    
+    temp_ast3 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_expr_list == temp_ast3->type);
+    assert(1 == ruyi_ast_child_length(temp_ast3));
+    
     assert(Ruyi_at_integer == ruyi_ast_get_child(temp_ast3, 0)->type);
     assert(50 == ruyi_ast_get_child(temp_ast3, 0)->data.int32_value);
 
@@ -1079,9 +1091,12 @@ void test_parser_function_if() {
     temp_ast3 = ruyi_ast_get_child(temp_ast3, 0);
     assert(Ruyi_at_return_statement == temp_ast3->type);
     assert(1 == ruyi_ast_child_length(temp_ast3));
-    assert(Ruyi_at_name == ruyi_ast_get_child(temp_ast3, 0)->type);
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_expr_list == temp_ast4->type);
+    assert(1 == ruyi_ast_child_length(temp_ast4));
+    temp_ast4 = ruyi_ast_get_child(temp_ast4, 0);
     name = ruyi_unicode_string_init_from_utf8("a", 0);
-    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast3, 0)->data.ptr_value));
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast4->data.ptr_value));
     ruyi_unicode_string_destroy(name);
     
     // else { return b;}
@@ -1095,9 +1110,11 @@ void test_parser_function_if() {
     temp_ast3 = ruyi_ast_get_child(temp_ast3, 0);
     assert(Ruyi_at_return_statement == temp_ast3->type);
     assert(1 == ruyi_ast_child_length(temp_ast3));
-    assert(Ruyi_at_name == ruyi_ast_get_child(temp_ast3, 0)->type);
+    temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_expr_list == temp_ast4->type);
+    assert(1 == ruyi_ast_child_length(temp_ast4));
     name = ruyi_unicode_string_init_from_utf8("b", 0);
-    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast3, 0)->data.ptr_value));
+    assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)ruyi_ast_get_child(temp_ast4, 0)->data.ptr_value));
     ruyi_unicode_string_destroy(name);
     
     ruyi_ast_destroy(ast);
@@ -1194,6 +1211,8 @@ void test_parser_function_while() {
     assert(Ruyi_at_return_statement == temp_ast3->type);
     assert(1 == ruyi_ast_child_length(temp_ast3));
     temp_ast4 = ruyi_ast_get_child(temp_ast3, 0);
+    assert(Ruyi_at_expr_list == temp_ast4->type);
+    temp_ast4 = ruyi_ast_get_child(temp_ast4, 0);
     assert(Ruyi_at_name == temp_ast4->type);
     name = ruyi_unicode_string_init_from_utf8("a", 0);
     assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast4->data.ptr_value));
@@ -1811,6 +1830,9 @@ void test_parser_function_func_type(void) {
     assert(Ruyi_at_return_statement == temp_ast2->type);
     // func(b int) (int, long) { return a+b, 20 }
     temp_ast3 = ruyi_ast_get_child(temp_ast2, 0);
+    assert(Ruyi_at_expr_list == temp_ast3->type);
+    assert(1 == ruyi_ast_child_length(temp_ast3));
+    temp_ast3 = ruyi_ast_get_child(temp_ast3, 0);
     assert(Ruyi_at_anonymous_function_declaration == temp_ast3->type);
     assert(3 == ruyi_ast_child_length(temp_ast3));
     // func(b int)

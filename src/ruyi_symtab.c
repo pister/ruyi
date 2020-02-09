@@ -98,26 +98,9 @@ BOOL index_hashtable_get_by_name(const ruyi_symtab_index_hashtable *table, const
     return TRUE;
 }
 
-ruyi_function_scope* ruyi_symtab_function_scope_create(void) {
-    ruyi_function_scope *function_scope = (ruyi_function_scope *)ruyi_mem_alloc(sizeof(ruyi_function_scope));
-    function_scope->block_scope_stack = ruyi_vector_create();
-    return function_scope;
-}
-
-void ruyi_symtab_function_scope_destroy(ruyi_function_scope *function_scope) {
-    if (NULL == function_scope) {
-        return;
-    }
-    if (function_scope->block_scope_stack) {
-        ruyi_vector_destroy(function_scope->block_scope_stack);
-    }
-    ruyi_mem_free(function_scope);
-}
-
 ruyi_symtab* ruyi_symtab_create(void) {
     ruyi_symtab *symtab = (ruyi_symtab *)ruyi_mem_alloc(sizeof(ruyi_symtab));
     symtab->global_variables = index_hashtable_create();
-    symtab->function_scope = ruyi_symtab_function_scope_create();
     symtab->functions = ruyi_hashtable_create();
     symtab->constants = ruyi_hashtable_create();
     return symtab;
@@ -132,9 +115,6 @@ void ruyi_symtab_destroy(ruyi_symtab *symtab) {
     }
     if (symtab->functions) {
         ruyi_hashtable_destroy(symtab->functions);
-    }
-    if (symtab->function_scope) {
-        ruyi_symtab_function_scope_destroy(symtab->function_scope);
     }
     if (symtab->global_variables) {
         index_hashtable_destroy(symtab->global_variables);
@@ -155,7 +135,7 @@ ruyi_error* ruyi_symtab_add_global_var(ruyi_symtab *symtab, const ruyi_symtab_gl
     return index_hashtable_add(symtab->global_variables, var, out_index);
 }
 
-ruyi_symtab_function_define* ruyi_symtab_function_create(const ruyi_unicode_string *name) {
+ruyi_symtab_function_define* ruyi_symtab_function_create(ruyi_symtab *symtab, const ruyi_unicode_string *name) {
     ruyi_symtab_function_define *func = (ruyi_symtab_function_define*)ruyi_mem_alloc(sizeof(ruyi_symtab_function_define));
     func->name = name;
     if (name) {
@@ -163,6 +143,8 @@ ruyi_symtab_function_define* ruyi_symtab_function_create(const ruyi_unicode_stri
     } else {
         func->anonymous = TRUE;
     }
+    func->symtab = symtab;
+    func->func_symtab_scope = ruyi_symtab_function_scope_create();
     func->return_types = NULL;
     func->args_types = NULL;
     func->codes = ruyi_vector_create();
@@ -177,6 +159,9 @@ void ruyi_symtab_function_destroy(ruyi_symtab_function_define* func) {
     ruyi_unicode_string *name;
     if (!func) {
         return;
+    }
+    if (func->func_symtab_scope) {
+        ruyi_symtab_function_scope_destroy(func->func_symtab_scope);
     }
     if (func->return_types) {
         len = ruyi_vector_length(func->return_types);
@@ -221,7 +206,8 @@ void ruyi_symtab_function_add_arg(ruyi_symtab_function_define* func, const ruyi_
     ruyi_vector_add(func->args_types, ruyi_value_int32(type.ir_type));
     // detail
     ruyi_vector_add(func->args_types, ruyi_value_ptr(type.detail.uniptr));
-    // TODO to create name ==> index mapping ?
+    // create name ==> index mapping
+    ruyi_symtab_function_scope_get_or_create(func->func_symtab_scope, name);
 }
 
 
@@ -362,3 +348,167 @@ void ruyi_symtab_type_func_destroy(ruyi_symtab_type_func *func) {
     }
     ruyi_mem_free(func);
 }
+
+
+//
+
+ruyi_symtab_index_hashtable* ruyi_symtab_index_hashtable_create(void) {
+    ruyi_symtab_index_hashtable *hash = (ruyi_symtab_index_hashtable*)ruyi_mem_alloc(sizeof(ruyi_symtab_index_hashtable));
+    // index2var and name2index will lazy create
+    hash->index2var = NULL;
+    hash->name2index = NULL;
+    return hash;
+}
+
+void ruyi_symtab_index_hashtable_destroy(ruyi_symtab_index_hashtable *hash) {
+    UINT32 i, len;
+    ruyi_value value;
+    if (!hash) {
+        return;
+    }
+    if (hash->index2var) {
+        // free name data
+        len = ruyi_vector_length(hash->index2var);
+        for (i = 0; i < len; i++) {
+            ruyi_vector_get(hash->index2var, i, &value);
+            ruyi_unicode_string *name = (ruyi_unicode_string*)value.data.unicode_str;
+            ruyi_unicode_string_destroy(name);
+        }
+        // free vector self
+        ruyi_vector_destroy(hash->index2var);
+        hash->index2var = NULL;
+    }
+    if (hash->name2index) {
+        ruyi_hashtable_destroy(hash->name2index);
+        hash->name2index = NULL;
+    }
+    ruyi_mem_free(hash);
+}
+
+UINT32 ruyi_symtab_index_hashtable_get_or_create(ruyi_symtab_index_hashtable *hash, const ruyi_unicode_string *name) {
+    ruyi_unicode_string *copied_name;
+    ruyi_value value;
+    UINT32 new_index;
+    assert(hash);
+    if (!hash->name2index) {
+        hash->name2index = ruyi_hashtable_create();
+        hash->index2var = ruyi_vector_create();
+    }
+    if (ruyi_hashtable_get(hash->name2index, ruyi_value_unicode_str(name), &value)) {
+        // found it
+        return value.data.uint32_value;
+    }
+    // not found it, add new
+    copied_name = ruyi_unicode_string_copy_from(name);
+    new_index = ruyi_vector_length(hash->index2var);
+    ruyi_vector_add(hash->index2var, ruyi_value_unicode_str(copied_name));
+    ruyi_hashtable_put(hash->name2index, ruyi_value_unicode_str(copied_name), ruyi_value_uint32(new_index));
+    return new_index;
+}
+
+BOOL ruyi_symtab_index_hashtable_get_by_name(const ruyi_symtab_index_hashtable *hash, const ruyi_unicode_string *name, UINT32 *out_index) {
+    ruyi_value value;
+    assert(hash);
+    if (!out_index) {
+        return FALSE;
+    }
+    if (!hash->name2index) {
+        return FALSE;
+    }
+    if (ruyi_hashtable_get(hash->name2index, ruyi_value_unicode_str(name), &value)) {
+        *out_index = value.data.uint32_value;
+        return TRUE;
+    }
+    return FALSE;
+}
+
+const ruyi_unicode_string* ruyi_symtab_index_hashtable_get_by_index(const ruyi_symtab_index_hashtable *hash, UINT32 index) {
+    ruyi_value value;
+    assert(hash);
+    if (!hash->index2var) {
+        return NULL;
+    }
+    if (!ruyi_vector_get(hash->index2var, index, &value)) {
+        return NULL;
+    }
+    return value.data.unicode_str;
+}
+
+// ================== ruyi_function_scope ==================
+
+ruyi_function_scope* ruyi_symtab_function_scope_create(void) {
+    ruyi_function_scope *function_scope = (ruyi_function_scope *)ruyi_mem_alloc(sizeof(ruyi_function_scope));
+    function_scope->block_scope_stack = ruyi_list_create();
+    // first enter function
+    ruyi_symtab_function_scope_enter(function_scope);
+    return function_scope;
+}
+
+void ruyi_symtab_function_scope_destroy(ruyi_function_scope *function_scope) {
+    ruyi_list_item *item;
+    ruyi_symtab_index_hashtable *hash;
+    if (NULL == function_scope) {
+        return;
+    }
+    if (function_scope->block_scope_stack) {
+        item = function_scope->block_scope_stack->first;
+        while (item != function_scope->block_scope_stack->last) {
+            hash = (ruyi_symtab_index_hashtable *)item->value.data.ptr;
+            if (hash) {
+                ruyi_symtab_index_hashtable_destroy(hash);
+            }
+            item = item->next;
+        }
+        ruyi_list_destroy(function_scope->block_scope_stack);
+    }
+    ruyi_mem_free(function_scope);
+}
+
+void ruyi_symtab_function_scope_enter(ruyi_function_scope* scope) {
+    // lazy create ...
+    ruyi_list_add_last(scope->block_scope_stack, ruyi_value_ptr(NULL));
+}
+
+void ruyi_symtab_function_scope_leave(ruyi_function_scope* scope) {
+    ruyi_value last_value;
+    ruyi_symtab_index_hashtable *hash;
+    assert(scope);
+    if (!ruyi_list_remove_last(scope->block_scope_stack, &last_value)) {
+        return;
+    }
+    hash = (ruyi_symtab_index_hashtable *)last_value.data.ptr;
+    if (hash) {
+        ruyi_symtab_index_hashtable_destroy(hash);
+    }
+}
+
+UINT32 ruyi_symtab_function_scope_get_or_create(ruyi_function_scope* scope, const ruyi_unicode_string *name) {
+    ruyi_value top_value;
+    ruyi_symtab_index_hashtable *hash;
+    assert(scope);
+    if (!ruyi_list_get_last(scope->block_scope_stack, &top_value)) {
+        // NOT call: ruyi_symtab_function_scope_enter()
+        assert(0);
+    }
+    hash = (ruyi_symtab_index_hashtable *)top_value.data.ptr;
+    if (!hash) {
+        hash = ruyi_symtab_index_hashtable_create();
+        top_value.data.ptr = hash;
+    }
+    return ruyi_symtab_index_hashtable_get_or_create(hash, name);
+}
+
+BOOL ruyi_symtab_function_scope_get(ruyi_function_scope* scope, const ruyi_unicode_string *name, UINT32 *out_index) {
+    ruyi_value top_value;
+    ruyi_symtab_index_hashtable *hash;
+    assert(scope);
+    if (!ruyi_list_get_last(scope->block_scope_stack, &top_value)) {
+        return FALSE;
+    }
+    hash = (ruyi_symtab_index_hashtable *)top_value.data.ptr;
+    if (!hash) {
+        return FALSE;
+    }
+    return ruyi_symtab_index_hashtable_get_by_name(hash, name, out_index);
+}
+

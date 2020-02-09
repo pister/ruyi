@@ -87,8 +87,8 @@ typedef enum {
     Ruyi_ir_Invokesp = 150,
     Ruyi_ir_Invokenative,
     Ruyi_ir_Ret,
-    Ruyi_ir_Iret,
-    Ruyi_ir_Fret,
+    //Ruyi_ir_Iret,
+    //Ruyi_ir_Fret,
 } ruyi_ir_ins;
 
 typedef struct {
