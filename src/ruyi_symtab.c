@@ -104,7 +104,7 @@ ruyi_symtab* ruyi_symtab_create(void) {
     ruyi_symtab *symtab = (ruyi_symtab *)ruyi_mem_alloc(sizeof(ruyi_symtab));
     symtab->global_variables = index_hashtable_create();
     symtab->functions = ruyi_hashtable_create();
-    symtab->constants = ruyi_hashtable_create();
+    symtab->cp = ruyi_symtab_constants_pool_create();
     return symtab;
 }
 
@@ -112,9 +112,8 @@ void ruyi_symtab_destroy(ruyi_symtab *symtab) {
     if (NULL == symtab) {
         return;
     }
-    if (symtab->constants) {
-        // TODO free data
-        ruyi_hashtable_destroy(symtab->constants);
+    if (symtab->cp) {
+        ruyi_symtab_constants_pool_destroy(symtab->cp);
     }
     if (symtab->functions) {
         // TODO free data

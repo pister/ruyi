@@ -138,8 +138,8 @@ UINT32 ruyi_symtab_constants_pool_get_or_add_unicode(ruyi_symtab_constants_pool 
 // interface (global): todo
 typedef struct {
     ruyi_symtab_index_hashtable *global_variables;
-    ruyi_hashtable *functions;
-    ruyi_hashtable *constants;
+    ruyi_hashtable              *functions;
+    ruyi_symtab_constants_pool  *cp;
 } ruyi_symtab;
 
 typedef struct {

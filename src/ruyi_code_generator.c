@@ -707,8 +707,8 @@ static ruyi_error* gen_return_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_
     return NULL;
 }
 
-static ruyi_error* gen_binary_expr_with_cast(ruyi_ir_type left_type, ruyi_ir_type right_type, const ruyi_ast *op, ruyi_ins_codes *codes,
-                                             const ruyi_ast_type* ops, const ruyi_ir_ins *int64_ins, const ruyi_ir_ins *double_ins, UINT32 len) {
+static ruyi_error* gen_binary_expr_with_cast(ruyi_ir_type left_type, ruyi_ir_type right_type, ruyi_ir_type *out_type, const ruyi_ast *op,
+                   ruyi_ins_codes *codes, const ruyi_ast_type* ops, const ruyi_ir_ins *int64_ins, const ruyi_ir_ins *double_ins, UINT32 len) {
     int i;
     switch (left_type) {
         case Ruyi_ir_type_Byte:
@@ -723,6 +723,9 @@ static ruyi_error* gen_binary_expr_with_cast(ruyi_ir_type left_type, ruyi_ir_typ
                         break;
                     }
                 }
+                if (out_type) {
+                    *out_type = Ruyi_ir_type_Int64;
+                }
             } else if (Ruyi_ir_type_Float64 == right_type){
                 ruyi_ins_codes_add(codes, Ruyi_ir_I2f_1, 0);
                 for (i = 0; i < len; i++) {
@@ -730,6 +733,9 @@ static ruyi_error* gen_binary_expr_with_cast(ruyi_ir_type left_type, ruyi_ir_typ
                         ruyi_ins_codes_add(codes, double_ins[i], 0);
                         break;
                     }
+                }
+                if (out_type) {
+                    *out_type = Ruyi_ir_type_Float64;
                 }
             } else {
                 return ruyi_error_misc("unsupport cast type to int64");
@@ -745,6 +751,9 @@ static ruyi_error* gen_binary_expr_with_cast(ruyi_ir_type left_type, ruyi_ir_typ
                     ruyi_ins_codes_add(codes, double_ins[i], 0);
                     break;
                 }
+            }
+            if (out_type) {
+                *out_type = Ruyi_ir_type_Float64;
             }
             break;
         default:
@@ -773,7 +782,7 @@ static ruyi_error* gen_additive_expression(ruyi_cg_body_context *context, ruyi_a
     if ((err = gen_stmt(context, right, &right_type, &left_type)) != NULL) {
         return err;
     }
-    return gen_binary_expr_with_cast(left_type, right_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
+    return gen_binary_expr_with_cast(left_type, right_type, out_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
 }
 
 static ruyi_error* gen_multiplicative_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type) {
@@ -796,7 +805,7 @@ static ruyi_error* gen_multiplicative_expression(ruyi_cg_body_context *context, 
     if ((err = gen_stmt(context, right, &right_type, &left_type)) != NULL) {
         return err;
     }
-    return gen_binary_expr_with_cast(left_type, right_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
+    return gen_binary_expr_with_cast(left_type, right_type, out_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
 }
 
 static ruyi_error* gen_load_from_variable_name(ruyi_cg_body_context *context, const ruyi_unicode_string *name, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type) {
@@ -827,8 +836,76 @@ static ruyi_error* gen_load_from_variable_name(ruyi_cg_body_context *context, co
     return ruyi_error_misc("can not find variable %s", name_buf);
 }
 
-static ruyi_error* gen_load_int64(ruyi_cg_body_context *context, UINT64 value) {
-    
+static ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type) {
+    UINT32 index;
+    if (expect_type != NULL) {
+        switch (*expect_type) {
+            case Ruyi_ir_type_Byte:
+            case Ruyi_ir_type_Rune:
+            case Ruyi_ir_type_Int16:
+            case Ruyi_ir_type_Int32:
+            case Ruyi_ir_type_Int64:
+                {
+                    switch (value) {
+                        case 0:
+                            ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst_0, 0);
+                            break;
+                        case 1:
+                            ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst_1, 0);
+                            break;
+                        case -1:
+                            ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst_m1, 0);
+                            break;
+                        default:
+                            index = ruyi_symtab_constants_pool_get_or_add_int64(context->symtab->cp, value);
+                            ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst, index);
+                            break;
+                    }
+                    if (out_type != NULL) {
+                        *out_type = Ruyi_ir_type_Int64;
+                    }
+                }
+                break;
+            case Ruyi_ir_type_Float32:
+            case Ruyi_ir_type_Float64:
+                {
+                    switch (value) {
+                        case 0:
+                            ruyi_ins_codes_add(context->codes, Ruyi_ir_Fconst_0, 0);
+                            break;
+                        case 1:
+                            ruyi_ins_codes_add(context->codes, Ruyi_ir_Fconst_1, 0);
+                            break;
+                        case -1:
+                            ruyi_ins_codes_add(context->codes, Ruyi_ir_Fconst_m1, 0);
+                            break;
+                        default:
+                            index = ruyi_symtab_constants_pool_get_or_add_float64(context->symtab->cp, (FLOAT64)value);
+                            ruyi_ins_codes_add(context->codes, Ruyi_ir_Fconst, index);
+                            break;
+                    }
+                    if (out_type != NULL) {
+                        *out_type = Ruyi_ir_type_Float64;
+                    }
+                }
+                break;
+            default:
+                return ruyi_error_misc("unsupport ");
+        }
+        
+    } else {
+        index = ruyi_symtab_constants_pool_get_or_add_int64(context->symtab->cp, value);
+        ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst, index);
+        if (out_type != NULL) {
+            *out_type = Ruyi_ir_type_Int64;
+        }
+    }
+    return NULL;
+}
+
+static
+ruyi_error* gen_var_declaration(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_ir_type *out_type, const ruyi_ir_type *expect_type) {
+    // TODO
     return NULL;
 }
 
@@ -844,7 +921,9 @@ static ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, r
             // load from variable name
             return gen_load_from_variable_name(context, (const ruyi_unicode_string *)ast_stmt->data.ptr_value, out_type, expect_type);
         case Ruyi_at_integer:
-            
+            return gen_integer(context, ast_stmt->data.int32_value, out_type, expect_type);
+        case Ruyi_at_var_declaration:
+            return gen_var_declaration(context, ast_stmt, out_type, expect_type);
         default:
             break;
     }
