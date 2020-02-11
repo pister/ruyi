@@ -65,7 +65,6 @@ ruyi_error* index_hashtable_add(ruyi_symtab_index_hashtable *table, const ruyi_s
 
     var_copied = ruyi_mem_alloc(sizeof(ruyi_symtab_variable));
     var_copied->type = var->type;
-    var_copied->var_size = var->var_size;
     var_copied->name = ruyi_unicode_string_copy_from(var->name);
     var_copied->index = index;
     var_copied->scope_type = var->scope_type;
@@ -94,10 +93,18 @@ BOOL index_hashtable_get_by_name(const ruyi_symtab_index_hashtable *table, const
     assert(var);
     out_var->index = var->index;
     out_var->type = var->type;
-    out_var->var_size = var->var_size;
     out_var->scope_type = var->scope_type;
     // name will not be returned because caller knows the name.
     return TRUE;
+}
+
+static
+ruyi_symtab_variable* index_hashtable_get_variable(const ruyi_symtab_index_hashtable *table, UINT32 index) {
+    ruyi_value item_value;
+    if (!ruyi_vector_get(table->index2var, index, &item_value)) {
+        return NULL;
+    }
+    return (ruyi_symtab_variable* )item_value.data.ptr;
 }
 
 ruyi_symtab* ruyi_symtab_create(void) {
@@ -430,6 +437,26 @@ BOOL ruyi_symtab_function_scope_get(ruyi_function_scope* scope, const ruyi_unico
     }
     return FALSE;
 }
+
+ruyi_symtab_variable* ruyi_symtab_function_scope_get_var(ruyi_function_scope* scope, UINT32 index) {
+    ruyi_symtab_index_hashtable *table;
+    ruyi_list_item *item;
+    ruyi_symtab_variable *var;
+    assert(scope);
+    item = scope->block_scope_stack->last;
+    while (item) {
+        table = (ruyi_symtab_index_hashtable *)item->value.data.ptr;
+        if (table) {
+            var = index_hashtable_get_variable(table, index);
+            if (var) {
+                return var;
+            }
+        }
+        item = item->prev;
+    }
+    return NULL;
+}
+
 // =====================================================================
 
 ruyi_symtab_constant *ruyi_symtab_constant_int64(UINT32 index, INT64 value) {

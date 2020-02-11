@@ -44,6 +44,7 @@ struct ruyi_symtab_type_func_;
 
 typedef struct {
     ruyi_ir_type ir_type;
+    UINT32 size;
     union {
         void *uniptr;
         struct ruyi_symtab_type_object_  *object;
@@ -87,7 +88,6 @@ typedef struct {
 
 typedef struct {
     UINT32                  index;
-    UINT32                  var_size;
     ruyi_symtab_type        type;
     ruyi_symtab_scope_type  scope_type;
     const ruyi_unicode_string *name;
@@ -227,6 +227,10 @@ void ruyi_symtab_function_scope_leave(ruyi_function_scope* scope);
 ruyi_error* ruyi_symtab_function_scope_add_var(ruyi_function_scope* scope, const ruyi_symtab_variable *var, UINT32 *out_index);
 
 BOOL ruyi_symtab_function_scope_get(ruyi_function_scope* scope, const ruyi_unicode_string *name, ruyi_symtab_variable *out_var);
+
+// get the Pointer reference from scope, please DO NOT release the return value
+ruyi_symtab_variable* ruyi_symtab_function_scope_get_var(ruyi_function_scope* scope, UINT32 index);
+
 
 // ====================================================
 

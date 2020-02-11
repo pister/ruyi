@@ -2049,7 +2049,8 @@ ruyi_error* variable_declaration_tail(ruyi_lexer_reader *reader, ruyi_ast **out_
     if (type_ast != NULL) {
         ruyi_ast_add_child(var_declare_ast, type_ast);
     } else {
-        ruyi_ast_add_child(var_declare_ast, NULL);
+        ruyi_ast_add_child(var_declare_ast, ruyi_ast_create(Ruyi_at_var_declaration_auto_type));
+        // ruyi_ast_add_child(var_declare_ast, NULL);
     }
     
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_ASSIGN, &token1)) {

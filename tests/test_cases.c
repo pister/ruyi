@@ -1965,7 +1965,7 @@ void test_cg_package_import_global_vars() {
 
 void test_cg_funcs() {
     const char* src = "package bb.cc; import a2; \n c2 := 10; func f1(a1 int, a2 long) (int, int) { return a1*2 + a2, 12; } \n"
-                        "func f2(arg1 int, arg2 long) (long, int) { c := arg2; return arg1 + c, 20; }";
+                        "func f2(arg1 int, arg2 long) (long, int) { c := arg2 *2; return arg1 + c, 20; }";
     ruyi_cg_file_function *func;
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -1990,6 +1990,8 @@ void test_cg_funcs() {
     assert(0 == memcmp("bb.cc", ir_file->package, ir_file->package_size));
 
     assert(2 == ir_file->func_count);
+    
+    
     // 1st function
     func = ir_file->func[0];
     // name
@@ -2005,6 +2007,9 @@ void test_cg_funcs() {
     assert(Ruyi_ir_type_Int32 == func->argument_types[0]);
     assert(Ruyi_ir_type_Int64 == func->argument_types[1]);
     // TODO
+    
+    
+    // 2nd function
     
     ruyi_cg_file_destroy(ir_file);
 }
