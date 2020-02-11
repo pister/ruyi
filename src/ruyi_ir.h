@@ -107,4 +107,6 @@ UINT64 ruyi_ir_make_code(ruyi_ir_ins ins, UINT32 val);
 
 void ruyi_ir_parse_code(UINT64 code, ruyi_ir_ins *ins_out, UINT32 *val_out);
 
+BOOL ruyi_ir_code_desc(UINT64 code, char *name, UINT32 name_len, UINT32 *val_out, BOOL *has_second);
+
 #endif /* ruyi_ir_h */

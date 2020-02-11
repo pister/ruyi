@@ -31,7 +31,7 @@ static void init_ins_tables() {
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Dup, "dup", FALSE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Pop, "pop", FALSE, FALSE, -1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Push, "push", TRUE, FALSE, 1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Push, "load", TRUE, FALSE, 1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Load, "load", TRUE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Store, "store", TRUE, FALSE, -1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Jmp, "jmp", TRUE, TRUE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Je, "je", TRUE, TRUE, -1);
@@ -136,4 +136,26 @@ void ruyi_ir_parse_code(UINT64 code, ruyi_ir_ins *ins_out, UINT32 *val_out) {
     if (val_out) {
         *val_out = (UINT32)(0x00000000ffffffff & code);
     }
+}
+
+static UINT32 ruyi_ir_min(UINT32 a, UINT32 b) {
+    return a < b ? a : b;
+}
+
+BOOL ruyi_ir_code_desc(UINT64 code, char *name, UINT32 name_len, UINT32 *val_out, BOOL *has_second) {
+    ruyi_ir_ins ins;
+    UINT32 val;
+    ruyi_ir_ins_detail detai;
+    ruyi_ir_parse_code(code, &ins, &val);
+    if (!ruyi_ir_get_ins_detail(ins, &detai)) {
+        return FALSE;
+    }
+    if (val_out) {
+        *val_out = val;
+    }
+    if (has_second) {
+        *has_second = detai.has_second;
+    }
+    strncpy(name, detai.name, ruyi_ir_min(RUYI_IR_INS_NAME_LENGTH, name_len-1));
+    return TRUE;
 }

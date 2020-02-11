@@ -298,6 +298,16 @@ static ruyi_cg_file_function* func_create(const ruyi_symtab_function_define *sym
         }
     }
     
+    // codes
+    func->codes_size = symtab_func->codes_size;
+    if (func->codes_size > 0) {
+        func->codes = (UINT64 *)ruyi_mem_alloc(sizeof(UINT64) * func->codes_size);
+        memcpy(func->codes, symtab_func->codes, sizeof(UINT64) * func->codes_size);
+    } else {
+        func->codes = NULL;
+    }
+    
+    
     // TODO
     return func;
 }
@@ -565,8 +575,8 @@ typedef struct {
 
 static
 ruyi_ins_codes* ruyi_ins_codes_create() {
-    UINT32 init_cap = 32;
-    ruyi_ins_codes *codes = (ruyi_ins_codes*)ruyi_mem_alloc(sizeof(ruyi_ins_codes));
+    const UINT32 init_cap = 32;
+    ruyi_ins_codes *codes = (ruyi_ins_codes*)ruyi_mem_alloc(sizeof(UINT64) * init_cap);
     codes->cap = init_cap;
     codes->len = 0;
     codes->data = (UINT64*)ruyi_mem_alloc(sizeof(UINT64) * codes->cap);
@@ -785,6 +795,7 @@ static ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi
                     }
                     if (out_type != NULL) {
                         out_type->ir_type = Ruyi_ir_type_Int64;
+                        out_type->size = 8;
                         out_type->detail.uniptr = NULL;
                     }
                 }
@@ -809,6 +820,7 @@ static ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi
                     }
                     if (out_type != NULL) {
                         out_type->ir_type = Ruyi_ir_type_Float64;
+                        out_type->size = 8;
                         out_type->detail.uniptr = NULL;
                     }
                 }
@@ -822,6 +834,7 @@ static ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi
         ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst, index);
         if (out_type != NULL) {
             out_type->ir_type = Ruyi_ir_type_Int64;
+            out_type->size = 8;
             out_type->detail.uniptr = NULL;
         }
     }
@@ -928,7 +941,7 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
     ruyi_ast *temp;
     ruyi_symtab_type the_type;
     ruyi_symtab_function_define *func = NULL;
-    ruyi_ins_codes *codes = NULL;
+    ruyi_ins_codes *ins_codes = NULL;
     UINT32 i, len;
     ruyi_symtab_variable var;
     assert(ast);
@@ -989,14 +1002,23 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
         ruyi_symtab_function_add_arg(func, &var);
     }
     // func body
-    codes = ruyi_ins_codes_create();
+    ins_codes = ruyi_ins_codes_create();
     ruyi_cg_body_context context;
-    context.codes = codes;
+    context.codes = ins_codes;
     context.func = func;
     context.symtab = symtab;
     if ((err = gen_func_body(&context, ast_body)) != NULL) {
         goto gen_global_func_define_on_error;
     }
+    
+    func->codes_size = ins_codes->len;
+    if (ins_codes->len > 0) {
+        func->codes = (UINT64 *) ruyi_mem_alloc(sizeof(UINT64) * ins_codes->len);
+        memcpy(func->codes, ins_codes->data, sizeof(UINT64) * ins_codes->len);
+    } else {
+        func->codes = NULL;
+    }
+    
     ruyi_vector_add(global_functions, ruyi_value_ptr(func_create(func)));
     
     // TODO free func ???
@@ -1005,10 +1027,27 @@ gen_global_func_define_on_error:
     if (func) {
         ruyi_symtab_function_destroy(func);
     }
-    if (codes) {
-        ruyi_ins_codes_destroy(codes);
+    if (ins_codes) {
+        ruyi_ins_codes_destroy(ins_codes);
     }
     return err;
+}
+
+static BYTE* create_bytes_data_from_unicode(const ruyi_unicode_string *str, UINT32 *out_len) {
+    ruyi_bytes_string* bytes_string;
+    char *bytes;
+    if (!str) {
+        return NULL;
+    }
+    bytes_string = ruyi_unicode_string_encode_utf8(str);
+    bytes = (BYTE *)ruyi_mem_alloc(bytes_string->length + 1);
+    memcmp(bytes, bytes_string->str, bytes_string->length);
+    ruyi_unicode_bytes_string_destroy(bytes_string);
+    bytes[bytes_string->length] = '\0';
+    if (out_len) {
+        *out_len = bytes_string->length + 1;
+    }
+    return bytes;
 }
 
 static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *ir_file) {
@@ -1019,6 +1058,9 @@ static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_
     ruyi_vector *global_functions = NULL;
     ruyi_vector *global_classes = NULL;
     ruyi_value temp_value;
+    ruyi_symtab_constant *c;
+    ruyi_cg_file_const_pool *cfcp;
+    UINT32 c_len;
     if (!ast) {
         return NULL;
     }
@@ -1084,7 +1126,41 @@ static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_
         ruyi_vector_destroy(global_functions);
     }
     
-   
+    // constant pool
+    if (symtab->cp && symtab->cp->index2value) {
+        len = ruyi_vector_length(symtab->cp->index2value);
+        ir_file->cp_count = len;
+        ir_file->cp = (ruyi_cg_file_const_pool**)ruyi_mem_alloc(sizeof(ruyi_cg_file_const_pool*) * len);
+        for (i = 0; i < len; i++) {
+            ruyi_vector_get(symtab->cp->index2value, i, &temp_value);
+            c = (ruyi_symtab_constant *)temp_value.data.ptr;
+            cfcp = (ruyi_cg_file_const_pool*) ruyi_mem_alloc(sizeof(ruyi_cg_file_const_pool));
+            cfcp->index = i;
+            cfcp->type = c->type;
+            
+            ir_file->cp[i] = cfcp;
+            switch (c->type) {
+                case Ruyi_ir_type_Int64:
+                    cfcp->value_size = 8;
+                    cfcp->value.int64_value = c->data.int64_value;
+                    break;
+                case Ruyi_ir_type_Float64:
+                    cfcp->value_size = 8;
+                    cfcp->value.float64_value = c->data.float64_value;
+                    break;
+                case Ruyi_ir_type_String:
+                    cfcp->value.str_value = create_bytes_data_from_unicode((const ruyi_unicode_string*)c->data.uncode_str, &c_len);
+                    cfcp->value_size = c_len;
+                    break;
+                default:
+                    err = ruyi_error_misc("unsupport constant pool type");
+                    goto gen_global_on_error;
+            }
+        }
+    } else {
+        ir_file->cp_count = 0;
+        ir_file->cp = NULL;
+    }
     
     // TODO fill back to ir_file
    

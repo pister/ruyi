@@ -1971,6 +1971,10 @@ void test_cg_funcs() {
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_error *err = NULL;
     ruyi_ast *ast = NULL;
+    char ins_name[16];
+    UINT32 ins_value;
+    UINT32 i, len;
+    BOOL has_second;
     err = ruyi_parse_ast(reader, &ast);
     ruyi_lexer_reader_close(reader);
     if (err != NULL) {
@@ -2006,10 +2010,39 @@ void test_cg_funcs() {
     assert(2 == func->argument_size);
     assert(Ruyi_ir_type_Int32 == func->argument_types[0]);
     assert(Ruyi_ir_type_Int64 == func->argument_types[1]);
-    // TODO
     
+    
+    // TODO
+    len = func->codes_size;
+    for (i = 0; i < len; i++) {
+        if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
+            assert(0);
+        }
+        if (has_second) {
+            printf("%s %d\n", ins_name, ins_value);
+        } else {
+            printf("%s\n", ins_name);
+        }
+    }
+   // func->codes
+   
+    
+    // TODO assert constant pool etc...
     
     // 2nd function
+    func = ir_file->func[1];
+    printf("============func2==================\n");
+    len = func->codes_size;
+    for (i = 0; i < len; i++) {
+        if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
+            assert(0);
+        }
+        if (has_second) {
+            printf("%s %d\n", ins_name, ins_value);
+        } else {
+            printf("%s\n", ins_name);
+        }
+    }
     
     ruyi_cg_file_destroy(ir_file);
 }

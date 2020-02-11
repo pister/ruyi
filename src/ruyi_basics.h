@@ -112,5 +112,4 @@ typedef INT32 WIDE_CHAR;
 #define RUYI_MAX_INT16 ((1 << 15) - 1)
 
 
-
 #endif /* ruyi_types_h */
