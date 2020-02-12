@@ -1916,7 +1916,7 @@ void test_cg_ir() {
     assert(0 == strcmp("isub", detail.name));
     assert(detail.has_second == FALSE);
     assert(detail.may_jump == FALSE);
-    assert(detail.operand == -1);
+    assert(detail.operand == 0);
 }
 
 void test_cg_package_import_global_vars() {
@@ -1972,7 +1972,7 @@ void test_cg_funcs() {
     ruyi_error *err = NULL;
     ruyi_ast *ast = NULL;
     char ins_name[16];
-    UINT32 ins_value;
+    UINT16 ins_value;
     UINT32 i, len;
     BOOL has_second;
     err = ruyi_parse_ast(reader, &ast);
@@ -2004,14 +2004,14 @@ void test_cg_funcs() {
     // return type
     assert(2 == func->return_size);
     assert(Ruyi_ir_type_Int32 == func->return_types[0]);
-    assert(Ruyi_ir_type_Int32 == func->return_types[0]);
+    assert(Ruyi_ir_type_Int32 == func->return_types[1]);
 
     // argments
     assert(2 == func->argument_size);
     assert(Ruyi_ir_type_Int32 == func->argument_types[0]);
     assert(Ruyi_ir_type_Int64 == func->argument_types[1]);
     
-    
+    /*
     // TODO
     len = func->codes_size;
     for (i = 0; i < len; i++) {
@@ -2025,7 +2025,6 @@ void test_cg_funcs() {
         }
     }
    // func->codes
-   
     
     // TODO assert constant pool etc...
     
@@ -2043,6 +2042,74 @@ void test_cg_funcs() {
             printf("%s\n", ins_name);
         }
     }
+    */
+    
+    ruyi_cg_file_destroy(ir_file);
+}
+
+void test_cg_funcs2() {
+    const char* src = "package bb.cc; import a2;  c2 := 10; func sum(n int) int"
+    " { s := 0; i := 0; while (i <= n) { s = s + i; i = i+ 1;} return s; } \n";
+    ruyi_cg_file_function *func;
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    char ins_name[16];
+    UINT16 ins_value;
+    UINT32 i, len;
+    BOOL has_second;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_cg_file *ir_file;
+    err = ruyi_cg_generate(ast, &ir_file);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_ast_destroy(ast);
+    assert(5 == ir_file->package_size);
+    assert(0 == memcmp("bb.cc", ir_file->package, ir_file->package_size));
+    
+    assert(1 == ir_file->func_count);
+    
+    
+    // 1st function
+    func = ir_file->func[0];
+    // name
+    assert(3 == func->name_size);
+    assert(0 == strcmp("sum", (const char*)func->name));
+    // return type
+    assert(1 == func->return_size);
+    assert(Ruyi_ir_type_Int32 == func->return_types[0]);
+    
+    // argments
+    assert(1 == func->argument_size);
+    assert(Ruyi_ir_type_Int32 == func->argument_types[0]);
+    
+    
+    // TODO
+    len = func->codes_size;
+    for (i = 0; i < len; i++) {
+        if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
+            assert(0);
+        }
+        if (has_second) {
+            printf("%d: %s %d\n", i, ins_name, ins_value);
+        } else {
+            printf("%d: %s\n", i, ins_name);
+        }
+    }
+    // func->codes
+    
+    
+    
     
     ruyi_cg_file_destroy(ir_file);
 }
@@ -2084,6 +2151,7 @@ void run_test_cases_cg() {
     test_cg_ir();
     test_cg_package_import_global_vars();
     test_cg_funcs();
+    test_cg_funcs2();
 }
 
 void run_test_cases(void) {

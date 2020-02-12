@@ -21,54 +21,66 @@ static void put_ins_detail(ruyi_hashtable *ins_table, ruyi_hashtable *ins_name_t
     temp->has_second = has_second;
     temp->may_jump = may_jump;
     temp->operand = operand;
-    ruyi_hashtable_put(ins_table, ruyi_value_int32(ins), ruyi_value_ptr(temp));
-    ruyi_hashtable_put(ins_name_table, ruyi_value_str(temp->name), ruyi_value_int32(ins));
+    ruyi_hashtable_put(ins_table, ruyi_value_int16(ins), ruyi_value_ptr(temp));
+    ruyi_hashtable_put(ins_name_table, ruyi_value_str(temp->name), ruyi_value_int16(ins));
 }
 
 static void init_ins_tables() {
     g_ins_table = ruyi_hashtable_create();
     g_ins_name_table = ruyi_hashtable_create();
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Dup, "dup", FALSE, FALSE, 1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Pop, "pop", FALSE, FALSE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Pop, "pop", FALSE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Push, "push", TRUE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Load, "load", TRUE, FALSE, 1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Store, "store", TRUE, FALSE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Store, "store", TRUE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Jmp, "jmp", TRUE, TRUE, 0);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Je, "je", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Jne, "jne", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jgt, "i_jgt", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jget, "i_jget", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jlt, "i_jlt", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jlet, "i_jlet", TRUE, TRUE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Je, "je", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Jne, "jne", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jgt, "i_jgt", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jget, "i_jget", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jlt, "i_jlt", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jlet, "i_jlet", TRUE, TRUE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Getglb, "getglb", TRUE, FALSE, 1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Setglb, "setglb", TRUE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iadd, "iadd", FALSE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Isub, "isub", FALSE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Idiv, "idiv", FALSE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Imul, "imul", FALSE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Imod, "imod", FALSE, FALSE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Setglb, "setglb", TRUE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iadd, "iadd", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Isub, "isub", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Idiv, "idiv", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Imul, "imul", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Imod, "imod", FALSE, FALSE, 0);
+    
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Icmp_gt, "icmp_gt", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Icmp_lt, "icmp_lt", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Icmp_gte, "icmp_gte", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Icmp_lte, "icmp_lte", FALSE, FALSE, 0);
+
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iconst, "iconst", TRUE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iconst_0, "iconst_0", FALSE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iconst_1, "iconst_1", FALSE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iconst_m1, "iconst_m1", FALSE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iinc, "iinc", FALSE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Idec, "idec", FALSE, FALSE, 0);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fadd, "fadd", FALSE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fsub, "fsub", FALSE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fmul, "fmul", FALSE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fdiv, "fdiv", FALSE, FALSE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fadd, "fadd", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fsub, "fsub", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fmul, "fmul", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fdiv, "fdiv", FALSE, FALSE, 0);
+    
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fcmp_gt, "fcmp_gt", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fcmp_lt, "fcmp_lt", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fcmp_gte, "fcmp_gte", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fcmp_lte, "fcmp_lte", FALSE, FALSE, 0);
+    
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fconst, "fconst", TRUE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fconst_0, "fconst_0", FALSE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fconst_1, "fconst_1", FALSE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fconst_m1, "fconst_m1", FALSE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Finc, "finc", FALSE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fdec, "fdec", FALSE, FALSE, 0);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F_jgt, "f_jgt", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F_jget, "f_jget", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F_jlt, "f_jlt", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F_jlet, "f_jlet", TRUE, TRUE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iand, "iand", FALSE, FALSE, -1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Ior, "ior", FALSE, FALSE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F_jgt, "f_jgt", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F_jget, "f_jget", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F_jlt, "f_jlt", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F_jlet, "f_jlet", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iand, "iand", FALSE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Ior, "ior", FALSE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I2f, "i2f", FALSE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_F2i, "f2i", FALSE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I2f_1, "f2i_1", FALSE, FALSE, 0);
@@ -76,7 +88,7 @@ static void init_ins_tables() {
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_LeaGlb, "leaglb", TRUE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_LeaLocal, "lealocal", TRUE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Getav, "getav", TRUE, FALSE, 1);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Setav, "setav", TRUE, FALSE, -1);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Setav, "setav", TRUE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Invokesp, "invokesp", TRUE, TRUE, 0); // operand count dependency on arguments
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Invokenative, "invokenative", TRUE, TRUE, 0); // operand count dependency on arguments
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Ret, "ret", TRUE, FALSE, 0);
@@ -95,7 +107,7 @@ BOOL ruyi_ir_get_ins_detail(ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out)
     if (!ins_detail_out) {
         return FALSE;
     }
-    if (!ruyi_hashtable_get(g_ins_table, ruyi_value_int32(ins), &value)) {
+    if (!ruyi_hashtable_get(g_ins_table, ruyi_value_int16(ins), &value)) {
         return FALSE;
     }
     found_value = (ruyi_ir_ins_detail*)value.data.ptr;
@@ -122,19 +134,19 @@ BOOL ruyi_ir_get_ins_code(const char *name, ruyi_ir_ins *ins_code_out) {
     return TRUE;
 }
 
-UINT64 ruyi_ir_make_code(ruyi_ir_ins ins, UINT32 val) {
-    UINT64 code = (UINT64)ins;
-    code = code << 32;
-    code = code | (0x00000000ffffffff & (UINT64)(val));
+UINT32 ruyi_ir_make_code(ruyi_ir_ins ins, UINT16 val) {
+    UINT32 code = (UINT32)ins;
+    code = code << 16;
+    code = code | (0x0000ffff & (UINT32)(val));
     return code;
 }
 
-void ruyi_ir_parse_code(UINT64 code, ruyi_ir_ins *ins_out, UINT32 *val_out) {
+void ruyi_ir_parse_code(UINT32 code, ruyi_ir_ins *ins_out, UINT16 *val_out) {
     if (ins_out) {
-        *ins_out = (UINT32)(code >> 32);
+        *ins_out = (UINT16)(code >> 16);
     }
     if (val_out) {
-        *val_out = (UINT32)(0x00000000ffffffff & code);
+        *val_out = (UINT16)(0x0000ffff & code);
     }
 }
 
@@ -142,9 +154,9 @@ static UINT32 ruyi_ir_min(UINT32 a, UINT32 b) {
     return a < b ? a : b;
 }
 
-BOOL ruyi_ir_code_desc(UINT64 code, char *name, UINT32 name_len, UINT32 *val_out, BOOL *has_second) {
+BOOL ruyi_ir_code_desc(UINT32 code, char *name, UINT32 name_len, UINT16 *val_out, BOOL *has_second) {
     ruyi_ir_ins ins;
-    UINT32 val;
+    UINT16 val;
     ruyi_ir_ins_detail detai;
     ruyi_ir_parse_code(code, &ins, &val);
     if (!ruyi_ir_get_ins_detail(ins, &detai)) {

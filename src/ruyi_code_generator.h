@@ -26,7 +26,7 @@ typedef struct {
     UINT16 operand;
     UINT16 locals;
     UINT16 arguments;
-    UINT64 *codes;
+    UINT32 *codes;
     UINT32 codes_length;
     UINT32 codes_capacity;
     INT32 seq;
@@ -70,7 +70,7 @@ typedef struct {
     UINT16          oparand;
     UINT16          local_size;
     UINT32          codes_size;
-    UINT64          *codes;
+    UINT32          *codes;
 } ruyi_cg_file_function;
 
 

@@ -50,6 +50,10 @@ typedef enum {
     Ruyi_ir_Idiv,
     Ruyi_ir_Imul,
     Ruyi_ir_Imod,
+    Ruyi_ir_Icmp_gt,
+    Ruyi_ir_Icmp_lt,
+    Ruyi_ir_Icmp_gte,
+    Ruyi_ir_Icmp_lte,
     Ruyi_ir_Iconst,
     Ruyi_ir_Iconst_0,
     Ruyi_ir_Iconst_1,
@@ -68,6 +72,10 @@ typedef enum {
     Ruyi_ir_Fsub,
     Ruyi_ir_Fdiv,
     Ruyi_ir_Fmul,
+    Ruyi_ir_Fcmp_gt,
+    Ruyi_ir_Fcmp_lt,
+    Ruyi_ir_Fcmp_gte,
+    Ruyi_ir_Fcmp_lte,
     Ruyi_ir_Fconst,
     Ruyi_ir_Fconst_0,
     Ruyi_ir_Fconst_1,
@@ -96,17 +104,17 @@ typedef struct {
     char    name[RUYI_IR_INS_NAME_LENGTH];
     BOOL    has_second; // flag it has or has not second argument, for example: with index or with offset etc.
     BOOL    may_jump;
-    INT16   operand;
+    UINT16   operand;
 } ruyi_ir_ins_detail;
 
 BOOL ruyi_ir_get_ins_detail(ruyi_ir_ins ins, ruyi_ir_ins_detail *ins_detail_out);
 
 BOOL ruyi_ir_get_ins_code(const char *name, ruyi_ir_ins *ins_code_out);
 
-UINT64 ruyi_ir_make_code(ruyi_ir_ins ins, UINT32 val);
+UINT32 ruyi_ir_make_code(ruyi_ir_ins ins, UINT16 val);
 
-void ruyi_ir_parse_code(UINT64 code, ruyi_ir_ins *ins_out, UINT32 *val_out);
+void ruyi_ir_parse_code(UINT32 code, ruyi_ir_ins *ins_out, UINT16 *val_out);
 
-BOOL ruyi_ir_code_desc(UINT64 code, char *name, UINT32 name_len, UINT32 *val_out, BOOL *has_second);
+BOOL ruyi_ir_code_desc(UINT32 code, char *name, UINT32 name_len, UINT16 *val_out, BOOL *has_second);
 
 #endif /* ruyi_ir_h */

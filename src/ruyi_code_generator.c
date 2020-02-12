@@ -43,10 +43,10 @@ static void function_writer_destroy(ruyi_cg_function_writer *function_writer) {
     ruyi_mem_free(function_writer);
 }
 
-static void function_writer_append_code(ruyi_cg_function_writer *writer, UINT64 code) {
+static void function_writer_append_code(ruyi_cg_function_writer *writer, UINT32 code) {
     UINT32 new_capacity;
-    UINT64 *new_codes;
-    UINT64 *old_codes;
+    UINT32 *new_codes;
+    UINT32 *old_codes;
     while (writer->codes_length >= writer->codes_capacity) {
         new_capacity = (UINT32)(writer->codes_capacity * 1.5) + CG_FUNC_WRITE_CAP_INIT;
         new_codes = ruyi_mem_alloc(new_capacity * sizeof(UINT64));
@@ -62,7 +62,7 @@ static void function_writer_append_code(ruyi_cg_function_writer *writer, UINT64 
 
 static ruyi_error* function_writer_add_code(ruyi_cg_function_writer *writer, ruyi_ir_ins ins, INT32 index, INT32 *seq_out) {
     ruyi_ir_ins_detail detail;
-    UINT64 code;
+    UINT32 code;
     assert(writer);
     if (!ruyi_ir_get_ins_detail(ins, &detail)) {
         return ruyi_error_misc("can not find ins.");
@@ -148,7 +148,7 @@ ruyi_cg_function_writer * ruyi_cg_define_function(ruyi_cg_ir_writer *ir_writer, 
     function_writer->arguments = 0;
     function_writer->codes_capacity = CG_FUNC_WRITE_CAP_INIT;
     function_writer->codes_length = 0;
-    function_writer->codes = (UINT64*)ruyi_mem_alloc(CG_FUNC_WRITE_CAP_INIT * sizeof(UINT64));
+    function_writer->codes = (UINT32*)ruyi_mem_alloc(CG_FUNC_WRITE_CAP_INIT * sizeof(UINT32));
     function_writer->locals = 0;
     function_writer->name = ruyi_unicode_string_copy_from(name);
     function_writer->operand = 0;
@@ -301,8 +301,8 @@ static ruyi_cg_file_function* func_create(const ruyi_symtab_function_define *sym
     // codes
     func->codes_size = symtab_func->codes_size;
     if (func->codes_size > 0) {
-        func->codes = (UINT64 *)ruyi_mem_alloc(sizeof(UINT64) * func->codes_size);
-        memcpy(func->codes, symtab_func->codes, sizeof(UINT64) * func->codes_size);
+        func->codes = (UINT32 *)ruyi_mem_alloc(sizeof(UINT32) * func->codes_size);
+        memcpy(func->codes, symtab_func->codes, sizeof(UINT32) * func->codes_size);
     } else {
         func->codes = NULL;
     }
@@ -497,6 +497,41 @@ static ruyi_error* handle_type_array(ruyi_ast *ast_type, ruyi_symtab_type *out_t
     return NULL;
 }
 
+static UINT32 ir_type_size(ruyi_ir_type type) {
+    switch (type) {
+        case Ruyi_ir_type_Void:
+            return 1;
+        case Ruyi_ir_type_Byte:
+            return 1;
+        case Ruyi_ir_type_Int16:
+            return 2;
+        case Ruyi_ir_type_Rune:
+            return 4;
+        case Ruyi_ir_type_Int32:
+            return 4;
+        case Ruyi_ir_type_Int64:
+            return 8;
+        case Ruyi_ir_type_Float32:
+            return 4;
+        case Ruyi_ir_type_Float64:
+            return 8;
+        case Ruyi_ir_type_Object:
+            return 8;
+        case Ruyi_ir_type_String:
+            return 8;
+        case Ruyi_ir_type_Array:
+            return 8;
+        case Ruyi_ir_type_Tuple:
+            return 8;
+        case Ruyi_ir_type_Map:
+            return 8;
+        case Ruyi_ir_type_Function:
+            return 8;
+        default:
+            break;
+    }
+}
+
 static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type) {
     ruyi_error *err;
     ruyi_symtab_type_array *array;
@@ -514,37 +549,29 @@ static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type) {
     switch (ast_type->type) {
         case Ruyi_at_type_byte:
             out_type->ir_type = Ruyi_ir_type_Byte;
-            out_type->size = 1;
             break;
         case Ruyi_at_type_bool:
             out_type->ir_type = Ruyi_ir_type_Byte;
-            out_type->size = 1;
             break;
         case Ruyi_at_type_short:
             out_type->ir_type = Ruyi_ir_type_Int16;
-            out_type->size = 2;
             break;
         case Ruyi_at_integer:
         case Ruyi_at_type_int:
             out_type->ir_type = Ruyi_ir_type_Int32;
-            out_type->size = 4;
             break;
         case Ruyi_at_type_rune:
             out_type->ir_type = Ruyi_ir_type_Rune;
-            out_type->size = 4;
             break;
         case Ruyi_at_type_long:
             out_type->ir_type = Ruyi_ir_type_Int64;
-            out_type->size = 8;
             break;
         case Ruyi_at_type_float:
             out_type->ir_type = Ruyi_ir_type_Float32;
-            out_type->size = 4;
             break;
         case Ruyi_at_float:
         case Ruyi_at_type_double:
             out_type->ir_type = Ruyi_ir_type_Float64;
-            out_type->size = 8;
             break;
         case Ruyi_at_type_array:
             err = handle_type_array(ast_type, out_type);
@@ -552,17 +579,16 @@ static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type) {
                 return err;
             }
             break;
-            
             // TODO not finish
         default:
             return ruyi_error_syntax("unknown type support.");
     }
-    
+    out_type->size = ir_type_size(out_type->ir_type);
     return NULL;
 }
 
 typedef struct {
-    UINT64 *data;
+    UINT32 *data;
     UINT32 len;
     UINT32 cap;
 } ruyi_ins_codes;
@@ -576,10 +602,10 @@ typedef struct {
 static
 ruyi_ins_codes* ruyi_ins_codes_create() {
     const UINT32 init_cap = 32;
-    ruyi_ins_codes *codes = (ruyi_ins_codes*)ruyi_mem_alloc(sizeof(UINT64) * init_cap);
+    ruyi_ins_codes *codes = (ruyi_ins_codes*)ruyi_mem_alloc(sizeof(UINT32) * init_cap);
     codes->cap = init_cap;
     codes->len = 0;
-    codes->data = (UINT64*)ruyi_mem_alloc(sizeof(UINT64) * codes->cap);
+    codes->data = (UINT32*)ruyi_mem_alloc(sizeof(UINT32) * codes->cap);
     return codes;
 }
 
@@ -600,8 +626,8 @@ UINT32 ruyi_ins_codes_add(ruyi_ins_codes *codes, ruyi_ir_ins ins, UINT32 val) {
     UINT32 pos;
     while (codes->len >= codes->cap) {
         UINT32 new_cap = (UINT32)(codes->cap * 1.5 + 1);
-        UINT64 *new_data = (UINT64*)ruyi_mem_alloc(sizeof(UINT64) * new_cap);
-        memcpy(new_data, codes->data, sizeof(UINT64) * codes->cap);
+        UINT32 *new_data = (UINT32*)ruyi_mem_alloc(sizeof(UINT32) * new_cap);
+        memcpy(new_data, codes->data, sizeof(UINT32) * codes->cap);
         ruyi_mem_free(codes->data);
         codes->data = new_data;
         codes->cap = new_cap;
@@ -609,6 +635,15 @@ UINT32 ruyi_ins_codes_add(ruyi_ins_codes *codes, ruyi_ir_ins ins, UINT32 val) {
     pos = codes->len;
     codes->data[codes->len++] = ruyi_ir_make_code(ins, val);
     return pos;
+}
+
+
+static
+void ruyi_ins_codes_set_value(ruyi_ins_codes *codes, UINT32 index, UINT32 val) {
+    UINT32 code = codes->data[index];
+    ruyi_ir_ins ins;
+    ruyi_ir_parse_code(code, &ins, NULL);
+    codes->data[index] = ruyi_ir_make_code(ins, val);
 }
 
 
@@ -642,39 +677,55 @@ static ruyi_error* gen_binary_expr_with_cast(const ruyi_symtab_type *left_type, 
         case Ruyi_ir_type_Int32:
         case Ruyi_ir_type_Rune:
         case Ruyi_ir_type_Int64:
-            if (Ruyi_ir_type_Int64 == right_type->ir_type) {
-                for (i = 0; i < len; i++) {
-                    if (ops[i] == op->type) {
-                        ruyi_ins_codes_add(codes, int64_ins[i], 0);
-                        break;
+            switch (right_type->ir_type) {
+                case Ruyi_ir_type_Byte:
+                case Ruyi_ir_type_Int16:
+                case Ruyi_ir_type_Int32:
+                case Ruyi_ir_type_Rune:
+                case Ruyi_ir_type_Int64:
+                    for (i = 0; i < len; i++) {
+                        if (ops[i] == op->type) {
+                            ruyi_ins_codes_add(codes, int64_ins[i], 0);
+                            break;
+                        }
                     }
-                }
-                if (out_type) {
-                    out_type->ir_type = Ruyi_ir_type_Int64;
-                    out_type->detail.uniptr = NULL;
-                    out_type->size = 8;
-                }
-            } else if (Ruyi_ir_type_Float64 == right_type->ir_type){
-                ruyi_ins_codes_add(codes, Ruyi_ir_I2f_1, 0);
-                for (i = 0; i < len; i++) {
-                    if (ops[i] == op->type) {
-                        ruyi_ins_codes_add(codes, double_ins[i], 0);
-                        break;
+                    if (out_type) {
+                        out_type->ir_type = left_type->ir_type;
+                        out_type->detail.uniptr = NULL;
                     }
-                }
-                if (out_type) {
-                    out_type->ir_type = Ruyi_ir_type_Float64;
-                    out_type->detail.uniptr = NULL;
-                    out_type->size = 8;
-                }
-            } else {
-                return ruyi_error_misc("unsupport cast type to int64");
+                    break;
+                case Ruyi_ir_type_Float32:
+                case Ruyi_ir_type_Float64:
+                    ruyi_ins_codes_add(codes, Ruyi_ir_I2f_1, 0);
+                    for (i = 0; i < len; i++) {
+                        if (ops[i] == op->type) {
+                            ruyi_ins_codes_add(codes, double_ins[i], 0);
+                            break;
+                        }
+                    }
+                    if (out_type) {
+                        out_type->ir_type = Ruyi_ir_type_Float64;
+                        out_type->detail.uniptr = NULL;
+                    }
+                default:
+                    return ruyi_error_misc("unsupport cast type to int64");
             }
             break;
         case Ruyi_ir_type_Float32:
         case Ruyi_ir_type_Float64:
-            if (Ruyi_ir_type_Int64 == right_type->ir_type){
-                ruyi_ins_codes_add(codes, Ruyi_ir_I2f, 0);
+            switch (right_type->ir_type) {
+                case Ruyi_ir_type_Byte:
+                case Ruyi_ir_type_Int16:
+                case Ruyi_ir_type_Int32:
+                case Ruyi_ir_type_Rune:
+                case Ruyi_ir_type_Int64:
+                    ruyi_ins_codes_add(codes, Ruyi_ir_I2f, 0);
+                    break;
+                case Ruyi_ir_type_Float32:
+                case Ruyi_ir_type_Float64:
+                    break;
+                default:
+                    return ruyi_error_misc("unsupport cast type to float64");
             }
             for (i = 0; i < len; i++) {
                 if (ops[i] == op->type) {
@@ -685,11 +736,13 @@ static ruyi_error* gen_binary_expr_with_cast(const ruyi_symtab_type *left_type, 
             if (out_type) {
                 out_type->ir_type = Ruyi_ir_type_Float64;
                 out_type->detail.uniptr = NULL;
-                out_type->size = 8;
             }
             break;
         default:
             return ruyi_error_misc("unknown left type: %d", left_type);
+    }
+    if (out_type) {
+        out_type->size = ir_type_size(out_type->ir_type);
     }
     return NULL;
 }
@@ -701,9 +754,9 @@ static ruyi_error* gen_additive_expression(ruyi_cg_body_context *context, ruyi_a
     ruyi_ast *right;
     ruyi_ast *op;
     ruyi_symtab_type left_type, right_type;
-    const ruyi_ast_type ops[2] = {Ruyi_at_op_add, Ruyi_at_op_sub};
-    const ruyi_ir_ins int64_ins[2] = {Ruyi_ir_Iadd, Ruyi_ir_Isub};
-    const ruyi_ir_ins double_ins[2] = {Ruyi_ir_Fadd, Ruyi_ir_Fsub};
+    const ruyi_ast_type ops[] = {Ruyi_at_op_add, Ruyi_at_op_sub};
+    const ruyi_ir_ins int64_ins[] = {Ruyi_ir_Iadd, Ruyi_ir_Isub};
+    const ruyi_ir_ins double_ins[] = {Ruyi_ir_Fadd, Ruyi_ir_Fsub};
     assert(3 == len);
     left = ruyi_ast_get_child(ast_stmt, 0);
     op = ruyi_ast_get_child(ast_stmt, 1);
@@ -717,16 +770,17 @@ static ruyi_error* gen_additive_expression(ruyi_cg_body_context *context, ruyi_a
     return gen_binary_expr_with_cast(&left_type, &right_type, out_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
 }
 
-static ruyi_error* gen_multiplicative_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+static
+ruyi_error* gen_multiplicative_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     ruyi_error *err;
     UINT32 len = ruyi_ast_child_length(ast_stmt);
     ruyi_ast *left;
     ruyi_ast *right;
     ruyi_ast *op;
     ruyi_symtab_type left_type, right_type;
-    const ruyi_ast_type ops[3] = {Ruyi_at_op_mul, Ruyi_at_op_div, Ruyi_at_op_mod};
-    const ruyi_ir_ins int64_ins[3] = {Ruyi_ir_Imul, Ruyi_ir_Idiv, Ruyi_ir_Imod};
-    const ruyi_ir_ins double_ins[3] = {Ruyi_ir_Fadd, Ruyi_ir_Fsub, 0};
+    const ruyi_ast_type ops[] = {Ruyi_at_op_mul, Ruyi_at_op_div, Ruyi_at_op_mod};
+    const ruyi_ir_ins int64_ins[] = {Ruyi_ir_Imul, Ruyi_ir_Idiv, Ruyi_ir_Imod};
+    const ruyi_ir_ins double_ins[] = {Ruyi_ir_Fadd, Ruyi_ir_Fsub, 0};
     assert(3 == len);
     left = ruyi_ast_get_child(ast_stmt, 0);
     op = ruyi_ast_get_child(ast_stmt, 1);
@@ -794,7 +848,7 @@ static ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi
                             break;
                     }
                     if (out_type != NULL) {
-                        out_type->ir_type = Ruyi_ir_type_Int64;
+                        out_type->ir_type = expect_type->ir_type;
                         out_type->size = 8;
                         out_type->detail.uniptr = NULL;
                     }
@@ -892,6 +946,124 @@ ruyi_error* gen_var_declaration(ruyi_cg_body_context *context, ruyi_ast *ast_stm
     return NULL;
 }
 
+static
+ruyi_error* gen_while_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    ruyi_error* err;
+    ruyi_ast *ast_expr = ruyi_ast_get_child(ast_stmt, 0);
+    ruyi_ast *ast_body = ruyi_ast_get_child(ast_stmt, 1);
+    ruyi_symtab_type expr_type;
+    UINT32 jump_enter_expr_index = context->codes->len;
+    UINT32 jump_leave_while_index;
+    UINT32 which_index_will_jump_out;
+    // while enter
+    if ((err = gen_stmt(context, ast_expr, &expr_type, NULL)) != NULL) {
+        return err;
+    }
+    which_index_will_jump_out = ruyi_ins_codes_add(context->codes, Ruyi_ir_Jne, 0); // will fill later
+    // body
+    if ((err = gen_stmt(context, ast_body, NULL, NULL)) != NULL) {
+        return err;
+    }
+    // jump to while enter
+    ruyi_ins_codes_add(context->codes, Ruyi_ir_Jmp, jump_enter_expr_index);
+    jump_leave_while_index = context->codes->len;
+    ruyi_ins_codes_set_value(context->codes, which_index_will_jump_out, jump_leave_while_index);
+    
+    return NULL;
+}
+
+static
+ruyi_error* gen_relational_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    ruyi_error *err;
+    UINT32 len = ruyi_ast_child_length(ast_stmt);
+    ruyi_ast *left;
+    ruyi_ast *right;
+    ruyi_ast *op;
+    ruyi_symtab_type left_type, right_type;
+    const ruyi_ast_type ops[] = {Ruyi_at_op_lt, Ruyi_at_op_lte, Ruyi_at_op_gt, Ruyi_at_op_gte};
+    const ruyi_ir_ins int64_ins[] = {Ruyi_ir_Icmp_lt, Ruyi_ir_Icmp_lte, Ruyi_ir_Icmp_gt, Ruyi_ir_Icmp_gte};
+    const ruyi_ir_ins double_ins[] = {Ruyi_ir_Fcmp_lt, Ruyi_ir_Fcmp_lte, Ruyi_ir_Fcmp_gt, Ruyi_ir_Fcmp_gte};
+    assert(3 == len);
+    left = ruyi_ast_get_child(ast_stmt, 0);
+    op = ruyi_ast_get_child(ast_stmt, 1);
+    right = ruyi_ast_get_child(ast_stmt, 2);
+    if ((err = gen_stmt(context, left, &left_type, NULL)) != NULL) {
+        return err;
+    }
+    if ((err = gen_stmt(context, right, &right_type, &left_type)) != NULL) {
+        return err;
+    }
+    if (op->type == Ruyi_at_op_instanceof) {
+        return ruyi_error_misc("unsupport operator 'instanceof' at this version!");
+    } else{
+        return gen_binary_expr_with_cast(&left_type, &right_type, out_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
+    }
+}
+
+static
+ruyi_error* gen_block_statements(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    ruyi_error *err;
+    ruyi_ast *ast_child_stmt;
+    UINT32 i, len;
+    ruyi_symtab_function_scope_enter(context->func->func_symtab_scope);
+    len = ruyi_ast_child_length(ast_stmt);
+    for (i = 0; i < len; i++) {
+        ast_child_stmt = ruyi_ast_get_child(ast_stmt, i);
+        if ((err = gen_stmt(context, ast_child_stmt, out_type, expect_type)) != NULL) {
+            return err;
+        }
+    }
+    ruyi_symtab_function_scope_leave(context->func->func_symtab_scope);
+    return NULL;
+}
+
+static
+ruyi_error* gen_left_hand_side_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    ruyi_ast *left_ast = ruyi_ast_get_child(ast_stmt, 0);
+    ruyi_ast *tail_ast = ruyi_ast_get_child(ast_stmt, 1);
+    const ruyi_unicode_string *name;
+    switch (left_ast->type) {
+        case Ruyi_at_name:
+            name = (const ruyi_unicode_string *)left_ast->data.ptr_value;
+            break;
+        case Ruyi_at_field_dot_access_expression:
+            
+            break;
+        case Ruyi_at_field_bracket_access_expression:
+            
+            break;
+        case Ruyi_at_array_variable_access:
+            
+            break;
+            
+        case Ruyi_at_array_primary_access:
+            
+            break;
+        default:
+            break;
+    }
+    switch (tail_ast->type) {
+        case Ruyi_at_assign_statement:
+            
+            break;
+        case Ruyi_at_var_declaration:
+            
+            break;
+        case Ruyi_at_inc_statement:
+            
+            break;
+        case Ruyi_at_dec_statement:
+            
+            break;
+        case Ruyi_at_function_invocation_statement:
+            
+            break;
+        default:
+            break;
+    }
+    return NULL;
+}
+
 static ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     switch (ast_stmt->type) {
         case Ruyi_at_return_statement:
@@ -907,6 +1079,14 @@ static ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, r
             return gen_integer(context, ast_stmt->data.int32_value, out_type, expect_type);
         case Ruyi_at_var_declaration:
             return gen_var_declaration(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_while_statement:
+            return gen_while_stmt(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_relational_expression:
+            return gen_relational_expression(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_block_statements:
+            return gen_block_statements(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_left_hand_side_expression:
+            return gen_left_hand_side_expression(context, ast_stmt, out_type, expect_type);
         default:
             break;
     }
@@ -1035,7 +1215,7 @@ gen_global_func_define_on_error:
 
 static BYTE* create_bytes_data_from_unicode(const ruyi_unicode_string *str, UINT32 *out_len) {
     ruyi_bytes_string* bytes_string;
-    char *bytes;
+    BYTE *bytes;
     if (!str) {
         return NULL;
     }
