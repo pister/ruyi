@@ -12,6 +12,7 @@
 #include "ruyi_ast.h"
 #include "ruyi_vector.h"
 #include "ruyi_symtab.h"
+#include "ruyi_unicode.h"
 #include <string.h> // for memcpy
 
 #define CG_FUNC_WRITE_CAP_INIT 16
@@ -20,15 +21,7 @@
 
 #define PACKAGE_SEPARATE '.'
 
-#define NAME_BUF_LENGTH 128
-
 static ruyi_error* handle_type(ruyi_ast *ast_type, ruyi_symtab_type *out_type);
-
-static ruyi_error* make_unicode_name_error(const char* fmt, const ruyi_unicode_string *name) {
-    char temp_name[NAME_BUF_LENGTH];
-    ruyi_unicode_string_encode_utf8_n(name, temp_name, NAME_BUF_LENGTH-1);
-    return ruyi_error_misc(fmt, temp_name);
-}
 
 static void function_writer_destroy(ruyi_cg_function_writer *function_writer) {
     if (!function_writer) {
@@ -440,7 +433,7 @@ static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *as
     }
     if (Ruyi_at_var_declaration_auto_type == ruyi_ast_get_child(ast, 0)->type) {
         if (!has_init_expr) {
-            err = make_unicode_name_error("miss initialize expression for auto-type when define global var: %s", var.name);
+            err = ruyi_error_misc_unicode_name("miss initialize expression for auto-type when define global var: %s", var.name);
             goto gen_global_var_define_on_error;
         }
         if ((err = handle_type(ruyi_ast_get_child(ast, 1), &expr_type)) != NULL) {
@@ -457,7 +450,7 @@ static ruyi_error* gen_global_var_define(ruyi_symtab *symtab, const ruyi_ast *as
                 goto gen_global_var_define_on_error;
             }
             if (!type_can_assign(&expr_type, &var_decleration_type)) {
-                err = make_unicode_name_error("var can not be assigned by diference type when define global var: %s", var.name);
+                err = ruyi_error_misc_unicode_name("var can not be assigned by diference type when define global var: %s", var.name);
                 goto gen_global_var_define_on_error;
             }
             // TODO need to generate init code and auto-type-cast ir at <init> func: for ast_init_expr.
@@ -646,11 +639,11 @@ void ruyi_ins_codes_set_value(ruyi_ins_codes *codes, UINT32 index, UINT32 val) {
     codes->data[index] = ruyi_ir_make_code(ins, val);
 }
 
+static
+ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type);
 
-static ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type);
-
-
-static ruyi_error* gen_return_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type) {
+static
+ruyi_error* gen_return_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type) {
     ruyi_error *err;
     ruyi_ast *return_expr_list_ast;
     UINT32 len = 0;
@@ -668,7 +661,8 @@ static ruyi_error* gen_return_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_
     return NULL;
 }
 
-static ruyi_error* gen_binary_expr_with_cast(const ruyi_symtab_type *left_type, const ruyi_symtab_type *right_type, ruyi_symtab_type *out_type, const ruyi_ast *op,
+static
+ruyi_error* gen_binary_expr_with_cast(const ruyi_symtab_type *left_type, const ruyi_symtab_type *right_type, ruyi_symtab_type *out_type, const ruyi_ast *op,
                    ruyi_ins_codes *codes, const ruyi_ast_type* ops, const ruyi_ir_ins *int64_ins, const ruyi_ir_ins *double_ins, UINT32 len) {
     int i;
     switch (left_type->ir_type) {
@@ -707,6 +701,7 @@ static ruyi_error* gen_binary_expr_with_cast(const ruyi_symtab_type *left_type, 
                         out_type->ir_type = Ruyi_ir_type_Float64;
                         out_type->detail.uniptr = NULL;
                     }
+                    break;
                 default:
                     return ruyi_error_misc("unsupport cast type to int64");
             }
@@ -747,7 +742,8 @@ static ruyi_error* gen_binary_expr_with_cast(const ruyi_symtab_type *left_type, 
     return NULL;
 }
 
-static ruyi_error* gen_additive_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+static
+ruyi_error* gen_additive_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     ruyi_error *err;
     UINT32 len = ruyi_ast_child_length(ast_stmt);
     ruyi_ast *left;
@@ -761,7 +757,7 @@ static ruyi_error* gen_additive_expression(ruyi_cg_body_context *context, ruyi_a
     left = ruyi_ast_get_child(ast_stmt, 0);
     op = ruyi_ast_get_child(ast_stmt, 1);
     right = ruyi_ast_get_child(ast_stmt, 2);
-    if ((err = gen_stmt(context, left, &left_type, NULL)) != NULL) {
+    if ((err = gen_stmt(context, left, &left_type, expect_type)) != NULL) {
         return err;
     }
     if ((err = gen_stmt(context, right, &right_type, &left_type)) != NULL) {
@@ -794,9 +790,9 @@ ruyi_error* gen_multiplicative_expression(ruyi_cg_body_context *context, ruyi_as
     return gen_binary_expr_with_cast(&left_type, &right_type, out_type, op, context->codes, ops, int64_ins, double_ins, sizeof(ops)/sizeof(ops[0]));
 }
 
-static ruyi_error* gen_load_from_variable_name(ruyi_cg_body_context *context, const ruyi_unicode_string *name, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+static
+ruyi_error* gen_load_from_variable_name(ruyi_cg_body_context *context, const ruyi_unicode_string *name, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     UINT32 index;
-    char name_buf[NAME_BUF_LENGTH];
     ruyi_symtab_variable var;
     if (ruyi_symtab_function_scope_get(context->func->func_symtab_scope, name, &var)) {
         // load from local
@@ -818,11 +814,11 @@ static ruyi_error* gen_load_from_variable_name(ruyi_cg_body_context *context, co
         ruyi_ins_codes_add(context->codes, Ruyi_ir_Getglb, index);
         return NULL;
     }
-    ruyi_unicode_string_encode_utf8_n(name, name_buf, NAME_BUF_LENGTH-1);
-    return ruyi_error_misc("can not find variable %s", name_buf);
+    return ruyi_error_misc_unicode_name("can not find variable %s", name);
 }
 
-static ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+static
+ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     UINT32 index;
     if (expect_type != NULL) {
         switch (expect_type->ir_type) {
@@ -849,7 +845,7 @@ static ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi
                     }
                     if (out_type != NULL) {
                         out_type->ir_type = expect_type->ir_type;
-                        out_type->size = 8;
+                        out_type->size = expect_type->size;
                         out_type->detail.uniptr = NULL;
                     }
                 }
@@ -939,7 +935,7 @@ ruyi_error* gen_var_declaration(ruyi_cg_body_context *context, ruyi_ast *ast_stm
             return err;
         }
         if (!type_can_assign(&expr_type, &var.type)) {
-            return make_unicode_name_error("var can not be assigned by diference type when define global var: %s", var.name);
+            return ruyi_error_misc_unicode_name("var can not be assigned by diference type when define global var: %s", var.name);
         }
     }
     ruyi_ins_codes_add(context->codes, Ruyi_ir_Store, index);
@@ -970,6 +966,84 @@ ruyi_error* gen_while_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ru
     ruyi_ins_codes_set_value(context->codes, which_index_will_jump_out, jump_leave_while_index);
     
     return NULL;
+}
+
+static
+ruyi_error* gen_if_expr_and_body(ruyi_cg_body_context *context, ruyi_ast *ast_expr, ruyi_ast *ast_body, ruyi_vector *end_of_stmt_placeholders) {
+    ruyi_error *err;
+    ruyi_symtab_type expr_type;
+    UINT32 end_of_body_placeholder;
+    UINT32 end_of_stmt_placeholder;
+    
+    // if-expr
+    if ((err = gen_stmt(context, ast_expr, &expr_type, NULL)) != NULL) {
+        return err;
+    }
+    
+    end_of_body_placeholder = ruyi_ins_codes_add(context->codes, Ruyi_ir_Jne, 0); // will jump to end of body
+    // if-body
+    if ((err = gen_stmt(context, ast_body, NULL, NULL)) != NULL) {
+        return err;
+    }
+    // jump to endof if-stmt
+    end_of_stmt_placeholder = ruyi_ins_codes_add(context->codes, Ruyi_ir_Jmp, 0);  // will jump to end of the stmt
+    ruyi_ins_codes_set_value(context->codes, end_of_body_placeholder, context->codes->len);
+    
+    ruyi_vector_add(end_of_stmt_placeholders, ruyi_value_uint32(end_of_stmt_placeholder));
+    return NULL;
+}
+
+static
+ruyi_error* gen_if_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    ruyi_error *err = NULL;
+    ruyi_ast *ast_expr = ruyi_ast_get_child(ast_stmt, 0);
+    ruyi_ast *ast_body = ruyi_ast_get_child(ast_stmt, 1);
+    ruyi_ast *elseif_stmt;
+    ruyi_ast *tail_stmt;
+    UINT32 i, len;
+    ruyi_vector *end_of_stmt_placeholders;
+    len = ruyi_ast_child_length(ast_stmt);
+    assert(len >= 2);
+    
+    end_of_stmt_placeholders = ruyi_vector_create();
+    
+    if ((err = gen_if_expr_and_body(context, ast_expr, ast_body, end_of_stmt_placeholders)) != NULL) {
+         goto gen_if_stmt_error;
+    }
+    for (i = 2; i < len - 1; i++) {
+        // else-if stmt
+        elseif_stmt = ruyi_ast_get_child(ast_stmt, i);
+        assert(elseif_stmt->type == Ruyi_at_elseif_statement);
+        ast_expr = ruyi_ast_get_child(elseif_stmt, 0);
+        ast_body = ruyi_ast_get_child(elseif_stmt, 1);
+        if ((err = gen_if_expr_and_body(context, ast_expr, ast_body, end_of_stmt_placeholders)) != NULL) {
+            goto gen_if_stmt_error;
+        }
+    }
+    // the last if-else-stmt or else-stmt
+    if (len > 2) {
+        tail_stmt = ruyi_ast_get_child(ast_stmt, 2);
+        if (tail_stmt->type == Ruyi_at_elseif_statement) {
+            ast_expr = ruyi_ast_get_child(tail_stmt, 0);
+            ast_body = ruyi_ast_get_child(tail_stmt, 1);
+            if ((err = gen_if_expr_and_body(context, ast_expr, ast_body, end_of_stmt_placeholders)) != NULL) {
+                goto gen_if_stmt_error;
+            }
+        } else if (tail_stmt->type == Ruyi_at_else_statement) {
+            ast_body = ruyi_ast_get_child(tail_stmt, 0);
+            if ((err = gen_stmt(context, ast_body, NULL, NULL)) != NULL) {
+                goto gen_if_stmt_error;
+            }
+        } else {
+            err = ruyi_error_misc("unknow if-else stmt type");
+            goto gen_if_stmt_error;
+        }
+    }
+gen_if_stmt_error:
+    if (end_of_stmt_placeholders) {
+        ruyi_vector_destroy(end_of_stmt_placeholders);
+    }
+    return err;
 }
 
 static
@@ -1018,37 +1092,60 @@ ruyi_error* gen_block_statements(ruyi_cg_body_context *context, ruyi_ast *ast_st
 }
 
 static
+ruyi_error* gen_assign_statement(ruyi_cg_body_context *context, const ruyi_ast *left_ast, ruyi_ast *expr_ast, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    ruyi_error *err;
+    const ruyi_unicode_string *name;
+    ruyi_symtab_variable var;
+    ruyi_symtab_type expr_type;
+    if (Ruyi_at_name == left_ast->type) {
+        name = (const ruyi_unicode_string *)left_ast->data.ptr_value;
+        if (!ruyi_symtab_function_scope_get(context->func->func_symtab_scope, name, &var)) {
+            return ruyi_error_misc_unicode_name("can not find variable %s", name);
+        }
+        if ((err = gen_stmt(context, expr_ast, &expr_type, &var.type)) != NULL) {
+            return err;
+        }
+        if (expr_type.ir_type != var.type.ir_type) {
+            // TODO type auto cast ...
+            return ruyi_error_misc_unicode_name("assign type not match: %s ", name);
+        }
+        
+        ruyi_ins_codes_add(context->codes, Ruyi_ir_Store, var.index);
+    } else {
+        switch (left_ast->type) {
+            case Ruyi_at_field_dot_access_expression:
+                // TODO
+                return ruyi_error_misc("do not support now...");
+                break;
+            case Ruyi_at_field_bracket_access_expression:
+                // TODO
+                return ruyi_error_misc("do not support now...");
+                break;
+            case Ruyi_at_array_variable_access:
+                // TODO
+                return ruyi_error_misc("do not support now...");
+                break;
+            case Ruyi_at_array_primary_access:
+                // TODO
+                return ruyi_error_misc("do not support now...");
+                break;
+            default:
+                break;
+        }
+    }
+    return NULL;
+}
+
+static
 ruyi_error* gen_left_hand_side_expression(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     ruyi_ast *left_ast = ruyi_ast_get_child(ast_stmt, 0);
     ruyi_ast *tail_ast = ruyi_ast_get_child(ast_stmt, 1);
-    const ruyi_unicode_string *name;
-    switch (left_ast->type) {
-        case Ruyi_at_name:
-            name = (const ruyi_unicode_string *)left_ast->data.ptr_value;
-            break;
-        case Ruyi_at_field_dot_access_expression:
-            
-            break;
-        case Ruyi_at_field_bracket_access_expression:
-            
-            break;
-        case Ruyi_at_array_variable_access:
-            
-            break;
-            
-        case Ruyi_at_array_primary_access:
-            
-            break;
-        default:
-            break;
-    }
+    
     switch (tail_ast->type) {
         case Ruyi_at_assign_statement:
-            
-            break;
+            return gen_assign_statement(context, left_ast, ruyi_ast_get_child(tail_ast, 0), out_type, expect_type);
         case Ruyi_at_var_declaration:
-            
-            break;
+            return gen_var_declaration(context, tail_ast, out_type, expect_type);
         case Ruyi_at_inc_statement:
             
             break;
@@ -1064,7 +1161,55 @@ ruyi_error* gen_left_hand_side_expression(ruyi_cg_body_context *context, ruyi_as
     return NULL;
 }
 
-static ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+#define NAME_BUF_LENGTH 128
+
+static
+ruyi_error* gen_function_invocation(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    ruyi_error* err;
+    UINT32 i, len;
+    const ruyi_unicode_string *name = (const ruyi_unicode_string *)ruyi_ast_get_child(ast_stmt, 0)->data.ptr_value;
+    ruyi_ast *ast_func_invoce_tail = ruyi_ast_get_child(ast_stmt, 1);
+    ruyi_ast *ast_arg_list = ruyi_ast_get_child(ast_func_invoce_tail, 0);
+    ruyi_ast *ast_arg;
+    ruyi_symtab_function func;
+    ruyi_symtab_type arg_out;
+    char temp_name[NAME_BUF_LENGTH];
+    assert(ast_arg_list != NULL);
+    assert(ast_arg_list->type == Ruyi_at_argument_list);
+    
+    if (!ruyi_symtab_get_function_by_name(context->symtab, name, &func)) {
+        return ruyi_error_misc_unicode_name("can not found function: %s", name);
+    }
+    
+    len = ruyi_ast_child_length(ast_arg_list);
+    
+    if (len != func.parameter_count) {
+        return ruyi_error_misc_unicode_name("parameters length is not match when calling function: %s", name);
+    }
+    if (out_type != NULL) {
+        if (func.return_count != 1) {
+            return ruyi_error_misc_unicode_name("too many return values when calling function: %s", name);
+        }
+        *out_type =  func.return_types[0];
+    }
+    
+    //  the args order is Left to Right
+    for (i = 0; i < len; i++) {
+        ast_arg = ruyi_ast_get_child(ast_arg_list, i);
+        if ((err = gen_stmt(context, ast_arg, &arg_out, NULL)) != NULL) {
+            return err;
+        }
+        if (arg_out.ir_type !=  func.parameter_types[i].ir_type) {
+            ruyi_unicode_string_encode_utf8_n(name, temp_name, NAME_BUF_LENGTH-1);
+            return ruyi_error_misc("the argument %d's type was not matched when invoke method: %s", i, temp_name);
+        }
+    }
+    ruyi_ins_codes_add(context->codes, Ruyi_ir_Invokesp, func.index);
+    return NULL;
+}
+
+static
+ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     switch (ast_stmt->type) {
         case Ruyi_at_return_statement:
             return gen_return_stmt(context, ast_stmt, out_type);
@@ -1081,19 +1226,24 @@ static ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, r
             return gen_var_declaration(context, ast_stmt, out_type, expect_type);
         case Ruyi_at_while_statement:
             return gen_while_stmt(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_if_statement:
+            return gen_if_stmt(context, ast_stmt, out_type, expect_type);
         case Ruyi_at_relational_expression:
             return gen_relational_expression(context, ast_stmt, out_type, expect_type);
         case Ruyi_at_block_statements:
             return gen_block_statements(context, ast_stmt, out_type, expect_type);
         case Ruyi_at_left_hand_side_expression:
             return gen_left_hand_side_expression(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_function_invocation:
+            return gen_function_invocation(context, ast_stmt, out_type, expect_type);
         default:
             break;
     }
     return NULL;
 }
 
-static ruyi_error* gen_func_body(ruyi_cg_body_context *context, ruyi_ast *ast_body) {
+static
+ruyi_error* gen_func_body(ruyi_cg_body_context *context, ruyi_ast *ast_body) {
     ruyi_error* err;
     UINT32 len, i;
     ruyi_ast *ast_stmt;
@@ -1111,7 +1261,8 @@ gen_func_body_error:
     return err;
 }
 
-static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_functions) {
+static
+ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_functions) {
     ruyi_error *err;
     ruyi_ast *ast_name = NULL;
     ruyi_ast *ast_type = NULL;
@@ -1122,8 +1273,11 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
     ruyi_symtab_type the_type;
     ruyi_symtab_function_define *func = NULL;
     ruyi_ins_codes *ins_codes = NULL;
-    UINT32 i, len;
+    UINT32 i, parameter_len, return_len;
     ruyi_symtab_variable var;
+    ruyi_symtab_type paramter_types[RUYI_FUNC_MAX_PARAMETER_COUNT];
+    ruyi_symtab_type return_types[RUYI_FUNC_MAX_RETURN_COUNT];
+
     assert(ast);
     if (Ruyi_at_function_declaration == ast->type) {
         ast_name = ruyi_ast_get_child(ast, 0);
@@ -1143,34 +1297,46 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
         goto gen_global_func_define_on_error;
     }
     if (ast_name) {
-        func = ruyi_symtab_function_create(symtab, (ruyi_unicode_string*)ast_name->data.ptr_value);
+        if ((err = ruyi_symtab_function_create(symtab, (ruyi_unicode_string*)ast_name->data.ptr_value, &func)) != NULL) {
+            goto gen_global_func_define_on_error;
+        }
     } else {
-        func = ruyi_symtab_function_create(symtab, NULL);
+        if ((err = ruyi_symtab_function_create(symtab, NULL, &func)) != NULL) {
+            goto gen_global_func_define_on_error;
+        }
     }
     // return types
     if (ast_return_type == NULL) {
         // leave return type is null
+        return_len = 0;
     } else {
-        len = ruyi_ast_child_length(ast_return_type);
-        if (len > RUYI_MAX_UINT16) {
+        return_len = ruyi_ast_child_length(ast_return_type);
+        if (return_len > RUYI_FUNC_MAX_RETURN_COUNT) {
             err = ruyi_error_misc("too many function return values.");
             goto gen_global_func_define_on_error;
         }
-        for (i = 0; i < len; i++) {
+        for (i = 0; i < return_len; i++) {
             temp = ruyi_ast_get_child(ast_return_type, i);
             if ((err = handle_type(temp, &the_type)) != NULL) {
                 goto gen_global_func_define_on_error;
             }
+            return_types[i] = the_type;
             ruyi_symtab_function_add_return_type(func, the_type);
         }
     }
-    // arguments
-    len = ruyi_ast_child_length(ast_formal_params);
-    if (len > RUYI_MAX_UINT16) {
+    
+    if (!ruyi_symtab_function_update_return_types(symtab, func->index, return_len, return_types)) {
+        err = ruyi_error_misc("not match function by index: %d", func->index);
+        goto gen_global_func_define_on_error;
+    }
+    
+    // parameters
+    parameter_len = ruyi_ast_child_length(ast_formal_params);
+    if (parameter_len > RUYI_FUNC_MAX_PARAMETER_COUNT) {
         err = ruyi_error_misc("too many function formal parameters.");
         goto gen_global_func_define_on_error;
     }
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < parameter_len; i++) {
         temp = ruyi_ast_get_child(ast_formal_params, i);
         ast_name = ruyi_ast_get_child(temp, 0);
         ast_type = ruyi_ast_get_child(temp, 1);
@@ -1179,7 +1345,13 @@ static ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *a
         }
         var.name = (ruyi_unicode_string*)ast_name->data.ptr_value;
         var.type = the_type;
+        paramter_types[i] = var.type;
         ruyi_symtab_function_add_arg(func, &var);
+    }
+    
+    if (!ruyi_symtab_function_update_parameter_types(symtab, func->index, parameter_len, paramter_types)) {
+        err = ruyi_error_misc("not match function by index: %d", func->index);
+        goto gen_global_func_define_on_error;
     }
     // func body
     ins_codes = ruyi_ins_codes_create();
@@ -1213,7 +1385,8 @@ gen_global_func_define_on_error:
     return err;
 }
 
-static BYTE* create_bytes_data_from_unicode(const ruyi_unicode_string *str, UINT32 *out_len) {
+static
+BYTE* create_bytes_data_from_unicode(const ruyi_unicode_string *str, UINT32 *out_len) {
     ruyi_bytes_string* bytes_string;
     BYTE *bytes;
     if (!str) {
@@ -1230,7 +1403,8 @@ static BYTE* create_bytes_data_from_unicode(const ruyi_unicode_string *str, UINT
     return bytes;
 }
 
-static ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *ir_file) {
+static
+ruyi_error* gen_global(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_cg_file *ir_file) {
     ruyi_error *err = NULL;
     UINT32 len, i;
     ruyi_ast *global_ast;

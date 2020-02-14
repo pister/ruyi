@@ -43,6 +43,8 @@ ruyi_error * ruyi_error_make_by_pos(ruyi_error_type type, const char *message, r
 
 ruyi_error * ruyi_error_misc(const char *format, ...);
 
+ruyi_error* ruyi_error_misc_unicode_name(const char* fmt, const ruyi_unicode_string *name);
+
 ruyi_error * ruyi_error_syntax(const char *format, ...);
 
 void ruyi_error_destroy(ruyi_error * err);

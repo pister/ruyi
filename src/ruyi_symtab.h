@@ -22,6 +22,10 @@ typedef enum {
     Ruyi_sst_Member
 } ruyi_symtab_scope_type;
 
+#define RUYI_FUNC_MAX_PARAMETER_COUNT 128
+#define RUYI_FUNC_MAX_RETURN_COUNT 128
+
+
 
 typedef struct {
     ruyi_list *block_scope_stack;   // item type: ruyi_symtab_index_hashtable.
@@ -76,15 +80,13 @@ typedef struct ruyi_symtab_type_map_ {
 } ruyi_symtab_type_map;
 
 typedef struct ruyi_symtab_type_func_ {
-    ruyi_symtab_type_tuple  *return_types;
-    ruyi_symtab_type_tuple  *parameter_types;
-} ruyi_symtab_type_func;
-
-
-typedef struct {
-    ruyi_hashtable  *name2index;
-    ruyi_vector     *index2var;
-} ruyi_symtab_index_hashtable;
+    UINT32                      index;
+    UINT32                      parameter_count;
+    ruyi_symtab_type            parameter_types[RUYI_FUNC_MAX_PARAMETER_COUNT];
+    UINT32                      return_count;
+    ruyi_symtab_type            return_types[RUYI_FUNC_MAX_RETURN_COUNT];
+    const ruyi_unicode_string   *name;
+} ruyi_symtab_function;
 
 typedef struct {
     UINT32                  index;
@@ -92,6 +94,25 @@ typedef struct {
     ruyi_symtab_scope_type  scope_type;
     const ruyi_unicode_string *name;
 } ruyi_symtab_variable;
+
+typedef enum {
+    Ruyi_sid_Var,
+    Ruyi_sid_Func
+} ruyi_symtab_index_data_type;
+
+typedef struct {
+    ruyi_symtab_index_data_type type;
+    union {
+        ruyi_symtab_function    *func_ptr;
+        ruyi_symtab_variable    *var_ptr;
+    } data;
+} ruyi_symtab_index_data;
+
+typedef struct {
+    ruyi_symtab_index_data_type type;
+    ruyi_hashtable              *name2index;
+    ruyi_vector                 *index2value_ptr; // value of ruyi_symtab_type_func* or ruyi_symtab_variable*
+} ruyi_symtab_index_hashtable;
 
 
 typedef struct {
@@ -138,7 +159,7 @@ UINT32 ruyi_symtab_constants_pool_get_or_add_unicode(ruyi_symtab_constants_pool 
 // interface (global): todo
 typedef struct {
     ruyi_symtab_index_hashtable *global_variables;
-    ruyi_hashtable              *functions;
+    ruyi_symtab_index_hashtable *functions; /* name => ruyi_symtab_type_func */
     ruyi_symtab_constants_pool  *cp;
 } ruyi_symtab;
 
@@ -175,11 +196,18 @@ UINT32 ruyi_symtab_add_constant_float64(ruyi_symtab *symtab, FLOAT64 value, UINT
 
 UINT32 ruyi_symtab_add_constant_unicode(ruyi_symtab *symtab, const ruyi_unicode_string *value, UINT32 *out_index);
 
+ruyi_error* ruyi_symtab_add_function(const ruyi_symtab *symtab, const ruyi_unicode_string *name, const ruyi_symtab_function *func, UINT32 *out_index);
+
+BOOL ruyi_symtab_get_function_by_name(const ruyi_symtab *symtab, const ruyi_unicode_string *name, ruyi_symtab_function *out_func);
+
+BOOL ruyi_symtab_function_update_parameter_types(ruyi_symtab *symtab, UINT32 index, UINT32 type_count, const ruyi_symtab_type *types);
+
+BOOL ruyi_symtab_function_update_return_types(ruyi_symtab *symtab, UINT32 index, UINT32 type_count, const ruyi_symtab_type *types);
 
 
 // ================================================================
 
-ruyi_symtab_function_define* ruyi_symtab_function_create(ruyi_symtab *symtab, const ruyi_unicode_string *name);
+ruyi_error* ruyi_symtab_function_create(ruyi_symtab *symtab, const ruyi_unicode_string *name, ruyi_symtab_function_define** out_func);
 
 void ruyi_symtab_function_destroy(ruyi_symtab_function_define* func);
 
@@ -205,15 +233,13 @@ ruyi_symtab_type_tuple* ruyi_symtab_type_tuple_create(UINT32 count);
 
 void ruyi_symtab_type_tuple_set(ruyi_symtab_type_tuple *tuple, UINT32 pos, ruyi_symtab_type type);
 
+ruyi_symtab_type_tuple* ruyi_symtab_type_tuple_copy_from(const ruyi_symtab_type_tuple* src_tuple);
+
 void ruyi_symtab_type_tuple_destroy(ruyi_symtab_type_tuple *tuple);
 
 ruyi_symtab_type_map* ruyi_symtab_type_map_create(ruyi_symtab_type key_type, ruyi_symtab_type value_type);
 
 void ruyi_symtab_type_map_destroy(ruyi_symtab_type_map *map);
-
-ruyi_symtab_type_func* ruyi_symtab_type_func_create(ruyi_symtab_type_tuple *return_types, ruyi_symtab_type_tuple  *parameter_types);
-
-void ruyi_symtab_type_func_destroy(ruyi_symtab_type_func *func);
 
 // ====================================================
 

@@ -15,6 +15,7 @@
 #include "ruyi_lexer.h"
 
 #define RUYI_ERROR_MESSAGE_BUF_SIZE 2048
+#define NAME_BUF_LENGTH 128
 
 ruyi_token_pos ruyi_token_pos_make(struct _ruyi_token* token) {
     ruyi_token_pos pos = {0};
@@ -88,6 +89,12 @@ ruyi_error * ruyi_error_misc(const char *format, ...) {
     }
     va_end(vargs);
     return err;
+}
+
+ruyi_error* ruyi_error_misc_unicode_name(const char* fmt, const ruyi_unicode_string *name) {
+    char temp_name[NAME_BUF_LENGTH];
+    ruyi_unicode_string_encode_utf8_n(name, temp_name, NAME_BUF_LENGTH-1);
+    return ruyi_error_misc(fmt, temp_name);
 }
 
 ruyi_error * ruyi_error_by_parser(struct _ruyi_lexer_reader * reader, const char *format, ...) {

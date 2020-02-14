@@ -91,7 +91,7 @@ static void init_ins_tables() {
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Setav, "setav", TRUE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Invokesp, "invokesp", TRUE, TRUE, 0); // operand count dependency on arguments
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Invokenative, "invokenative", TRUE, TRUE, 0); // operand count dependency on arguments
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Ret, "ret", TRUE, FALSE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Ret, "ret", TRUE, TRUE, 0);
 //    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Iret, "iret", FALSE, FALSE, -1);
 //    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Fret, "fret", FALSE, FALSE, -1);
 
