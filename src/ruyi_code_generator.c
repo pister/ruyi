@@ -969,12 +969,24 @@ ruyi_error* gen_while_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ru
 }
 
 static
+BOOL is_last_ins_matches(ruyi_cg_body_context *context, UINT32 ins) {
+    UINT32 len = context->codes->len;
+    UINT32 last_code;
+    ruyi_ir_ins last_ins;
+    if (len == 0) {
+        return FALSE;
+    }
+    last_code = context->codes->data[len-1];
+    ruyi_ir_parse_code(last_code, &last_ins, NULL);
+    return ins == last_ins;
+}
+
+static
 ruyi_error* gen_if_expr_and_body(ruyi_cg_body_context *context, ruyi_ast *ast_expr, ruyi_ast *ast_body, ruyi_vector *end_of_stmt_placeholders) {
     ruyi_error *err;
     ruyi_symtab_type expr_type;
     UINT32 end_of_body_placeholder;
     UINT32 end_of_stmt_placeholder;
-    
     // if-expr
     if ((err = gen_stmt(context, ast_expr, &expr_type, NULL)) != NULL) {
         return err;
@@ -986,10 +998,12 @@ ruyi_error* gen_if_expr_and_body(ruyi_cg_body_context *context, ruyi_ast *ast_ex
         return err;
     }
     // jump to endof if-stmt
-    end_of_stmt_placeholder = ruyi_ins_codes_add(context->codes, Ruyi_ir_Jmp, 0);  // will jump to end of the stmt
+    // if the body's last ins code is 'ret', must be not add 'jmp'
+    if (!is_last_ins_matches(context, Ruyi_ir_Ret)) {
+        end_of_stmt_placeholder = ruyi_ins_codes_add(context->codes, Ruyi_ir_Jmp, 0);  // will jump to end of the stmt
+        ruyi_vector_add(end_of_stmt_placeholders, ruyi_value_uint32(end_of_stmt_placeholder));
+    }
     ruyi_ins_codes_set_value(context->codes, end_of_body_placeholder, context->codes->len);
-    
-    ruyi_vector_add(end_of_stmt_placeholders, ruyi_value_uint32(end_of_stmt_placeholder));
     return NULL;
 }
 

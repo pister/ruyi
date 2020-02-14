@@ -172,7 +172,7 @@ typedef struct {
     ruyi_vector         *args_types; /* type of ruyi_symtab_name_and_type: (ruyi_unicode_string*, ruyi_ir_type, void*) */
     ruyi_vector         *return_types; /* type of ruyi_symtab_type: (ruyi_ir_type, void*) */
     UINT32              codes_size;
-    UINT64              *codes;
+    UINT32              *codes;
     // attributes:
     // UINT16          operand;
     // UINT16          local_size;

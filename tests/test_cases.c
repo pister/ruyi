@@ -2083,20 +2083,10 @@ void test_cg_funcs2() {
     
     
     // 1st function
+    
     func = ir_file->func[0];
-    // name
-    assert(3 == func->name_size);
-    assert(0 == strcmp("sum", (const char*)func->name));
-    // return type
-    assert(1 == func->return_size);
-    assert(Ruyi_ir_type_Int32 == func->return_types[0]);
-    
-    // argments
-    assert(1 == func->argument_size);
-    assert(Ruyi_ir_type_Int32 == func->argument_types[0]);
-    
     // TODO
-    printf("==========================sum============================");
+    printf("==========================sum============================\n");
     len = func->codes_size;
     for (i = 0; i < len; i++) {
         if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
@@ -2108,8 +2098,9 @@ void test_cg_funcs2() {
             printf("%d: %s\n", i, ins_name);
         }
     }
+    
     func = ir_file->func[1];
-    printf("==========================sum_recurs============================");
+    printf("==========================sum_recurs============================\n");
     len = func->codes_size;
     for (i = 0; i < len; i++) {
         if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
