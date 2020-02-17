@@ -27,9 +27,7 @@ typedef enum {
 
 
 
-typedef struct {
-    ruyi_list *block_scope_stack;   // item type: ruyi_symtab_index_hashtable.
-} ruyi_function_scope;
+
 
 
 /*
@@ -101,6 +99,13 @@ typedef enum {
 } ruyi_symtab_index_data_type;
 
 typedef struct {
+    ruyi_list                   *block_scope_stack;   // item type: ruyi_symtab_index_hashtable.
+    ruyi_vector                 *index_vars;        // index of variables
+    ruyi_list                   *index_var_offsets;
+    ruyi_symtab_index_data_type type;
+} ruyi_function_scope;
+
+typedef struct {
     ruyi_symtab_index_data_type type;
     union {
         ruyi_symtab_function    *func_ptr;
@@ -111,7 +116,7 @@ typedef struct {
 typedef struct {
     ruyi_symtab_index_data_type type;
     ruyi_hashtable              *name2index;
-    ruyi_vector                 *index2value_ptr; // value of ruyi_symtab_type_func* or ruyi_symtab_variable*
+    ruyi_vector                 *ref_of_index2value_ptr; // value of ruyi_symtab_type_func* or ruyi_symtab_variable*
 } ruyi_symtab_index_hashtable;
 
 
@@ -158,6 +163,8 @@ UINT32 ruyi_symtab_constants_pool_get_or_add_unicode(ruyi_symtab_constants_pool 
 // class (global): todo
 // interface (global): todo
 typedef struct {
+    ruyi_function_scope         *global_var_scope;
+    ruyi_function_scope         *global_func_scope;
     ruyi_symtab_index_hashtable *global_variables;
     ruyi_symtab_index_hashtable *functions; /* name => ruyi_symtab_type_func */
     ruyi_symtab_constants_pool  *cp;
@@ -243,7 +250,7 @@ void ruyi_symtab_type_map_destroy(ruyi_symtab_type_map *map);
 
 // ====================================================
 
-ruyi_function_scope* ruyi_symtab_function_scope_create(void);
+ruyi_function_scope* ruyi_symtab_function_scope_create(ruyi_symtab_index_data_type type);
 
 void ruyi_symtab_function_scope_destroy(ruyi_function_scope *function_scope);
 

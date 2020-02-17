@@ -34,8 +34,8 @@ static void init_ins_tables() {
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Load, "load", TRUE, FALSE, 1);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Store, "store", TRUE, FALSE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Jmp, "jmp", TRUE, TRUE, 0);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Je, "je", TRUE, TRUE, 0);
-    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Jne, "jne", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Jtrue, "jtrue", TRUE, TRUE, 0);
+    put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_Jfalse, "jfalse", TRUE, TRUE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jgt, "i_jgt", TRUE, TRUE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jget, "i_jget", TRUE, TRUE, 0);
     put_ins_detail(g_ins_table, g_ins_name_table, Ruyi_ir_I_jlt, "i_jlt", TRUE, TRUE, 0);

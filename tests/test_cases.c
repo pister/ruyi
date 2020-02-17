@@ -14,6 +14,7 @@
 #include "../src/ruyi_value.h"
 #include "../src/ruyi_hashtable.h"
 #include "../src/ruyi_unicode.h"
+#include "../src/ruyi_bytes.h"
 #include "../src/ruyi_io.h"
 #include "../src/ruyi_lexer.h"
 #include "../src/ruyi_parser.h"
@@ -1887,7 +1888,7 @@ void test_parser_function_func_type(void) {
 
 void test_ruyi_function_scope() {
     ruyi_error *err;
-    ruyi_function_scope *scope = ruyi_symtab_function_scope_create();
+    ruyi_function_scope *scope = ruyi_symtab_function_scope_create(Ruyi_sid_Var);
     ruyi_unicode_string *name = ruyi_unicode_string_init_from_utf8("name1", 0);
     ruyi_symtab_variable input_var;
     ruyi_symtab_variable output_var;
@@ -2050,8 +2051,7 @@ void test_cg_funcs() {
 void test_cg_funcs2() {
     const char* src = "package bb.cc; import a2;  c2 := 10; "
     "func sum(n int) int { s := 0; i := 0; while (i <= n) { s = s + i; i = i+ 1;} return s; } \n"
-    "func sum_recurs(n int) int { if (n <= 1) { return n;} return n + sum_recurs(n-1); } \n"
-    ;
+    "func sum_recurs(n int) int { if (n <= 1) { return n;} return n + sum_recurs(n-1); } \n";
     ruyi_cg_file_function *func;
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -2113,9 +2113,143 @@ void test_cg_funcs2() {
         }
     }
     
-    
-    
     ruyi_cg_file_destroy(ir_file);
+}
+
+void test_cg_funcs3() {
+    const char* src = "package bb.cc; import a2;  c2 := 10;\n"
+    "func test2(n int) int\n{ var a int \n if (n > 100) { a = n+ 10 } elseif (n >50) {a = n+ 20 } elseif (n < 10) { a= 1;}  else { a = n * 2 }\n return a; }";
+    ruyi_cg_file_function *func;
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    char ins_name[16];
+    UINT16 ins_value;
+    UINT32 i, len;
+    BOOL has_second;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_cg_file *ir_file;
+    err = ruyi_cg_generate(ast, &ir_file);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_ast_destroy(ast);
+    assert(1 == ir_file->func_count);
+    // 1st function
+    func = ir_file->func[0];
+    // TODO
+    printf("==========================ifelse_test============================\n");
+    len = func->codes_size;
+    for (i = 0; i < len; i++) {
+        if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
+            assert(0);
+        }
+        if (has_second) {
+            printf("%d: %s %d\n", i, ins_name, ins_value);
+        } else {
+            printf("%d: %s\n", i, ins_name);
+        }
+    }
+    ruyi_cg_file_destroy(ir_file);
+}
+
+void test_cg_funcs4() {
+    const char* src = "package bb.cc; import a2;  c2 := 10;\n"
+    "func test3(n int) int\n{ s := 0; for (i := 0; i <= n; i++) {\n s = s + i; }; return s; }";
+    ruyi_cg_file_function *func;
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    char ins_name[16];
+    UINT16 ins_value;
+    UINT32 i, len;
+    BOOL has_second;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_cg_file *ir_file;
+    err = ruyi_cg_generate(ast, &ir_file);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_ast_destroy(ast);
+    assert(1 == ir_file->func_count);
+    // 1st function
+    func = ir_file->func[0];
+    // TODO
+    printf("==========================for_stmt_test============================\n");
+    len = func->codes_size;
+    for (i = 0; i < len; i++) {
+        if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
+            assert(0);
+        }
+        if (has_second) {
+            printf("%d: %s %d\n", i, ins_name, ins_value);
+        } else {
+            printf("%d: %s\n", i, ins_name);
+        }
+    }
+    ruyi_cg_file_destroy(ir_file);
+}
+
+void run_test_cases_bytes() {
+    UINT16 v16 = 0x1234, bv16;
+    UINT32 v32 = 0x12345678, bv32;
+    UINT64 v64 = 0x1234567890abcdef, bv64;
+    bv16 = ruyi_bytes_to_uint16_big_endian(&v16);
+    if ((0x34 == *(UINT8*)&v16)) {
+        assert(bv16 == 0x3412);
+    } else {
+        assert(bv16 == 0x1234);
+    }
+    bv16 = ruyi_bytes_to_uint16_little_endian(&v16);
+    if ((0x34 == *(UINT8*)&v16)) {
+        assert(bv16 == 0x1234);
+    } else {
+        assert(bv16 == 0x3412);
+    }
+    bv32 = ruyi_bytes_to_uint32_big_endian(&v32);
+    if ((0x34 == *(UINT8*)&v16)) {
+        assert(bv32 == 0x78563412);
+    } else {
+        assert(bv32 == 0x12345678);
+    }
+    bv32 = ruyi_bytes_to_uint32_little_endian(&v32);
+    if ((0x34 == *(UINT8*)&v16)) {
+        assert(bv32 == 0x12345678);
+    } else {
+        assert(bv32 == 0x78563412);
+    }
+    
+    bv64 = ruyi_bytes_to_uint64_big_endian(&v64);
+    if ((0x34 == *(UINT8*)&v16)) {
+        assert(bv64 == 0xefcdab9078563412);
+    } else {
+        assert(bv64 == 0x1234567890abcdef);
+    }
+    bv64 = ruyi_bytes_to_uint64_little_endian(&v64);
+    if ((0x34 == *(UINT8*)&v16)) {
+        assert(bv64 == 0x1234567890abcdef);
+    } else {
+        assert(bv64 == 0xefcdab9078563412);
+    }
+    
 }
 
 void run_test_cases_basic(void) {
@@ -2127,6 +2261,8 @@ void run_test_cases_basic(void) {
     test_unicode_string();
     //  test_file();
     //  test_unicode_file();
+    run_test_cases_bytes();
+
 }
 
 void run_test_cases_lexer(void) {
@@ -2154,8 +2290,10 @@ void run_test_cases_cg() {
     test_symtab_tools();
     test_cg_ir();
     test_cg_package_import_global_vars();
-    // test_cg_funcs();
+    test_cg_funcs();
     test_cg_funcs2();
+    test_cg_funcs3();
+    test_cg_funcs4();
 }
 
 void run_test_cases(void) {
