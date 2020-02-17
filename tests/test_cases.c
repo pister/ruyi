@@ -2208,6 +2208,52 @@ void test_cg_funcs4() {
     ruyi_cg_file_destroy(ir_file);
 }
 
+void test_cg_funcs5() {
+    const char* src = "package bb.cc; import a2;  c2 := 10;\n"
+    "func test3(n int) int\n{ s := 0; i := 0; while (true) { i++; s = s + i; if (i >= n) {break;}} return s; }";
+    ruyi_cg_file_function *func;
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    char ins_name[16];
+    UINT16 ins_value;
+    UINT32 i, len;
+    BOOL has_second;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_cg_file *ir_file;
+    err = ruyi_cg_generate(ast, &ir_file);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_ast_destroy(ast);
+    assert(1 == ir_file->func_count);
+    // 1st function
+    func = ir_file->func[0];
+    // TODO
+    printf("==========================break_test============================\n");
+    len = func->codes_size;
+    for (i = 0; i < len; i++) {
+        if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
+            assert(0);
+        }
+        if (has_second) {
+            printf("%d: %s %d\n", i, ins_name, ins_value);
+        } else {
+            printf("%d: %s\n", i, ins_name);
+        }
+    }
+    ruyi_cg_file_destroy(ir_file);
+}
+
 void run_test_cases_bytes() {
     UINT16 v16 = 0x1234, bv16;
     UINT32 v32 = 0x12345678, bv32;
@@ -2294,6 +2340,7 @@ void run_test_cases_cg() {
     test_cg_funcs2();
     test_cg_funcs3();
     test_cg_funcs4();
+    test_cg_funcs5();
 }
 
 void run_test_cases(void) {
