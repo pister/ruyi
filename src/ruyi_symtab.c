@@ -231,11 +231,13 @@ ruyi_error* ruyi_symtab_function_create(ruyi_symtab *symtab, const ruyi_unicode_
     }
     
     func = (ruyi_symtab_function_define*)ruyi_mem_alloc(sizeof(ruyi_symtab_function_define));
-    func->name = name;
     if (name) {
         func->anonymous = FALSE;
+        func->name = ruyi_unicode_string_copy_from(name);
     } else {
         func->anonymous = TRUE;
+        func->name = NULL;
+
     }
     func->symtab = symtab;
     func->func_symtab_scope = ruyi_symtab_function_scope_create(Ruyi_sid_Var);
@@ -245,7 +247,7 @@ ruyi_error* ruyi_symtab_function_create(ruyi_symtab *symtab, const ruyi_unicode_
     func->codes = NULL;
     func->index = 0;
     
-    simple_func.name = name;
+    simple_func.name = func->name;
     simple_func.parameter_count = 0;
     simple_func.return_count = 0;
     
@@ -322,7 +324,7 @@ ruyi_error* ruyi_symtab_function_add_arg(ruyi_symtab_function_define* func, cons
         func->args_types = ruyi_vector_create();
     }
     // name
-    ruyi_vector_add(func->args_types, ruyi_value_unicode_str(var->name));
+    ruyi_vector_add(func->args_types, ruyi_value_unicode_str(ruyi_unicode_string_copy_from(var->name)));
     // ir_type
     ruyi_vector_add(func->args_types, ruyi_value_int32(var->type.ir_type));
     // detail

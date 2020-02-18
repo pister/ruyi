@@ -590,8 +590,8 @@ typedef struct {
     ruyi_symtab_function_define *func;
     ruyi_ins_codes              *codes;
     ruyi_symtab                 *symtab;    // reference of global ruyi_symtab
-    ruyi_vector                 *break_index;
-    ruyi_vector                 *continue_index;
+    ruyi_list                   *break_index_stack; // the item value is index-vector
+    ruyi_list                   *continue_index_stack; // the item value is index-vector
 } ruyi_cg_body_context;
 
 static
@@ -615,6 +615,69 @@ void ruyi_ins_codes_destroy(ruyi_ins_codes *codes) {
     }
     ruyi_mem_free(codes);
 }
+
+static ruyi_cg_body_context * ruyi_cg_body_context_create(ruyi_symtab *symtab, ruyi_symtab_function_define *func) {
+    ruyi_cg_body_context * context = (ruyi_cg_body_context*) ruyi_mem_alloc(sizeof(ruyi_cg_body_context));
+    context->symtab = symtab;
+    context->func = func;
+    context->codes = ruyi_ins_codes_create();
+    context->break_index_stack = ruyi_list_create();
+    context->continue_index_stack = ruyi_list_create();
+    return context;
+}
+
+static void ruyi_cg_body_context_destroy(ruyi_cg_body_context *context) {
+    if (!context) {
+        return;
+    }
+    ruyi_ins_codes_destroy(context->codes);
+    if (context->break_index_stack) {
+        ruyi_list_destroy(context->break_index_stack);
+    }
+    if (context->continue_index_stack) {
+        ruyi_list_destroy(context->continue_index_stack);
+    }
+}
+
+static void ruyi_cg_body_context_push_break_continue(ruyi_cg_body_context *context) {
+    ruyi_list_add_last(context->break_index_stack, ruyi_value_ptr(NULL));   // lazy init
+    ruyi_list_add_last(context->continue_index_stack, ruyi_value_ptr(NULL)); // lazy init
+}
+
+
+static void ruyi_cg_body_context_pop_break_continue(ruyi_cg_body_context *context) {
+    ruyi_value value;
+    ruyi_vector *vector;
+    if (!ruyi_list_empty(context->break_index_stack)) {
+        ruyi_list_remove_last(context->break_index_stack, &value);
+        vector = (ruyi_vector*)value.data.ptr;
+        if (vector) {
+            ruyi_vector_destroy(vector);
+        }
+    }
+    if (!ruyi_list_empty(context->continue_index_stack)) {
+        ruyi_list_remove_last(context->continue_index_stack, &value);
+        vector = (ruyi_vector*)value.data.ptr;
+        if (vector) {
+            ruyi_vector_destroy(vector);
+        }
+    }
+}
+
+static void ruyi_cg_body_context_add_index(ruyi_list *stack, UINT32 index) {
+    ruyi_vector *vector;
+    ruyi_list_item *last;
+    assert(stack);
+    last = stack->last;
+    assert(last);
+    vector = (ruyi_vector*)last->value.data.ptr;
+    if (vector == NULL) {
+        vector = ruyi_vector_create();
+        last->value = ruyi_value_ptr(vector);
+    }
+    ruyi_vector_add(vector, ruyi_value_uint32(index));
+}
+
 
 static
 UINT32 ruyi_ins_codes_add(ruyi_ins_codes *codes, ruyi_ir_ins ins, UINT32 val) {
@@ -646,6 +709,8 @@ ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_sym
 
 static
 ruyi_error* gen_block_statements(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type);
+
+static void proccess_loop_begin(ruyi_cg_body_context *context);
 
 static void proccess_loop_end(ruyi_cg_body_context *context, UINT32 index_for_loop_start);
 
@@ -958,6 +1023,9 @@ ruyi_error* gen_while_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ru
     ruyi_symtab_type expr_type;
     UINT32 index_for_loop_start = context->codes->len;
     UINT32 which_index_will_jump_out;
+    
+    proccess_loop_begin(context);
+    
     // while enter
     if ((err = gen_stmt(context, ast_expr, &expr_type, NULL)) != NULL) {
         return err;
@@ -1305,28 +1373,38 @@ ruyi_error* gen_function_invocation(ruyi_cg_body_context *context, ruyi_ast *ast
     return NULL;
 }
 
+static void proccess_loop_begin(ruyi_cg_body_context *context) {
+    ruyi_cg_body_context_push_break_continue(context);
+}
+
 static void proccess_loop_end(ruyi_cg_body_context *context, UINT32 index_for_loop_start) {
     UINT32 i, len;
     ruyi_value value;
     // update break index
-    if (context->break_index) {
-        len = ruyi_vector_length(context->break_index);
-        for (i = 0; i < len; i++) {
-            ruyi_vector_get(context->break_index, i, &value);
-            ruyi_ins_codes_set_value(context->codes, value.data.uint32_value, context->codes->len);
+    ruyi_vector *vector;
+    if (!ruyi_list_empty(context->break_index_stack)) {
+        ruyi_list_get_last(context->break_index_stack, &value);
+        vector = (ruyi_vector*)value.data.ptr;
+        if (vector) {
+            len = ruyi_vector_length(vector);
+            for (i = 0; i < len; i++) {
+                ruyi_vector_get(vector, i, &value);
+                ruyi_ins_codes_set_value(context->codes, value.data.uint32_value, context->codes->len);
+            }
         }
-        ruyi_vector_destroy(context->break_index);
     }
-    // update continue index
-    if (context->continue_index) {
-        len = ruyi_vector_length(context->continue_index);
-        for (i = 0; i < len; i++) {
-            ruyi_vector_get(context->continue_index, i, &value);
-            ruyi_ins_codes_set_value(context->codes, value.data.uint32_value, index_for_loop_start);
+    if (!ruyi_list_empty(context->continue_index_stack)) {
+        ruyi_list_get_last(context->continue_index_stack, &value);
+        vector = (ruyi_vector*)value.data.ptr;
+        if (vector) {
+            len = ruyi_vector_length(vector);
+            for (i = 0; i < len; i++) {
+                ruyi_vector_get(vector, i, &value);
+                ruyi_ins_codes_set_value(context->codes, value.data.uint32_value, index_for_loop_start);
+            }
         }
-        ruyi_vector_destroy(context->continue_index);
     }
-
+    ruyi_cg_body_context_pop_break_continue(context);
 }
 
 static
@@ -1347,6 +1425,8 @@ ruyi_error* gen_for_3_parts_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_st
     ast_for_body = ruyi_ast_get_child(ast_stmt, 1);
     
     assert(ast_for_init->type == Ruyi_at_expr_statement_list);
+    
+    proccess_loop_begin(context);
     
     // for init part variable define scope can be accessed by body
     ruyi_symtab_function_scope_enter(context->func->func_symtab_scope);
@@ -1396,14 +1476,12 @@ ruyi_error* gen_bool(ruyi_cg_body_context *context, BOOL value, ruyi_symtab_type
     return NULL;
 }
 
+
 static
 ruyi_error* gen_break_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     UINT32 index;
-    if (!context->break_index) {
-        context->break_index = ruyi_vector_create();
-    }
     index = ruyi_ins_codes_add(context->codes, Ruyi_ir_Jmp, 0);
-    ruyi_vector_add(context->break_index, ruyi_value_uint32(index));
+    ruyi_cg_body_context_add_index(context->break_index_stack, index);
     return NULL;
 }
 
@@ -1468,7 +1546,7 @@ gen_func_body_error:
 
 static
 ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruyi_vector *global_functions) {
-    ruyi_error *err;
+    ruyi_error *err = NULL;
     ruyi_ast *ast_name = NULL;
     ruyi_ast *ast_type = NULL;
     ruyi_ast *ast_formal_params;
@@ -1477,9 +1555,9 @@ ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruy
     ruyi_ast *temp;
     ruyi_symtab_type the_type;
     ruyi_symtab_function_define *func = NULL;
-    ruyi_ins_codes *ins_codes = NULL;
     UINT32 i, parameter_len, return_len;
     ruyi_symtab_variable var;
+    ruyi_cg_body_context *context = NULL;
     ruyi_symtab_type paramter_types[RUYI_FUNC_MAX_PARAMETER_COUNT];
     ruyi_symtab_type return_types[RUYI_FUNC_MAX_RETURN_COUNT];
 
@@ -1559,35 +1637,27 @@ ruyi_error* gen_global_func_define(ruyi_symtab *symtab, const ruyi_ast *ast, ruy
         goto gen_global_func_define_on_error;
     }
     // func body
-    ins_codes = ruyi_ins_codes_create();
-    ruyi_cg_body_context context;
-    context.codes = ins_codes;
-    context.func = func;
-    context.symtab = symtab;
-    context.break_index = NULL;
-    context.continue_index = NULL;
-    if ((err = gen_func_body(&context, ast_body)) != NULL) {
+    context = ruyi_cg_body_context_create(symtab, func);
+    if ((err = gen_func_body(context, ast_body)) != NULL) {
         goto gen_global_func_define_on_error;
     }
     
-    func->codes_size = ins_codes->len;
-    if (ins_codes->len > 0) {
-        func->codes = (UINT32 *) ruyi_mem_alloc(sizeof(UINT32) * ins_codes->len);
-        memcpy(func->codes, ins_codes->data, sizeof(UINT32) * ins_codes->len);
+    func->codes_size = context->codes->len;
+    if (context->codes->len > 0) {
+        func->codes = (UINT32 *) ruyi_mem_alloc(sizeof(UINT32) * context->codes->len);
+        memcpy(func->codes, context->codes->data, sizeof(UINT32) *context->codes->len);
     } else {
         func->codes = NULL;
     }
     
     ruyi_vector_add(global_functions, ruyi_value_ptr(func_create(func)));
     
-    // TODO free func ???
-    return NULL;
 gen_global_func_define_on_error:
     if (func) {
         ruyi_symtab_function_destroy(func);
     }
-    if (ins_codes) {
-        ruyi_ins_codes_destroy(ins_codes);
+    if (context) {
+        ruyi_cg_body_context_destroy(context);
     }
     return err;
 }
