@@ -2210,7 +2210,7 @@ void test_cg_funcs4() {
 
 void test_cg_funcs5() {
     const char* src = "package bb.cc; import a2;  c2 := 10;\n"
-    "func test3(n int) int\n{ s := 0; i := 0; while (true) { i++; s = s + i; if (i >= n) {break;}} return s; }";
+    "func test3(n int) int\n{ s := 0; i := 0; while (true) { i++; if (i < 10) {continue;} if (i >= n) {break;} s = s + i;  } return s; }";
     ruyi_cg_file_function *func;
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
@@ -2239,7 +2239,7 @@ void test_cg_funcs5() {
     // 1st function
     func = ir_file->func[0];
     // TODO
-    printf("==========================break_test============================\n");
+    printf("==========================break_continue_test============================\n");
     len = func->codes_size;
     for (i = 0; i < len; i++) {
         if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {

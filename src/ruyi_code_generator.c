@@ -1486,6 +1486,14 @@ ruyi_error* gen_break_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ru
 }
 
 static
+ruyi_error* gen_continue_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    UINT32 index;
+    index = ruyi_ins_codes_add(context->codes, Ruyi_ir_Jmp, 0);
+    ruyi_cg_body_context_add_index(context->continue_index_stack, index);
+    return NULL;
+}
+
+static
 ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     switch (ast_stmt->type) {
         case Ruyi_at_return_statement:
@@ -1519,6 +1527,8 @@ ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_sym
             return gen_bool(context, (BOOL)ast_stmt->data.int32_value, out_type, expect_type);
         case Ruyi_at_break_statement:
             return gen_break_stmt(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_continue_statement:
+            return gen_continue_stmt(context, ast_stmt, out_type, expect_type);
         default:
             break;
     }
