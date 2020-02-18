@@ -668,6 +668,43 @@ void test_unicode_string(void) {
     ruyi_unicode_bytes_string_destroy(s1);
 }
 
+void test_parser_array_map() {
+    const char* src = "a := []int[1, 2, 4]";
+    ruyi_error *err = NULL;
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_ast *ast = NULL;
+    ruyi_ast *ast_delcarations;
+    ruyi_ast *assign_ast;
+    ruyi_ast *ast1;
+    ruyi_ast *ast2;
+    ruyi_ast *ast_array_type;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    assert(Ruyi_at_root == ast->type);
+    assert(3 == ruyi_ast_child_length(ast));
+    ast_delcarations = ruyi_ast_get_child(ast, 2);
+    assign_ast = ruyi_ast_get_child(ast_delcarations, 0);
+    assert(Ruyi_at_var_declaration == assign_ast->type);
+    ast1 = ruyi_ast_get_child(assign_ast, 0);
+    assert(Ruyi_at_var_declaration_auto_type == ast1->type);
+    ast2 = ruyi_ast_get_child(assign_ast, 1);
+    assert(Ruyi_at_array_creation_with_init == ast2->type);
+    
+    ast_array_type = ruyi_ast_get_child(ast2, 0);
+    assert(Ruyi_at_type_array == ast_array_type->type);
+    
+    assert(4 == ruyi_ast_child_length(ast2));
+    
+    
+    ruyi_ast_destroy(ast);
+
+}
 
 void test_parser_expression() {
     const char* src = "bb := aa + 2";
@@ -2254,6 +2291,52 @@ void test_cg_funcs5() {
     ruyi_cg_file_destroy(ir_file);
 }
 
+void test_cg_funcs6_array() {
+    const char* src = "package bb.cc;\n "
+    "func test_array() int {\n s := 0;\n a1 := []int[1, 2, 4]; \n for (x in a1)\n { s = s + x; }  return s; }";
+    ruyi_cg_file_function *func;
+    ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
+    ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
+    ruyi_error *err = NULL;
+    ruyi_ast *ast = NULL;
+    char ins_name[16];
+    UINT16 ins_value;
+    UINT32 i, len;
+    BOOL has_second;
+    err = ruyi_parse_ast(reader, &ast);
+    ruyi_lexer_reader_close(reader);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_cg_file *ir_file;
+    err = ruyi_cg_generate(ast, &ir_file);
+    if (err != NULL) {
+        printf("[error] line: %d, column:%d message: %s\n", err->line, err->column, err->message);
+        ruyi_error_destroy(err);
+        return;
+    }
+    ruyi_ast_destroy(ast);
+    assert(1 == ir_file->func_count);
+    // 1st function
+    func = ir_file->func[0];
+    // TODO
+    printf("==========================break_continue_test============================\n");
+    len = func->codes_size;
+    for (i = 0; i < len; i++) {
+        if (!ruyi_ir_code_desc(func->codes[i], ins_name, 16, &ins_value, &has_second)) {
+            assert(0);
+        }
+        if (has_second) {
+            printf("%d: %s %d\n", i, ins_name, ins_value);
+        } else {
+            printf("%d: %s\n", i, ins_name);
+        }
+    }
+    ruyi_cg_file_destroy(ir_file);
+}
+
 void run_test_cases_bytes() {
     UINT16 v16 = 0x1234, bv16;
     UINT32 v32 = 0x12345678, bv32;
@@ -2319,6 +2402,7 @@ void run_test_cases_lexer(void) {
 }
 
 void run_test_cases_parser() {
+    test_parser_array_map();
     test_parser_package_import_vars();
     test_parser_expression();
     test_parser_function_return();
@@ -2341,6 +2425,7 @@ void run_test_cases_cg() {
     test_cg_funcs3();
     test_cg_funcs4();
     test_cg_funcs5();
+    test_cg_funcs6_array();
 }
 
 void run_test_cases(void) {

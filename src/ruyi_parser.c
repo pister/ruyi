@@ -1237,7 +1237,7 @@ ruyi_error* array_type(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
         return NULL;
     }
     lbracket_token = ruyi_lexer_reader_next_token(reader);
-    if (ruyi_lexer_reader_peek_token_type(reader) != Ruyi_tt_RBRACKET) {
+    if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_RBRACKET, NULL)) {
         ruyi_lexer_reader_push_front(reader, lbracket_token);
         *out_ast = NULL;
         return NULL;
@@ -1624,6 +1624,8 @@ ruyi_error* array_creation_with_init(ruyi_lexer_reader *reader, ruyi_ast **out_a
         goto array_creation_with_init_on_error;
     }
     ast = ruyi_ast_create(Ruyi_at_array_creation_with_init);
+    // first ast is array type
+    ruyi_ast_add_child(ast, ast_array_type);
     if (expr_ast != NULL) {
         ruyi_ast_add_child(ast, expr_ast);
         while (TRUE) {
