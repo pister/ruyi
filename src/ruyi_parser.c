@@ -16,10 +16,10 @@ static ruyi_ast* create_ast_string_by_token(ruyi_lexer_reader *reader, ruyi_ast_
     ruyi_ast * ret;
     ruyi_token *token = ruyi_lexer_reader_next_token(reader);
     ret = ruyi_ast_create_with_unicode(type, token->value.str_value);
-    if (out_token == NULL) {
-        ruyi_lexer_token_destroy(token);
-    } else {
+    if (out_token != NULL) {
         *out_token = token;
+    } else {
+        ruyi_lexer_token_destroy(token);
     }
     return ret;
 }
@@ -1790,11 +1790,12 @@ ruyi_error* array_variable_access(ruyi_lexer_reader *reader, ruyi_ast **out_ast)
     UINT32 i, len;
     ruyi_value temp;
     if ((err = name(reader, &name_ast, name_tokens)) != NULL) {
-        return err;
+        goto array_variable_access_on_error;
     }
     if (name_ast == NULL) {
         *out_ast = NULL;
-        return NULL;
+        err = NULL;
+        goto array_variable_access_on_error;
     }
     if (!ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LBRACKET, NULL)) {
         tokens_push_back_at_front(reader, name_tokens);
@@ -2892,11 +2893,13 @@ ruyi_error* for_in(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     ruyi_ast_add_child(ast, ast_var_list);
     ruyi_ast_add_child(ast, ast_expr);
     *out_ast = ast;
-    return NULL;
+    err = NULL;
+    goto for_in_clear_tokens;
 for_in_on_error:
     if (ast_var_list) {
         ruyi_ast_destroy(ast_var_list);
     }
+for_in_clear_tokens:
     if (tokens != NULL) {
         len = ruyi_vector_length(tokens);
         for (i = 0; i < len; i++) {
@@ -2905,7 +2908,6 @@ for_in_on_error:
         }
         ruyi_vector_destroy(tokens);
     }
-    *out_ast = NULL;
     return err;
 }
 
@@ -2925,9 +2927,11 @@ ruyi_error* for_statement(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     if (ruyi_lexer_reader_consume_token_if_match(reader, Ruyi_tt_LPAREN, NULL)) {
         has_paran = TRUE;
     }
+    
     if ((err = for_in(reader, &ast_for_in)) != NULL) {
         goto for_statement_on_error;
     }
+    
     if (ast_for_in == NULL) {
         if ((err = for_three_parts(reader, &ast_for_3_parts)) != NULL) {
             goto for_statement_on_error;
@@ -3542,7 +3546,7 @@ ruyi_error* global_declarations(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     global_declarations = ruyi_ast_create(Ruyi_at_global_declarations);
     while (TRUE) {
         if ((err = global_declaration(reader, &global_declare_ast)) != NULL) {
-            return err;
+            goto global_declarations_on_error;
         }
         if (global_declare_ast == NULL) {
             break;
@@ -3552,6 +3556,11 @@ ruyi_error* global_declarations(ruyi_lexer_reader *reader, ruyi_ast **out_ast) {
     }
     *out_ast = global_declarations;
     return NULL;
+global_declarations_on_error:
+    if (global_declarations) {
+        ruyi_ast_destroy(global_declarations);
+    }
+    return err;
 }
 
 static

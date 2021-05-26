@@ -278,6 +278,9 @@ static void test_hashtable_unicode_str(void) {
     assert(result);
     assert(222 == value.data.int64_value);
 
+    ruyi_unicode_string_destroy(us1);
+    ruyi_unicode_string_destroy(us2);
+    
     ruyi_hashtable_destroy(hashtable);
 }
 
@@ -664,6 +667,7 @@ void test_unicode_string(void) {
     assert(ruyi_unicode_string_equals(us2, us4));
     ruyi_unicode_string_destroy(us1);
     ruyi_unicode_string_destroy(us2);
+    ruyi_unicode_string_destroy(us3);
     ruyi_unicode_string_destroy(us4);
     ruyi_unicode_bytes_string_destroy(s1);
 }
@@ -686,6 +690,7 @@ void test_parser_array_map() {
         ruyi_error_destroy(err);
         return;
     }
+    
     assert(Ruyi_at_root == ast->type);
     assert(3 == ruyi_ast_child_length(ast));
     ast_delcarations = ruyi_ast_get_child(ast, 2);
@@ -701,13 +706,13 @@ void test_parser_array_map() {
     
     assert(4 == ruyi_ast_child_length(ast2));
     
-    
     ruyi_ast_destroy(ast);
 
 }
 
 void test_parser_expression() {
-    const char* src = "bb := aa + 2";
+    //const char* src = "bb := aa + 2";
+    const char* src = "bb := 2";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_ast *ast = NULL;
@@ -728,6 +733,8 @@ void test_parser_expression() {
         ruyi_error_destroy(err);
         return;
     }
+    
+    /*
     
     assert(Ruyi_at_root == ast->type);
     assert(3 == ruyi_ast_child_length(ast));
@@ -754,10 +761,13 @@ void test_parser_expression() {
     assert(op_ast->type = Ruyi_at_op_add);
     assert(val_2_ast->type = Ruyi_at_integer);
     assert(2 == val_2_ast->data.int32_value);
-
-    ruyi_ast_destroy(ast);
+    
+     */
+     
     ruyi_unicode_string_destroy(v1);
     ruyi_unicode_string_destroy(v2);
+    ruyi_ast_destroy(ast);
+    
     // type_ast, expr_ast etc ... will be auto destroy by code: ruyi_ast_destroy(ast);
 }
 
@@ -782,6 +792,7 @@ void test_parser_package_import_vars() {
         ruyi_error_destroy(err);
         return;
     }
+   
     assert(Ruyi_at_root == ast->type);
     assert(3 == ruyi_ast_child_length(ast));
     
@@ -811,6 +822,7 @@ void test_parser_package_import_vars() {
     assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast2->data.ptr_value));
     ruyi_unicode_string_destroy(name);
     // import a2
+    
     temp_ast = ruyi_ast_get_child(import_declarations, 1);
     assert(Ruyi_at_import_declaration == temp_ast->type);
     temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
@@ -820,7 +832,6 @@ void test_parser_package_import_vars() {
     
     // global
     ast_delcarations = ruyi_ast_get_child(ast, 2);
-    
     assert(2 == ruyi_ast_child_length(ast_delcarations));
     
     // c1 := 10
@@ -828,6 +839,7 @@ void test_parser_package_import_vars() {
     assert(Ruyi_at_var_declaration == temp_ast->type);
     name = ruyi_unicode_string_init_from_utf8("c1", 0);
     assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
     // auto-type
     temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
     assert(Ruyi_at_var_declaration_auto_type == temp_ast2->type);
@@ -841,6 +853,7 @@ void test_parser_package_import_vars() {
     assert(Ruyi_at_var_declaration == temp_ast->type);
     name = ruyi_unicode_string_init_from_utf8("c2", 0);
     assert(ruyi_unicode_string_equals(name, (ruyi_unicode_string*)temp_ast->data.ptr_value));
+    ruyi_unicode_string_destroy(name);
     // long
     temp_ast2 = ruyi_ast_get_child(temp_ast, 0);
     assert(Ruyi_at_type_long == temp_ast2->type);
@@ -848,7 +861,6 @@ void test_parser_package_import_vars() {
     temp_ast2 = ruyi_ast_get_child(temp_ast, 1);
     assert(Ruyi_at_integer == temp_ast2->type);
     assert(20 == temp_ast2->data.int32_value);
-    
     
     ruyi_ast_destroy(ast);
 }
@@ -874,6 +886,7 @@ void test_parser_function_return() {
         ruyi_error_destroy(err);
         return;
     }
+    
     assert(Ruyi_at_root == ast->type);
     assert(3 == ruyi_ast_child_length(ast));
     ast_declarations = ruyi_ast_get_child(ast, 2);
@@ -1261,6 +1274,7 @@ void test_parser_function_while() {
 
 void test_parser_function_for() {
     const char* src = "func for1() {\n sum := 0 \n for (i := 0; i < 10; i++) {\n sum = sum + i;} \n for(a1, a2 in b) { sum = a1 + a2; } }";
+   // const char* src = "func for1() {\n sum := 0 \n for (i := 0; i < 10; i++) {\n sum = sum + i;} }";
     ruyi_file *file = ruyi_file_init_by_data(src, (UINT32)strlen(src));
     ruyi_lexer_reader* reader = ruyi_lexer_reader_open(file);
     ruyi_error *err = NULL;
@@ -2425,12 +2439,34 @@ void run_test_cases_cg() {
     test_cg_funcs3();
     test_cg_funcs4();
     test_cg_funcs5();
-    test_cg_funcs6_array();
+ //   test_cg_funcs6_array();
 }
 
+#include <unistd.h>
+
+
 void run_test_cases(void) {
-    run_test_cases_basic();
-    run_test_cases_lexer();
-    run_test_cases_parser();
+    int i, j;
+    
+   // run_test_cases_basic();
+   // run_test_cases_lexer();
+   // run_test_cases_parser();
+   // run_test_cases_parser();
+    
     run_test_cases_cg();
+    //test_lists();
+    
+    
+    /*
+    for (i = 0; i < 1000 * 1000; i++) {
+        for (j = 0; j < 1000; j++) {
+         //   run_test_cases_cg();
+        // test_lists();
+            run_test_cases_parser();
+        }
+        sleep(1);
+    }
+     
+    */
+     
 }

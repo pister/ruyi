@@ -24,12 +24,12 @@ typedef enum {
     Ruyi_ir_type_Int32,     // i-32bit
     Ruyi_ir_type_Int64,     // l-64bit
     Ruyi_ir_type_Float32,   // f-32bit
-    Ruyi_ir_type_Float64,   // d-64bit
+    Ruyi_ir_type_Float64,   // d-64bit  
     // reference types 64bit
     Ruyi_ir_type_Object,    // Oname;
     Ruyi_ir_type_String,    // S
+    Ruyi_ir_type_Type,      // void|int8|int16|rune|int32|int64|float32|float64|Tname
     Ruyi_ir_type_Array,     // Atype
-    Ruyi_ir_type_Tuple,     // Ttype*
     Ruyi_ir_type_Map,       // Mtypetype
     Ruyi_ir_type_Function,  // F(type*)type*
 } ruyi_ir_type;
@@ -88,7 +88,7 @@ typedef enum {
     Ruyi_ir_F_jlet,
     Ruyi_ir_F2i,
     Ruyi_ir_F2i_1,
-    
+    Ruyi_ir_newarray,
     Ruyi_ir_LeaGlb,
     Ruyi_ir_LeaLocal,
     Ruyi_ir_Getav,

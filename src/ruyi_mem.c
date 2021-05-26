@@ -8,6 +8,8 @@
 
 #include "ruyi_mem.h"
 #include <stdlib.h>
+#include <stdio.h>
+
 
 void* ruyi_mem_alloc(UINT32 size) {
     void * ptr = malloc(size);

@@ -62,7 +62,7 @@ void ruyi_list_add_first(ruyi_list* list, ruyi_value value) {
 BOOL ruyi_list_remove_first(ruyi_list* list, ruyi_value *ret_value) {
     assert(list);
     ruyi_list_item *curr_first = list->first;
-    if (!curr_first) {
+    if (curr_first == NULL) {
         return FALSE;
     }
     list->first = curr_first->next;

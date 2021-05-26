@@ -95,7 +95,7 @@ typedef int BOOL;
 #endif
 
 #ifndef WIDE_CHAR
-typedef INT32 WIDE_CHAR;
+typedef UINT32 WIDE_CHAR;
 #endif
 
 #define RUYI_OFFSET_OF(base, field) \

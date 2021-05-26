@@ -154,7 +154,7 @@ static void ruyi_lexer_copy_last_n_chars(WIDE_CHAR *dest, UINT32 dest_size, cons
     dest[copy_len] = '\0';
 }
 
-static void ruyi_lexer_set_snapshot(ruyi_token_snapshot *token_snapshot, ruyi_token *token) {
+static void ruyi_lexer_set_snapshot(ruyi_token_snapshot *token_snapshot, const ruyi_token *token) {
     const ruyi_unicode_string* keyword;
     if (token == NULL) {
         token_snapshot->column = 0;
@@ -183,7 +183,17 @@ static void ruyi_lexer_set_snapshot(ruyi_token_snapshot *token_snapshot, ruyi_to
 }
 
 void ruyi_lexer_reader_close(ruyi_lexer_reader *reader) {
+    ruyi_value value;
+    ruyi_token *token;
     assert(reader);
+    if (ruyi_list_get_first(reader->token_buffer_queue, &value)) {
+        assert(value.type == Ruyi_value_type_ptr);
+        token = (ruyi_token *)value.data.ptr;
+        if (token) {
+            ruyi_lexer_token_destroy(token);
+        }
+    }
+    
     ruyi_list_destroy(reader->token_buffer_queue);
     ruyi_list_destroy(reader->chars_buffer_queue);
     ruyi_io_unicode_file_close(reader->file);
@@ -921,7 +931,7 @@ ruyi_token* ruyi_lexer_reader_next_token(ruyi_lexer_reader *reader) {
     ruyi_value value;
     ruyi_token* token;
     if (!ruyi_list_empty(reader->token_buffer_queue)) {
-        ruyi_list_remove_first(reader->token_buffer_queue, &value);
+        assert(ruyi_list_remove_first(reader->token_buffer_queue, &value));
         token = (ruyi_token*)value.data.ptr;
     } else {
         token = ruyi_lexer_next_token_impl(reader);
@@ -945,6 +955,7 @@ void ruyi_lexer_token_destroy(ruyi_token * token) {
         case Ruyi_tt_STRING:
             if (token->value.str_value) {
                 ruyi_unicode_string_destroy(token->value.str_value);
+                token->value.str_value = NULL;
             }
             break;
         default:

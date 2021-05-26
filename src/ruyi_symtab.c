@@ -226,8 +226,9 @@ ruyi_error* ruyi_symtab_function_create(ruyi_symtab *symtab, const ruyi_unicode_
     ruyi_symtab_function_define *func = NULL;
     ruyi_symtab_function simple_func;
     if (index_hashtable_get_function_by_name(symtab->functions, name, &simple_func)) {
-        err = ruyi_error_misc_unicode_name("function %s has been exist!", name);
-        goto ruyi_symtab_function_create_on_error;
+        if ((err = ruyi_error_misc_unicode_name("function %s has been exist!", name)) != NULL) {
+            goto ruyi_symtab_function_create_on_error;
+        }
     }
     
     func = (ruyi_symtab_function_define*)ruyi_mem_alloc(sizeof(ruyi_symtab_function_define));
@@ -361,8 +362,8 @@ void ruyi_symtab_type_destroy(ruyi_symtab_type type) {
         case Ruyi_ir_type_Array:
             ruyi_symtab_type_array_destroy(type.detail.array);
             break;
-        case Ruyi_ir_type_Tuple:
-            ruyi_symtab_type_tuple_destroy(type.detail.tuple);
+        case Ruyi_ir_type_Type:
+            // TODO how to destroy type
             break;
         case Ruyi_ir_type_Map:
             ruyi_symtab_type_map_destroy(type.detail.map);
@@ -412,47 +413,6 @@ void ruyi_symtab_type_array_destroy(ruyi_symtab_type_array *array) {
     ruyi_mem_free(array);
 }
 
-ruyi_symtab_type_tuple* ruyi_symtab_type_tuple_create(UINT32 count) {
-    ruyi_symtab_type_tuple * tuple = (ruyi_symtab_type_tuple*) ruyi_mem_alloc(sizeof(ruyi_symtab_type_tuple));
-    tuple->count = count;
-    tuple->types = (ruyi_symtab_type*)ruyi_mem_alloc(tuple->count * sizeof(ruyi_symtab_type));
-    memset(tuple->types, 0, tuple->count * sizeof(ruyi_symtab_type));
-    return tuple;
-}
-
-void ruyi_symtab_type_tuple_set(ruyi_symtab_type_tuple *tuple, UINT32 pos, ruyi_symtab_type type) {
-    assert(tuple);
-    assert(pos < tuple->count);
-    tuple->types[pos] = type;
-}
-
-ruyi_symtab_type_tuple* ruyi_symtab_type_tuple_copy_from(const ruyi_symtab_type_tuple* src_tuple) {
-    if (src_tuple == NULL) {
-        return NULL;
-    }
-    ruyi_symtab_type_tuple *t = (ruyi_symtab_type_tuple*)ruyi_mem_alloc(sizeof(ruyi_symtab_type_tuple));
-    t->count = src_tuple->count;
-    t->types = (ruyi_symtab_type*)ruyi_mem_alloc(sizeof(ruyi_symtab_type) * src_tuple->count);
-    memcpy(t->types, src_tuple->types, sizeof(ruyi_symtab_type) * src_tuple->count);
-    // todo NOTICE: ruyi_symtab_type.detail is not deep copied!
-    return t;
-}
-
-void ruyi_symtab_type_tuple_destroy(ruyi_symtab_type_tuple *tuple) {
-    int i;
-    if (!tuple) {
-        return;
-    }
-    if (tuple->types) {
-        for (i = 0; i < tuple->count; i++) {
-            if (tuple->types[i].ir_type) {
-                ruyi_symtab_type_destroy(tuple->types[i]);
-            }
-        }
-        ruyi_mem_free(tuple->types);
-    }
-    ruyi_mem_free(tuple);
-}
 
 ruyi_symtab_type_map* ruyi_symtab_type_map_create(ruyi_symtab_type key_type, ruyi_symtab_type value_type) {
     ruyi_symtab_type_map * map = (ruyi_symtab_type_map*) sizeof(ruyi_symtab_type_map);
@@ -559,6 +519,7 @@ void ruyi_symtab_function_scope_leave(ruyi_function_scope* scope) {
     table = (ruyi_symtab_index_hashtable *)last_value.data.ptr;
     if (table) {
         index_hashtable_destroy(table);
+        table = NULL;
     }
     // deal for index
     if (!ruyi_list_remove_last(scope->index_var_offsets, &last_value)) {
@@ -569,7 +530,7 @@ void ruyi_symtab_function_scope_leave(ruyi_function_scope* scope) {
     // popup the scope values at last
     while (ruyi_vector_length(scope->index_vars) > pos) {
         ruyi_vector_remove_last(scope->index_vars, &value);
-        switch (table->type) {
+        switch (value.type) {
             case Ruyi_sid_Var:
                 var = (ruyi_symtab_variable *)value.data.ptr;
                 assert(var);
@@ -656,6 +617,13 @@ ruyi_symtab_constant *ruyi_symtab_constant_float64(UINT32 index, FLOAT64 value) 
     c->data.float64_value = value;
     return c;
 }
+ruyi_symtab_constant *ruyi_symtab_constant_type(UINT32 index, UINT32 value) {
+    ruyi_symtab_constant * c = (ruyi_symtab_constant*) ruyi_mem_alloc(sizeof(ruyi_symtab_constant));
+    c->index = index;
+    c->type = Ruyi_ir_type_Type;
+    c->data.int64_value = value;
+    return c;
+}
 ruyi_symtab_constant *ruyi_symtab_constant_unicode(UINT32 index, const ruyi_unicode_string* value) {
     ruyi_symtab_constant * c = (ruyi_symtab_constant*) ruyi_mem_alloc(sizeof(ruyi_symtab_constant));
     c->index = index;
@@ -689,6 +657,7 @@ ruyi_symtab_constants_pool * ruyi_symtab_constants_pool_create(void) {
     cp->int642index = NULL;
     cp->float642index = NULL;
     cp->unicode2index = NULL;
+    cp->type2index = NULL;
     cp->index2value = NULL;
     return cp;
 }
@@ -708,6 +677,9 @@ void ruyi_symtab_constants_pool_destroy(ruyi_symtab_constants_pool* cp) {
     }
     if (cp->unicode2index) {
         ruyi_hashtable_destroy(cp->unicode2index);
+    }
+    if (cp->type2index) {
+        ruyi_hashtable_destroy(cp->type2index);
     }
     if (cp->index2value) {
         len = ruyi_vector_length(cp->index2value);
@@ -786,3 +758,53 @@ UINT32 ruyi_symtab_constants_pool_get_or_add_unicode(ruyi_symtab_constants_pool 
     return index;
 }
 
+ruyi_error* ruyi_symtab_constants_pool_get_or_parse(ruyi_symtab_constants_pool *cp, const ruyi_unicode_string *type_desc, UINT32 *out_index) {
+    static ruyi_hashtable *primary_types = NULL;
+    ruyi_value value;
+    UINT32 unicode_index;
+    ruyi_value found_value;
+    UINT32 type_index;
+    ruyi_symtab_constant *const_value;
+    ruyi_unicode_string temp;
+    if (primary_types == NULL) {
+        primary_types = ruyi_hashtable_create();
+        ruyi_hashtable_put(primary_types, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8("v", 1)), ruyi_value_int32(1));
+        ruyi_hashtable_put(primary_types, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8("b", 1)), ruyi_value_int32(1));
+        ruyi_hashtable_put(primary_types, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8("s", 1)), ruyi_value_int32(1));
+        ruyi_hashtable_put(primary_types, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8("r", 1)), ruyi_value_int32(1));
+        ruyi_hashtable_put(primary_types, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8("i", 1)), ruyi_value_int32(1));
+        ruyi_hashtable_put(primary_types, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8("l", 1)), ruyi_value_int32(1));
+        ruyi_hashtable_put(primary_types, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8("f", 1)), ruyi_value_int32(1));
+        ruyi_hashtable_put(primary_types, ruyi_value_unicode_str(ruyi_unicode_string_init_from_utf8("d", 1)), ruyi_value_int32(1));
+    }
+    assert(cp);
+    if (ruyi_hashtable_get(primary_types, ruyi_value_unicode_str(type_desc), &value)) {
+        unicode_index = ruyi_symtab_constants_pool_get_or_add_unicode(cp, type_desc);
+    } else {
+        assert(ruyi_unicode_string_length(type_desc) > 0);
+        if ('T' != type_desc->data[0]) {
+            // bad type!!
+            return ruyi_error_misc("Type type must be start with 'T'");
+        }
+        temp.length = type_desc->length - 1;
+        temp.data = type_desc->data + 1;
+        temp.capacity = type_desc->capacity - 1;
+        unicode_index = ruyi_symtab_constants_pool_get_or_add_unicode(cp, &temp);
+    }
+    if (!cp->index2value) {
+        cp->index2value = ruyi_vector_create();
+    }
+    if (!cp->type2index) {
+        cp->type2index = ruyi_hashtable_create();
+    }
+    if (ruyi_hashtable_get(cp->type2index, ruyi_value_int32(unicode_index), &found_value)) {
+        *out_index = ((ruyi_symtab_constant *)found_value.data.ptr)->index;
+        return NULL;
+    }
+    type_index = ruyi_vector_length(cp->index2value);
+    const_value = ruyi_symtab_constant_type(type_index, unicode_index);
+    ruyi_vector_add(cp->index2value, ruyi_value_ptr(const_value));
+    ruyi_hashtable_put(cp->type2index, ruyi_value_int32(unicode_index), ruyi_value_ptr(const_value));
+    *out_index = type_index;
+    return NULL;
+}

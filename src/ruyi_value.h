@@ -13,7 +13,7 @@
 #include "ruyi_unicode.h"
 
 typedef enum {
-    Ruyi_value_type_float64,
+    Ruyi_value_type_float64 = 1,
     Ruyi_value_type_float32,
     Ruyi_value_type_uint64,
     Ruyi_value_type_int64,

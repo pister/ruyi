@@ -9,6 +9,8 @@
 #include "ruyi_ast.h"
 #include "ruyi_mem.h"
 
+
+// momery leak
 void ruyi_ast_destroy(ruyi_ast *ast) {
     UINT32 i, len;
     ruyi_value sub_ast_value;
@@ -29,8 +31,7 @@ void ruyi_ast_destroy(ruyi_ast *ast) {
         break;
     }
     if (ast->child_asts) {
-        i = 0;
-        for (len = ruyi_vector_length(ast->child_asts); i < len; i++) {
+        for ((void)(len = ruyi_vector_length(ast->child_asts)), i = 0; i < len; i++) {
             ruyi_vector_get(ast->child_asts, i, &sub_ast_value);
             sub_ast_ptr = (ruyi_ast *)sub_ast_value.data.ptr;
             if (sub_ast_ptr) {
@@ -40,7 +41,7 @@ void ruyi_ast_destroy(ruyi_ast *ast) {
         ruyi_vector_destroy(ast->child_asts);
         ast->child_asts = NULL;
     }
-    // destory self
+    // destroy self
     ruyi_mem_free(ast);
 }
 

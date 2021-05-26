@@ -388,6 +388,7 @@ void ruyi_unicode_string_destroy(ruyi_unicode_string* s) {
     }
     if (s->data) {
         ruyi_mem_free(s->data);
+        s->data = NULL;
     }
     ruyi_mem_free(s);
 }

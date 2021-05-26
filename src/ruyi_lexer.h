@@ -17,7 +17,7 @@
 #include <stdio.h>
 
 typedef enum {
-    Ruyi_tt_IDENTITY,       // example: name1
+    Ruyi_tt_IDENTITY = 1,   // example: name1
     Ruyi_tt_INTEGER,        // example: 1234
     Ruyi_tt_FLOAT,          // example: 1234.5678
     Ruyi_tt_STRING,         // example: "hello", in unicode

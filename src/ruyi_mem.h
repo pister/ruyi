@@ -11,6 +11,7 @@
 
 #include "ruyi_basics.h"
 
+
 void* ruyi_mem_alloc(UINT32 size);
 void ruyi_mem_free(void * pointer);
 

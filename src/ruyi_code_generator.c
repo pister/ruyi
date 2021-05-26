@@ -514,7 +514,7 @@ static UINT32 ir_type_size(ruyi_ir_type type) {
             return 8;
         case Ruyi_ir_type_Array:
             return 8;
-        case Ruyi_ir_type_Tuple:
+        case Ruyi_ir_type_Type:
             return 8;
         case Ruyi_ir_type_Map:
             return 8;
@@ -948,7 +948,7 @@ ruyi_error* gen_integer(ruyi_cg_body_context *context, UINT64 value, ruyi_symtab
                 }
                 break;
             default:
-                return ruyi_error_misc("unsupport ");
+                return ruyi_error_misc("unsupport ir_type: %d", expect_type->ir_type);
         }
         
     } else {
@@ -1493,6 +1493,68 @@ ruyi_error* gen_continue_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt,
     return NULL;
 }
 
+static void push_integer(ruyi_cg_body_context *context, INT64 value) {
+    UINT32 index;
+    switch (value) {
+        case 0:
+            ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst_0, 0);
+            break;
+        case 1:
+            ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst_1, 0);
+            break;
+        case -1:
+            ruyi_ins_codes_add(context->codes, Ruyi_ir_Iconst_m1, 0);
+            break;
+        default:
+            index = ruyi_symtab_constants_pool_get_or_add_int64(context->symtab->cp, value);
+            ruyi_ins_codes_add(context->codes, Ruyi_ir_Push, index);
+            break;
+    }
+}
+
+static
+ruyi_error* gen_array_creation_with_init(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
+    ruyi_error* err;
+    ruyi_ast *array_type = ruyi_ast_get_child(ast_stmt, 0);
+    ruyi_ast *ast_expr;
+    UINT32 ast_child_len = ruyi_ast_child_length(ast_stmt);
+    UINT32 i;
+    // TODO -------
+    ruyi_symtab_type the_type;
+    ruyi_symtab_type array_item_type;
+    UINT32 array_len = ast_child_len - 1;
+    // TODO in handle() array_item_type may has mem_alloc, please free it when array_item_type destroyed !!!
+    if ((err = handle_type(array_type, &array_item_type)) != NULL) {
+        return err;
+    }
+
+    // cap
+    push_integer(context, array_len);
+    // length
+    push_integer(context, array_len);
+
+    // TODO
+    // type
+    
+  //  ruyi_symtab_constants_pool_get_or_parse(context->symtab->cp, )
+    
+    // new array
+    
+    // init item-values
+    for (i = 1; i < ast_child_len; i++) {
+        ast_expr = ruyi_ast_get_child(ast_stmt, i);
+        // item
+        if ((err = gen_stmt(context, ast_expr, &the_type, &array_item_type)) != NULL) {
+            return err;
+        }
+    }
+    
+    
+    
+    
+    return NULL;
+}
+
 static
 ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_symtab_type *out_type, const ruyi_symtab_type *expect_type) {
     switch (ast_stmt->type) {
@@ -1529,6 +1591,8 @@ ruyi_error* gen_stmt(ruyi_cg_body_context *context, ruyi_ast *ast_stmt, ruyi_sym
             return gen_break_stmt(context, ast_stmt, out_type, expect_type);
         case Ruyi_at_continue_statement:
             return gen_continue_stmt(context, ast_stmt, out_type, expect_type);
+        case Ruyi_at_array_creation_with_init:
+            return gen_array_creation_with_init(context, ast_stmt, out_type, expect_type);
         default:
             break;
     }

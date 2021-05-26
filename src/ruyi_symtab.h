@@ -26,11 +26,16 @@ typedef enum {
 #define RUYI_FUNC_MAX_RETURN_COUNT 128
 
 
-
-
-
-
 /*
+ Ruyi_ir_type_Void = 0,  // v-0
+ Ruyi_ir_type_Int8,      // b-8bit
+ Ruyi_ir_type_Int16,     // s-16bit
+ Ruyi_ir_type_Rune,      // r-32bit
+ Ruyi_ir_type_Int32,     // i-32bit
+ Ruyi_ir_type_Int64,     // l-64bit
+ Ruyi_ir_type_Float32,   // f-32bit
+ Ruyi_ir_type_Float64,   // d-64bit
+ 
  Ruyi_ir_type_Object,    // Oname;
  Ruyi_ir_type_Array,     // Atype
  Ruyi_ir_type_Tuple,     // Ttype*
@@ -40,7 +45,7 @@ typedef enum {
 
 struct ruyi_symtab_type_object_;
 struct ruyi_symtab_type_array_;
-struct ruyi_symtab_type_tuple_;
+struct ruyi_symtab_type_type_;
 struct ruyi_symtab_type_map_;
 struct ruyi_symtab_type_func_;
 
@@ -49,9 +54,10 @@ typedef struct {
     UINT32 size;
     union {
         void *uniptr;
+        ruyi_unicode_string* desc;
         struct ruyi_symtab_type_object_  *object;
         struct ruyi_symtab_type_array_   *array;
-        struct ruyi_symtab_type_tuple_   *tuple;
+        struct ruyi_symtab_type_type_    *type;
         struct ruyi_symtab_type_map_     *map;
         struct ruyi_symtab_type_func_    *func;
     } detail;
@@ -67,10 +73,10 @@ typedef struct ruyi_symtab_type_array_ {
     ruyi_symtab_type    type;
 } ruyi_symtab_type_array;
 
-typedef struct ruyi_symtab_type_tuple_ {
-    UINT32              count;
-    ruyi_symtab_type    *types;
-} ruyi_symtab_type_tuple;
+typedef struct ruyi_symtab_type_type_ {
+    UINT32              cp_index;
+    ruyi_unicode_string *name;
+} ruyi_symtab_type_type;
 
 typedef struct ruyi_symtab_type_map_ {
     ruyi_symtab_type    key;
@@ -132,6 +138,7 @@ typedef struct {
         INT64 int64_value;
         double float64_value;
         ruyi_unicode_string *uncode_str;
+        UINT32 *type_value;
     } data;
 } ruyi_symtab_constant;
 
@@ -145,6 +152,7 @@ typedef struct {
     ruyi_hashtable  *int642index;
     ruyi_hashtable  *float642index;
     ruyi_hashtable  *unicode2index;
+    ruyi_hashtable  *type2index;
     ruyi_vector     *index2value;
 } ruyi_symtab_constants_pool;
 
@@ -153,6 +161,7 @@ void ruyi_symtab_constants_pool_destroy(ruyi_symtab_constants_pool* constants_po
 UINT32 ruyi_symtab_constants_pool_get_or_add_int64(ruyi_symtab_constants_pool *cp, INT64 value);
 UINT32 ruyi_symtab_constants_pool_get_or_add_float64(ruyi_symtab_constants_pool *cp, FLOAT64 value);
 UINT32 ruyi_symtab_constants_pool_get_or_add_unicode(ruyi_symtab_constants_pool *cp, const ruyi_unicode_string *value);
+ruyi_error* ruyi_symtab_constants_pool_get_or_parse(ruyi_symtab_constants_pool *cp, const ruyi_unicode_string *type_desc, UINT32 *out_index);
 
 
 
@@ -236,13 +245,20 @@ ruyi_symtab_type_array* ruyi_symtab_type_array_create(UINT16 dims, ruyi_symtab_t
 
 void ruyi_symtab_type_array_destroy(ruyi_symtab_type_array *array);
 
-ruyi_symtab_type_tuple* ruyi_symtab_type_tuple_create(UINT32 count);
+// =================================================================
 
-void ruyi_symtab_type_tuple_set(ruyi_symtab_type_tuple *tuple, UINT32 pos, ruyi_symtab_type type);
 
-ruyi_symtab_type_tuple* ruyi_symtab_type_tuple_copy_from(const ruyi_symtab_type_tuple* src_tuple);
 
-void ruyi_symtab_type_tuple_destroy(ruyi_symtab_type_tuple *tuple);
+// =================================================================
+
+
+/*
+ruyi_symtab_type_type* ruyi_symtab_type_type_create(UINT32 count);
+
+ruyi_symtab_type_type* ruyi_symtab_type_tuple_copy_from(const ruyi_symtab_type_type* src_type);
+
+void ruyi_symtab_type_type_destroy(ruyi_symtab_type_type *type);
+ */
 
 ruyi_symtab_type_map* ruyi_symtab_type_map_create(ruyi_symtab_type key_type, ruyi_symtab_type value_type);
 
