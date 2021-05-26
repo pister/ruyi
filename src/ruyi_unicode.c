@@ -160,12 +160,12 @@ static INT32 ruyi_unicode_decode_single_utf8(const BYTE* src, UINT32 src_pos, UI
     return 0;
 }
 
-UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_used_count, WIDE_CHAR *out_utf8_buf, UINT32 buf_length) {
+UINT32 ruyi_unicode_decode_utf8(const BYTE* src_utf8, UINT32 src_len, UINT32 *src_used_count, WIDE_CHAR *out_buf, UINT32 buf_length) {
     UINT32 src_pos = 0;
     UINT32 dest_pos = 0;
     UINT32 use_bytes_count = 0;
     while (src_pos < src_len && dest_pos < buf_length) {
-        use_bytes_count = ruyi_unicode_decode_single_utf8(src, src_pos, src_len, out_utf8_buf+dest_pos);
+        use_bytes_count = ruyi_unicode_decode_single_utf8(src_utf8, src_pos, src_len, out_buf+dest_pos);
         if (use_bytes_count == 0) {
             break;
         }
@@ -237,12 +237,12 @@ static UINT32 ruyi_unicode_encode_single_utf8(WIDE_CHAR c, BYTE *out_buf, UINT32
     return 0;
 }
 
-UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR* src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length) {
+UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR* src, UINT32 src_len, UINT32 *src_used_count, BYTE *out_utf8_buf, UINT32 buf_length) {
     UINT32 src_pos = 0;
     UINT32 out_pos = 0;
     UINT32 bytes_count = 0;
     while (src_pos < src_len && out_pos < buf_length ) {
-        bytes_count = ruyi_unicode_encode_single_utf8(src_utf8[src_pos], out_buf + out_pos, buf_length-out_pos);
+        bytes_count = ruyi_unicode_encode_single_utf8(src[src_pos], out_utf8_buf + out_pos, buf_length-out_pos);
         if (bytes_count == 0) {
             break;
         }
@@ -255,16 +255,16 @@ UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR* src_utf8, UINT32 src_len, UINT3
     return out_pos;
 }
 
-WIDE_CHAR ruyi_unicode_wide_char_utf8(const char* str) {
+WIDE_CHAR ruyi_unicode_wide_char_utf8(const char* src_utf8) {
     WIDE_CHAR ret;
-    if (0 == ruyi_unicode_decode_utf8((const BYTE*)str, 6, NULL, &ret, 1)) {
+    if (0 == ruyi_unicode_decode_utf8((const BYTE*)src_utf8, 6, NULL, &ret, 1)) {
         return 0;
     }
     return ret;
 }
 
-UINT32 ruyi_unicode_bytes(WIDE_CHAR c, BYTE *buf, UINT32 buf_length) {
-    return ruyi_unicode_encode_utf8(&c, 1, NULL, buf, buf_length);
+UINT32 ruyi_unicode_bytes(WIDE_CHAR c, BYTE *out_utf8_buf, UINT32 buf_length) {
+    return ruyi_unicode_encode_utf8(&c, 1, NULL, out_utf8_buf, buf_length);
 }
 
 ruyi_unicode_string * ruyi_unicode_string_init_with_capacity(UINT32 capacity) {

@@ -20,32 +20,48 @@
 /**
  * Decode bytes to Unicode by utf-8
  * params:
- * src - the input src
+ * src_utf8 - the input src
  * src_len - input src lenght
  * src_used_count - to recieve how how many bytes has been decoded, can be NULL
- * out_utf8_buf - the output ucs data
+ * out_buf - the output ucs data
  * buf_length - max output length
  * return:
  * the char count of out_utf8_buf recieved, if occur error, 0 will be return.
  */
-UINT32 ruyi_unicode_decode_utf8(const BYTE* src, UINT32 src_len, UINT32 *src_used_count, WIDE_CHAR *out_utf8_buf, UINT32 buf_length);
+UINT32 ruyi_unicode_decode_utf8(const BYTE* src_utf8, UINT32 src_len, UINT32 *src_used_count, WIDE_CHAR *out_buf, UINT32 buf_length);
 
 /**
  * Encode Unicode by utf-8
  * params:
- * src_utf8 - the input utf-8 src ucs
+ * src - the input utf-8 src ucs
  * src_len - input src lenght
  * src_used_count - to recieve how how many ucs has been encoded, can be NULL
- * out_buf - the output bytes buffer
+ * out_utf8_buf - the output bytes buffer
  * buf_length - max output length
  * return:
  * the char count of out_utf8_buf recieved, if occur error, 0 will be return.
  */
-UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR *src_utf8, UINT32 src_len, UINT32 *src_used_count, BYTE *out_buf, UINT32 buf_length);
+UINT32 ruyi_unicode_encode_utf8(const WIDE_CHAR *src, UINT32 src_len, UINT32 *src_used_count, BYTE *out_utf8_buf, UINT32 buf_length);
 
-WIDE_CHAR ruyi_unicode_wide_char_utf8(const char *str);
+/**
+ * Get First Single Unicode Character From Utf8 bytes
+ * params:
+ * src_utf8 - bytes in utf8
+ * return:
+ * the First Unicode Charactor
+ */
+WIDE_CHAR ruyi_unicode_wide_char_utf8(const char *src_utf8);
 
-UINT32 ruyi_unicode_bytes(WIDE_CHAR c, BYTE *buf, UINT32 buf_length);
+/**
+ * Get utf8 bytes from One Unicode Character
+ * params:
+ * c - unicode character
+ * out_utf8_buf - the utf8 out bytes
+ * buf_length - max length of out_utf8_buf
+ * return:
+ * result length of utf8 bytes
+ */
+UINT32 ruyi_unicode_bytes(WIDE_CHAR c, BYTE *out_utf8_buf, UINT32 buf_length);
 
 typedef struct {
     WIDE_CHAR *data;
